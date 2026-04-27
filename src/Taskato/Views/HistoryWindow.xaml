@@ -1,0 +1,215 @@
+<Window x:Class="Taskato.Views.HistoryWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:converters="clr-namespace:Taskato.Converters"
+        Title="历史任务查询"
+        Width="560" Height="550"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="CanResizeWithGrip">
+    <!--
+        这个窗体会以对话框模式打开（ShowDialog），
+        关闭后焦点回到主窗体。
+    -->
+
+    <Border CornerRadius="16"
+            Background="{StaticResource WindowBackgroundBrush}"
+            BorderBrush="#266366F1" BorderThickness="1">
+        <Border.Effect>
+            <DropShadowEffect Color="#000000" BlurRadius="30" ShadowDepth="10" Opacity="0.5"/>
+        </Border.Effect>
+
+        <Grid>
+            <Grid.RowDefinitions>
+                <!-- 标题栏 -->
+                <RowDefinition Height="Auto"/>
+                <!-- 搜索区域 -->
+                <RowDefinition Height="Auto"/>
+                <!-- 搜索结果列表 -->
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- ========== 标题栏 ========== -->
+            <Border Grid.Row="0" Background="#08FFFFFF"
+                    BorderBrush="{StaticResource SeparatorBrush}" BorderThickness="0,0,0,1"
+                    CornerRadius="16,16,0,0"
+                    MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                <Grid Margin="20,14">
+                    <StackPanel Orientation="Horizontal">
+                        <Border Width="24" Height="24" CornerRadius="6" Background="#336366F1">
+                            <TextBlock Text="📋" FontSize="14"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <TextBlock Text="历史任务查询" FontSize="14" FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                   VerticalAlignment="Center" Margin="10,0,0,0"/>
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <Ellipse Width="14" Height="14" Fill="#F59E0B" Cursor="Hand" Margin="0,0,8,0"/>
+                        <Ellipse Width="14" Height="14" Fill="#22C55E" Cursor="Hand" Margin="0,0,8,0"/>
+                        <Ellipse Width="14" Height="14" Fill="#EF4444" Cursor="Hand"
+                                 MouseLeftButtonDown="CloseButton_Click"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- ========== 搜索区域 ========== -->
+            <StackPanel Grid.Row="1" Margin="20,20,20,12">
+                <!-- 日期行 -->
+                <Grid Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Column="0" Text="开始日期" FontSize="13"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <DatePicker Grid.Column="1"
+                                SelectedDate="{Binding StartDate}"
+                                Margin="0,0,10,0"
+                                Foreground="{StaticResource TextPrimaryBrush}"/>
+
+                    <TextBlock Grid.Column="2" Text="至" FontSize="13"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <DatePicker Grid.Column="3"
+                                SelectedDate="{Binding EndDate}"
+                                Foreground="{StaticResource TextPrimaryBrush}"/>
+                </Grid>
+
+                <!-- 关键词行 -->
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Column="0" Text="关键词" FontSize="13"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               VerticalAlignment="Center" Margin="0,0,10,0" Width="52"/>
+                    <TextBox Grid.Column="1"
+                             Style="{StaticResource DarkTextBox}"
+                             Text="{Binding Keyword, UpdateSourceTrigger=PropertyChanged}"
+                             Margin="0,0,10,0" Padding="10,8" FontSize="13"/>
+
+                    <Button Grid.Column="2"
+                            Style="{StaticResource PrimaryButton}"
+                            Content="🔍 搜索"
+                            Command="{Binding SearchCommand}"
+                            Padding="16,8" FontSize="13" Margin="0,0,8,0"/>
+
+                    <Button Grid.Column="3" Padding="16,8" FontSize="13" Cursor="Hand"
+                            Content="📥 导出"
+                            Command="{Binding ExportCsvCommand}">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Background" Value="#1F22C55E"/>
+                                <Setter Property="Foreground" Value="#4ADE80"/>
+                                <Setter Property="BorderThickness" Value="1"/>
+                                <Setter Property="BorderBrush" Value="#3322C55E"/>
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="bd"
+                                                    Background="{TemplateBinding Background}"
+                                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                                    CornerRadius="8" Padding="{TemplateBinding Padding}">
+                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="bd" Property="Background" Value="#3322C55E"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                </Grid>
+
+                <!-- 搜索结果计数 -->
+                <TextBlock FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,10,0,0">
+                    <TextBlock.Text>
+                        <Binding Path="ResultCount" StringFormat="找到 {0} 条记录"/>
+                    </TextBlock.Text>
+                </TextBlock>
+            </StackPanel>
+
+            <!-- ========== 搜索结果列表 ========== -->
+            <ScrollViewer Grid.Row="2" Margin="20,0,20,20" VerticalScrollBarVisibility="Auto">
+                <ItemsControl ItemsSource="{Binding SearchResults}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="{StaticResource CardBackgroundBrush}"
+                                    CornerRadius="10" Margin="0,0,0,6"
+                                    BorderBrush="#0AFFFFFF" BorderThickness="1"
+                                    Padding="16,14">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- 状态标签 -->
+                                    <Border Grid.Column="0" CornerRadius="20" Padding="10,3"
+                                            VerticalAlignment="Center" Margin="0,0,12,0">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Background" Value="#26F59E0B"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsCompleted}" Value="True">
+                                                        <Setter Property="Background" Value="#2622C55E"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <TextBlock FontSize="11" FontWeight="SemiBold">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Text" Value="未完成"/>
+                                                    <Setter Property="Foreground" Value="#FBBF24"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsCompleted}" Value="True">
+                                                            <Setter Property="Text" Value="已完成"/>
+                                                            <Setter Property="Foreground" Value="#4ADE80"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </Border>
+
+                                    <!-- 任务信息 -->
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Title}" FontSize="14"
+                                                   FontWeight="Medium" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                        <TextBlock FontSize="11" Foreground="{StaticResource TextMutedBrush}" Margin="0,3,0,0">
+                                            <TextBlock.Text>
+                                                <MultiBinding Converter="{StaticResource TaskTimeDisplayConverter}">
+                                                    <Binding Path="CreatedAt" StringFormat="{}{0:yyyy-MM-dd · }"/>
+                                                    <Binding Path="CompletedAt"/>
+                                                </MultiBinding>
+                                            </TextBlock.Text>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Grid>
+    </Border>
+</Window>
