@@ -4,36 +4,80 @@ namespace Taskato.Models
 {
     /// <summary>
     /// 任务数据模型 — 对应数据库中的 TaskItems 表
-    /// 每条记录代表用户创建的一个工作任务
+    /// 继承自 ViewModelBase 以支持界面的双向绑定（动态标签刷新）
     /// </summary>
     [Table("TaskItems")]
-    public class TaskItem
+    public class TaskItem : Utils.ViewModelBase
     {
-        /// <summary>
-        /// 任务唯一标识（主键，自增）
-        /// </summary>
+        private int _id;
         [PrimaryKey, AutoIncrement]
-        public int Id { get; set; }
+        public int Id { get => _id; set => SetProperty(ref _id, value); }
 
-        /// <summary>
-        /// 任务标题 / 内容描述
-        /// </summary>
+        private string _title = string.Empty;
         [MaxLength(500)]
-        public string Title { get; set; } = string.Empty;
+        public string Title
+        {
+            get => _title;
+            set
+            {
+                if (SetProperty(ref _title, value))
+                {
+                    OnPropertyChanged(nameof(Tags));
+                    OnPropertyChanged(nameof(DisplayTitle));
+                }
+            }
+        }
+
+        private DateTime _createdAt = DateTime.Now;
+        public DateTime CreatedAt { get => _createdAt; set => SetProperty(ref _createdAt, value); }
+
+        private DateTime? _completedAt;
+        public DateTime? CompletedAt { get => _completedAt; set => SetProperty(ref _completedAt, value); }
+
+        private bool _isCompleted = false;
+        public bool IsCompleted { get => _isCompleted; set => SetProperty(ref _isCompleted, value); }
 
         /// <summary>
-        /// 任务创建时间（自动记录添加任务的时刻）
+        /// 后台逻辑属性：拖拽排序索引
         /// </summary>
-        public DateTime CreatedAt { get; set; } = DateTime.Now;
+        private int _orderIndex;
+        public int OrderIndex { get => _orderIndex; set => SetProperty(ref _orderIndex, value); }
+
+        // ==================== 微解析系统 ====================
 
         /// <summary>
-        /// 任务完成时间（勾选完成后记录，未完成时为 null）
+        /// 动态提取文本中的 #标签
         /// </summary>
-        public DateTime? CompletedAt { get; set; }
+        [Ignore]
+        public System.Collections.Generic.List<string> Tags
+        {
+            get
+            {
+                var tags = new System.Collections.Generic.List<string>();
+                if (string.IsNullOrEmpty(Title)) return tags;
+                
+                var parts = Title.Split(' ');
+                foreach (var part in parts)
+                {
+                    if (part.StartsWith("#") && part.Length > 1) 
+                        tags.Add(part.Substring(1));
+                }
+                return tags;
+            }
+        }
 
         /// <summary>
-        /// 是否已完成（勾选状态）
+        /// 剥离标签后的纯净标题
         /// </summary>
-        public bool IsCompleted { get; set; } = false;
+        [Ignore]
+        public string DisplayTitle
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(Title)) return string.Empty;
+                var titles = Title.Split(' ').Where(p => !p.StartsWith("#"));
+                return string.Join(" ", titles);
+            }
+        }
     }
 }

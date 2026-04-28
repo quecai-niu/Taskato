@@ -128,19 +128,34 @@
                 <ItemsControl ItemsSource="{Binding TodayTasks}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <!-- 单个任务卡片 -->
-                            <Border x:Name="taskCard"
-                                    Background="{StaticResource CardBackgroundBrush}"
-                                    CornerRadius="10" Margin="0,0,0,6"
-                                    BorderBrush="#0AFFFFFF" BorderThickness="1"
-                                    Padding="16,14" Cursor="Hand"
-                                    MouseLeftButtonDown="TaskCard_MouseLeftButtonDown">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
+                            <!-- 单个任务卡片容器 -->
+                            <Grid Margin="0,0,0,6">
+                                <!-- 后方的隐藏删除槽（红色） -->
+                                <Border Background="#EF4444" CornerRadius="10" Padding="16,14" 
+                                        HorizontalAlignment="Right" Width="70"
+                                        Cursor="Hand" MouseLeftButtonDown="DeleteButton_Click" Tag="{Binding}">
+                                    <TextBlock Text="删除" Foreground="White" FontWeight="Bold" FontSize="13"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+
+                                <!-- 任务主体卡片（支持滑动） -->
+                                <Border x:Name="taskCard"
+                                        Background="{StaticResource WindowBackgroundBrush}"
+                                        CornerRadius="10"
+                                        BorderBrush="#1AFFFFFF" BorderThickness="1"
+                                        Padding="16,14" Cursor="Hand"
+                                        MouseLeftButtonDown="TaskCard_MouseLeftButtonDown"
+                                        MouseMove="TaskCard_MouseMove"
+                                        MouseLeftButtonUp="TaskCard_MouseLeftButtonUp"
+                                        MouseLeave="TaskCard_MouseLeave">
+                                    <Border.RenderTransform>
+                                        <TranslateTransform X="0" />
+                                    </Border.RenderTransform>
+                                    <Grid Background="Transparent">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
 
                                     <!-- 勾选框 -->
                                     <Border Grid.Column="0" Width="20" Height="20" CornerRadius="6"
@@ -160,25 +175,27 @@
                                                 </Style.Triggers>
                                             </Style>
                                         </Border.Style>
-                                        <TextBlock Text="✓" FontSize="12" FontWeight="Bold" Foreground="White"
-                                                   HorizontalAlignment="Center" VerticalAlignment="Center">
-                                            <TextBlock.Style>
-                                                <Style TargetType="TextBlock">
-                                                    <Setter Property="Opacity" Value="0"/>
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding IsCompleted}" Value="True">
-                                                            <Setter Property="Opacity" Value="1"/>
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </TextBlock.Style>
-                                        </TextBlock>
+                                        <Grid>
+                                            <TextBlock Text="✓" FontSize="12" FontWeight="Bold" Foreground="White"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Opacity" Value="0"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsCompleted}" Value="True">
+                                                                <Setter Property="Opacity" Value="1"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </Grid>
                                     </Border>
 
                                     <!-- 任务内容 -->
                                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                         <!-- 任务标题 -->
-                                        <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="Medium">
+                                        <TextBlock Text="{Binding DisplayTitle}" FontSize="14" FontWeight="Medium" TextTrimming="CharacterEllipsis">
                                             <TextBlock.Style>
                                                 <Style TargetType="TextBlock">
                                                     <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
@@ -191,6 +208,25 @@
                                                 </Style>
                                             </TextBlock.Style>
                                         </TextBlock>
+
+                                        <!-- #标签展示 -->
+                                        <ItemsControl ItemsSource="{Binding Tags}" Margin="0,4,0,0">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <WrapPanel Orientation="Horizontal" />
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Background="#26A855F7" CornerRadius="4" Padding="6,2" Margin="0,0,6,0">
+                                                        <TextBlock FontSize="10" FontWeight="SemiBold" Foreground="#D8B4FE">
+                                                            <Run Text="#" Foreground="#99D8B4FE"/>
+                                                            <Run Text="{Binding}"/>
+                                                        </TextBlock>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
                                         <!-- 时间信息 -->
                                         <TextBlock FontSize="11" Foreground="{StaticResource TextMutedBrush}" Margin="0,3,0,0">
                                             <TextBlock.Text>
@@ -201,27 +237,9 @@
                                             </TextBlock.Text>
                                         </TextBlock>
                                     </StackPanel>
-
-                                    <TextBlock Grid.Column="2" Text="✕" FontSize="16"
-                                               Foreground="{StaticResource DangerBrush}"
-                                               Background="Transparent"
-                                               VerticalAlignment="Center" Cursor="Hand"
-                                               Padding="4"
-                                               MouseLeftButtonDown="DeleteButton_Click"
-                                               Tag="{Binding}">
-                                        <TextBlock.Style>
-                                            <Style TargetType="TextBlock">
-                                                <Setter Property="Opacity" Value="0"/>
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=Border}, Path=IsMouseOver}" Value="True">
-                                                        <Setter Property="Opacity" Value="0.6"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </TextBlock.Style>
-                                    </TextBlock>
                                 </Grid>
                             </Border>
+                        </Grid>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>

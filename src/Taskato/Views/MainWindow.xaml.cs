@@ -147,19 +147,101 @@ namespace Taskato.Views
             e.Handled = true;
         }
 
+        // ==================== 滑动删除手势相关状态 ====================
+
+        private System.Windows.Point _swipeStartPoint;
+        private bool _isSwiping = false;
+        private System.Windows.Controls.Border? _currentSwipingCard = null;
+        private System.Windows.Media.TranslateTransform? _currentTransform = null;
+
         /// <summary>
-        /// 任务卡片被双击 → 弹出详情小窗体
+        /// 任务卡片按下 → 双击详情或准备滑动
         /// </summary>
         private void TaskCard_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (e.ClickCount == 2 && sender is FrameworkElement element && element.DataContext is Models.TaskItem task)
             {
-                var detailWindow = new TaskDetailWindow(task)
-                {
-                    Owner = this
-                };
+                var detailWindow = new TaskDetailWindow(task) { Owner = this };
                 detailWindow.ShowDialog();
                 e.Handled = true;
+                return;
+            }
+
+            if (sender is System.Windows.Controls.Border card)
+            {
+                var transform = card.RenderTransform as System.Windows.Media.TranslateTransform;
+                
+                // 如果没有变换器，或者对象被 WPF 冻结（只读），需要克隆或新建一个解冻的实例
+                if (transform == null || transform.IsFrozen)
+                {
+                    transform = new System.Windows.Media.TranslateTransform(transform?.X ?? 0, 0);
+                    card.RenderTransform = transform;
+                }
+
+                // 重点：必须清除之前可能遗留的回弹/固定动画锁定，否则后面改值依旧报错
+                transform.BeginAnimation(System.Windows.Media.TranslateTransform.XProperty, null);
+
+                _swipeStartPoint = e.GetPosition(this);
+                _isSwiping = true;
+                _currentSwipingCard = card;
+                _currentTransform = transform;
+                card.CaptureMouse();
+            }
+        }
+
+        private void TaskCard_MouseMove(object sender, System.Windows.Input.MouseEventArgs e)
+        {
+            if (_isSwiping && _currentSwipingCard != null && _currentTransform != null)
+            {
+                var currentPoint = e.GetPosition(this);
+                var deltaX = currentPoint.X - _swipeStartPoint.X;
+
+                // 仅允许向左滑动（负值），最大拖拽距离设置点阻尼（不要超过太多）
+                if (deltaX < 0 && deltaX > -100)
+                {
+                    _currentTransform.X = deltaX;
+                }
+                else if (deltaX >= 0)
+                {
+                    _currentTransform.X = 0;
+                }
+            }
+        }
+
+        private void TaskCard_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            ReleaseSwipe();
+        }
+
+        private void TaskCard_MouseLeave(object sender, System.Windows.Input.MouseEventArgs e)
+        {
+            // 防止拖拽异常遗留
+            if (_isSwiping && e.LeftButton == MouseButtonState.Released)
+            {
+                ReleaseSwipe();
+            }
+        }
+
+        private void ReleaseSwipe()
+        {
+            if (_isSwiping && _currentSwipingCard != null && _currentTransform != null)
+            {
+                // 如果左滑距离超过 35 像素，则磁吸固定在打开状态 (-70)；否则弹回 (0)
+                var finalTargetX = _currentTransform.X < -35 ? -70 : 0;
+                
+                var anim = new System.Windows.Media.Animation.DoubleAnimation(
+                    finalTargetX, new TimeSpan(0, 0, 0, 0, 250))
+                {
+                    EasingFunction = new System.Windows.Media.Animation.CubicEase { EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut }
+                };
+                
+                // 停止之前的硬编码转换（如果有的话），开始动画恢复
+                _currentTransform.BeginAnimation(System.Windows.Media.TranslateTransform.XProperty, anim);
+
+                _currentSwipingCard.ReleaseMouseCapture();
+                _isSwiping = false;
+                _currentSwipingCard = null;
+                _currentTransform = null;
             }
         }
     }

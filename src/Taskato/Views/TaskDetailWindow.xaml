@@ -93,8 +93,27 @@
             <!-- 2. 内容区 -->
             <StackPanel Grid.Row="1" Margin="24">
                 
+                <!-- 标签栏 -->
+                <ItemsControl ItemsSource="{Binding Tags}" Margin="0,0,0,12">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel Orientation="Horizontal" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="#33A855F7" CornerRadius="100" Padding="10,4" Margin="0,0,8,4">
+                                <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="#D8B4FE">
+                                    <Run Text="#" Foreground="#99D8B4FE"/>
+                                    <Run Text="{Binding}"/>
+                                </TextBlock>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
                 <!-- 长文本显示（支持换行） -->
-                <TextBlock Text="{Binding Title}" FontSize="15" LineHeight="24"
+                <TextBlock Text="{Binding DisplayTitle}" FontSize="15" LineHeight="24"
                            Foreground="{StaticResource TextPrimaryBrush}"
                            TextWrapping="Wrap" />
                            

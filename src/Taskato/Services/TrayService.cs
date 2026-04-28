@@ -67,7 +67,10 @@ namespace Taskato.Services
             _notifyIcon.DoubleClick += (s, e) => ShowWindowRequested?.Invoke();
 
             // 创建右键菜单
-            var contextMenu = new WinForms.ContextMenuStrip();
+            var contextMenu = new WinForms.ContextMenuStrip
+            {
+                Renderer = new DarkTrayMenuRenderer()
+            };
 
             // 菜单项 1: 显示主窗口
             var showItem = new WinForms.ToolStripMenuItem("📱 显示主窗口");
@@ -173,6 +176,48 @@ namespace Taskato.Services
                 _notifyIcon.Dispose();          // 释放资源
                 _notifyIcon = null;
             }
+        }
+
+        // ==================== 托盘菜单暗黑渲染器 ====================
+
+        /// <summary>
+        /// 自定义托盘菜单渲染器，实现高级暗黑风格
+        /// </summary>
+        private class DarkTrayMenuRenderer : WinForms.ToolStripProfessionalRenderer
+        {
+            public DarkTrayMenuRenderer() : base(new DarkColorTable()) { }
+
+            protected override void OnRenderItemText(WinForms.ToolStripItemTextRenderEventArgs e)
+            {
+                e.TextColor = e.Item.Enabled ? System.Drawing.Color.FromArgb(224, 224, 224) : System.Drawing.Color.FromArgb(119, 119, 119);
+                base.OnRenderItemText(e);
+            }
+            
+            protected override void OnRenderMenuItemBackground(WinForms.ToolStripItemRenderEventArgs e)
+            {
+                if (e.Item.Selected && e.Item.Enabled)
+                {
+                    // 紫色悬浮背景并带圆角效果
+                    using var brush = new SolidBrush(System.Drawing.Color.FromArgb(51, 99, 102, 241));
+                    e.Graphics.FillRectangle(brush, new Rectangle(2, 1, e.Item.Width - 4, e.Item.Height - 2));
+                }
+                else
+                {
+                    base.OnRenderMenuItemBackground(e);
+                }
+            }
+        }
+
+        private class DarkColorTable : WinForms.ProfessionalColorTable
+        {
+            public override System.Drawing.Color ToolStripDropDownBackground => System.Drawing.Color.FromArgb(26, 26, 46);
+            public override System.Drawing.Color ImageMarginGradientBegin => System.Drawing.Color.FromArgb(26, 26, 46);
+            public override System.Drawing.Color ImageMarginGradientMiddle => System.Drawing.Color.FromArgb(26, 26, 46);
+            public override System.Drawing.Color ImageMarginGradientEnd => System.Drawing.Color.FromArgb(26, 26, 46);
+            public override System.Drawing.Color MenuBorder => System.Drawing.Color.FromArgb(38, 99, 102, 241);
+            public override System.Drawing.Color MenuItemBorder => System.Drawing.Color.Transparent;
+            public override System.Drawing.Color SeparatorDark => System.Drawing.Color.FromArgb(30, 255, 255, 255);
+            public override System.Drawing.Color SeparatorLight => System.Drawing.Color.Transparent;
         }
     }
 }
