@@ -62,6 +62,12 @@
             <SolidColorBrush x:Key="WarningBrush" Color="#F59E0B"/>
             <SolidColorBrush x:Key="DangerBrush" Color="#EF4444"/>
 
+            <!-- 优先级特定活力色彩 (V2 Phase 1 精确参数) -->
+            <SolidColorBrush x:Key="Pri3Brush" Color="#FF4757"/> <!-- 紧急: 西瓜红 -->
+            <SolidColorBrush x:Key="Pri2Brush" Color="#FFA502"/> <!-- 高: 活力橙 -->
+            <SolidColorBrush x:Key="Pri1Brush" Color="#2ED573"/> <!-- 中: 明亮绿 -->
+            <SolidColorBrush x:Key="Pri0Brush" Color="#747D8C"/> <!-- 无: 石板灰 -->
+
             <!-- ============================================
                  全局字体设置
                  ============================================ -->
@@ -206,7 +212,7 @@
                 </Setter>
             </Style>
 
-            <!-- 极客版超细暗黑滚动条胶囊样式 -->
+            <!-- 极简滚动条滑块样式 (V2 Phase 1) -->
             <Style x:Key="ModernScrollBarThumb" TargetType="{x:Type Thumb}">
                 <Setter Property="OverridesDefaultStyle" Value="true"/>
                 <Setter Property="IsTabStop" Value="false"/>
@@ -214,15 +220,15 @@
                     <Setter.Value>
                         <ControlTemplate TargetType="{x:Type Thumb}">
                             <Border x:Name="rectangle"
-                                    Background="#4DFFFFFF"
-                                    CornerRadius="4"
+                                    Background="#26FFFFFF"
+                                    CornerRadius="2.5"
                                     Margin="0,0,0,0" />
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsMouseOver" Value="true">
-                                    <Setter TargetName="rectangle" Property="Background" Value="#80FFFFFF"/>
+                                    <Setter TargetName="rectangle" Property="Background" Value="#4DFFFFFF"/>
                                 </Trigger>
                                 <Trigger Property="IsDragging" Value="true">
-                                    <Setter TargetName="rectangle" Property="Background" Value="#B3FFFFFF"/>
+                                    <Setter TargetName="rectangle" Property="Background" Value="#66FFFFFF"/>
                                 </Trigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>
@@ -230,32 +236,21 @@
                 </Setter>
             </Style>
 
-            <!-- 覆盖全局 ScrollBar -->
+            <!-- 全局滚动条美化：去箭头、纤细化 (5px) -->
             <Style TargetType="{x:Type ScrollBar}">
                 <Setter Property="Background" Value="Transparent"/>
-                <Setter Property="Width" Value="8"/>
+                <Setter Property="Width" Value="5"/>
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="{x:Type ScrollBar}">
                             <Grid x:Name="Bg" Background="Transparent" SnapsToDevicePixels="true">
-                                <Track x:Name="PART_Track" IsDirectionReversed="true" Margin="0,2,0,2">
+                                <Track x:Name="PART_Track" IsDirectionReversed="true">
+                                    <!-- 去掉 RepeatButton (箭头按钮) -->
                                     <Track.DecreaseRepeatButton>
-                                        <RepeatButton Command="{x:Static ScrollBar.PageUpCommand}">
-                                            <RepeatButton.Template>
-                                                <ControlTemplate TargetType="{x:Type RepeatButton}">
-                                                    <Border Background="Transparent" />
-                                                </ControlTemplate>
-                                            </RepeatButton.Template>
-                                        </RepeatButton>
+                                        <RepeatButton Command="{x:Static ScrollBar.PageUpCommand}" Opacity="0" Focusable="False" />
                                     </Track.DecreaseRepeatButton>
                                     <Track.IncreaseRepeatButton>
-                                        <RepeatButton Command="{x:Static ScrollBar.PageDownCommand}">
-                                            <RepeatButton.Template>
-                                                <ControlTemplate TargetType="{x:Type RepeatButton}">
-                                                    <Border Background="Transparent" />
-                                                </ControlTemplate>
-                                            </RepeatButton.Template>
-                                        </RepeatButton>
+                                        <RepeatButton Command="{x:Static ScrollBar.PageDownCommand}" Opacity="0" Focusable="False" />
                                     </Track.IncreaseRepeatButton>
                                     <Track.Thumb>
                                         <Thumb Style="{StaticResource ModernScrollBarThumb}"/>
@@ -268,9 +263,64 @@
                 <Style.Triggers>
                     <Trigger Property="Orientation" Value="Horizontal">
                         <Setter Property="Width" Value="Auto"/>
-                        <Setter Property="Height" Value="8"/>
+                        <Setter Property="Height" Value="5"/>
                     </Trigger>
                 </Style.Triggers>
+            </Style>
+
+            <!-- 气泡风托盘菜单样式 (V2 Phase 1) -->
+            <Style x:Key="BubbleTrayMenu" TargetType="ContextMenu">
+                <Setter Property="Background" Value="#24242D"/>
+                <Setter Property="BorderBrush" Value="#0FFFFFFF"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Padding" Value="8"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ContextMenu">
+                            <Border x:Name="Border"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="14">
+                                <StackPanel IsItemsHost="True" Margin="{TemplateBinding Padding}"/>
+                            </Border>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style x:Key="BubbleTrayMenuItem" TargetType="MenuItem">
+                <Setter Property="Padding" Value="8,6"/>
+                <Setter Property="FontSize" Value="13"/>
+                <Setter Property="FontWeight" Value="Medium"/>
+                <Setter Property="Foreground" Value="White"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="MenuItem">
+                            <Border x:Name="Bd" Padding="{TemplateBinding Padding}" Background="Transparent" CornerRadius="8">
+                                <ContentPresenter ContentSource="Header" VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsHighlighted" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="#1AFFFFFF"/>
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter Property="Opacity" Value="0.5"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style x:Key="BubbleTraySeparator" TargetType="Separator">
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Separator">
+                            <Border Background="#0AFFFFFF" Height="1" Margin="4,4"/>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
             </Style>
 
         </ResourceDictionary>
