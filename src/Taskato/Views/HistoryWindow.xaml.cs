@@ -53,5 +53,37 @@ namespace Taskato.Views
             }
             e.Handled = true;
         }
+
+        /// <summary>
+        /// 双击记录卡片 → 弹出编辑详情
+        /// </summary>
+        private async void TaskCard_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ClickCount == 2 && sender is FrameworkElement element && element.DataContext is Models.TaskItem task)
+            {
+                var detailWindow = new TaskDetailWindow(task) { Owner = this };
+                detailWindow.ShowDialog();
+                
+                // 详情页关闭后，立即调用 ViewModel 方法保存对其 Title 的任何编辑
+                if (DataContext is HistoryViewModel vm)
+                {
+                    await vm.SaveTaskEditAsync(task);
+                }
+                
+                e.Handled = true;
+            }
+        }
+
+        /// <summary>
+        /// 监听按键：支持按 Esc 键直接退出历史窗体
+        /// </summary>
+        protected override void OnKeyDown(System.Windows.Input.KeyEventArgs e)
+        {
+            base.OnKeyDown(e);
+            if (e.Key == Key.Escape)
+            {
+                Close();
+            }
+        }
     }
 }

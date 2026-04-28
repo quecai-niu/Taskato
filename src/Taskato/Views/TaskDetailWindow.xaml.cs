@@ -34,5 +34,17 @@ namespace Taskato.Views
         {
             Close();
         }
+
+        /// <summary>
+        /// 监听按键：支持按 Esc 键快速关闭详情页
+        /// </summary>
+        protected override void OnKeyDown(System.Windows.Input.KeyEventArgs e)
+        {
+            base.OnKeyDown(e);
+            if (e.Key == Key.Escape)
+            {
+                Close();
+            }
+        }
     }
 }

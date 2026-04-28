@@ -157,12 +157,19 @@ namespace Taskato.Views
         /// <summary>
         /// 任务卡片按下 → 双击详情或准备滑动
         /// </summary>
-        private void TaskCard_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        private async void TaskCard_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (e.ClickCount == 2 && sender is FrameworkElement element && element.DataContext is Models.TaskItem task)
             {
                 var detailWindow = new TaskDetailWindow(task) { Owner = this };
                 detailWindow.ShowDialog();
+                
+                // 弹窗关闭后，如果是在主界面，则调用 ViewModel 的保存方法确保修改持久化
+                if (DataContext is MainViewModel vm)
+                {
+                    await vm.SaveTaskEditAsync(task);
+                }
+
                 e.Handled = true;
                 return;
             }

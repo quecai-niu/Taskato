@@ -155,8 +155,9 @@
                             <Border Background="{StaticResource CardBackgroundBrush}"
                                     CornerRadius="10" Margin="0,0,0,6"
                                     BorderBrush="#0AFFFFFF" BorderThickness="1"
-                                    Padding="16,14">
-                                <Grid>
+                                    Padding="16,14" Cursor="Hand"
+                                    MouseLeftButtonDown="TaskCard_MouseLeftButtonDown">
+                                <Grid Background="Transparent">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="*"/>

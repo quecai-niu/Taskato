@@ -47,6 +47,12 @@ namespace Taskato.Services
             await _db.CreateTableAsync<TaskItem>();
         }
 
+        /// <summary>
+        /// 全局数据变更事件 — 当添加、更新或删除任务时触发
+        /// 用于通知各个界面（如主页和历史列表）同步刷新数据
+        /// </summary>
+        public event Action? OnDataChanged;
+
         // ==================== 任务的 CRUD 操作 ====================
 
         /// <summary>
@@ -56,17 +62,23 @@ namespace Taskato.Services
         /// <returns>受影响的行数</returns>
         public async Task<int> AddTaskAsync(TaskItem task)
         {
-            return await _db.InsertAsync(task);
+            var result = await _db.InsertAsync(task);
+            if (result > 0) OnDataChanged?.Invoke(); // 触发全局刷新通知
+            return result;
         }
 
         /// <summary>
         /// 更新任务状态（防止全量 Update 造成的 CreatedAt 时区解析变异导致消失的 Bug）
+        /// 核心：将 Title 也加入更新列表，以支持编辑功能
         /// </summary>
         public async Task<int> UpdateTaskAsync(TaskItem task)
         {
-            return await _db.ExecuteAsync(
-                "UPDATE TaskItems SET IsCompleted = ?, CompletedAt = ? WHERE Id = ?",
-                task.IsCompleted, task.CompletedAt, task.Id);
+            var result = await _db.ExecuteAsync(
+                "UPDATE TaskItems SET Title = ?, IsCompleted = ?, CompletedAt = ? WHERE Id = ?",
+                task.Title, task.IsCompleted, task.CompletedAt, task.Id);
+            
+            if (result > 0) OnDataChanged?.Invoke(); // 触发全局刷新通知
+            return result;
         }
 
         /// <summary>
@@ -76,7 +88,9 @@ namespace Taskato.Services
         /// <returns>受影响的行数</returns>
         public async Task<int> DeleteTaskAsync(TaskItem task)
         {
-            return await _db.DeleteAsync(task);
+            var result = await _db.DeleteAsync(task);
+            if (result > 0) OnDataChanged?.Invoke(); // 触发全局刷新通知
+            return result;
         }
 
         /// <summary>

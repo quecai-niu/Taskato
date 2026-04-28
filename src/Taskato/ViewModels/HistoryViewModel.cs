@@ -104,6 +104,14 @@ namespace Taskato.ViewModels
         // ==================== 方法 ====================
 
         /// <summary>
+        /// 保存任务修改内容（供详情页编辑后调用）
+        /// </summary>
+        public async Task SaveTaskEditAsync(TaskItem task)
+        {
+            await _dbService.UpdateTaskAsync(task);
+        }
+
+        /// <summary>
         /// 执行搜索 — 根据日期范围和关键词查询任务
         /// </summary>
         public async Task SearchAsync()

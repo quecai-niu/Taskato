@@ -223,6 +223,16 @@ namespace Taskato.ViewModels
             // 工作完成 → 通知 View 弹出提醒窗口
             _pomodoroService.WorkCompleted += () => OnWorkCompleted?.Invoke();
             _pomodoroService.RestCompleted += () => OnRestCompleted?.Invoke();
+
+            // ---------- 订阅数据库全局变更事件 ----------
+            // 当任何地方（如历史界面）删除了任务或修改了内容，主界面自动同步刷新
+            _dbService.OnDataChanged += () =>
+            {
+                Application.Current.Dispatcher.InvokeAsync(async () =>
+                {
+                    await LoadTodayTasksAsync();
+                });
+            };
         }
 
         // ==================== 任务操作方法 ====================
@@ -280,7 +290,16 @@ namespace Taskato.ViewModels
         private async Task DeleteTaskAsync(TaskItem task)
         {
             await _dbService.DeleteTaskAsync(task);
-            await LoadTodayTasksAsync(); // 刷新列表
+            // 注意：因为订阅了 OnDataChanged 事件，这里其实不需要手动 LoadTodayTasksAsync，
+            // 但为了双重保险也可以保留，或者由事件统一接管
+        }
+
+        /// <summary>
+        /// 保存任务修改内容（供详情页编辑后调用）
+        /// </summary>
+        public async Task SaveTaskEditAsync(TaskItem task)
+        {
+            await _dbService.UpdateTaskAsync(task);
         }
 
         /// <summary>

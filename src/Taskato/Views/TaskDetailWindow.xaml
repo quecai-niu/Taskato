@@ -91,10 +91,10 @@
             </Border>
 
             <!-- 2. 内容区 -->
-            <StackPanel Grid.Row="1" Margin="24">
+            <StackPanel Grid.Row="1" Margin="24,10,24,20">
                 
-                <!-- 标签栏 -->
-                <ItemsControl ItemsSource="{Binding Tags}" Margin="0,0,0,12">
+                <!-- 标签栏（只读显示当前提取出的标签） -->
+                <ItemsControl ItemsSource="{Binding Tags}" Margin="0,0,0,16">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
                             <WrapPanel Orientation="Horizontal" />
@@ -112,10 +112,24 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
 
-                <!-- 长文本显示（支持换行） -->
-                <TextBlock Text="{Binding DisplayTitle}" FontSize="15" LineHeight="24"
-                           Foreground="{StaticResource TextPrimaryBrush}"
-                           TextWrapping="Wrap" />
+                <!-- 可编辑文本区：使用 ScrollViewer 包裹防止内容过多撑出窗口 -->
+                <ScrollViewer MaxHeight="350" VerticalScrollBarVisibility="Auto">
+                    <TextBox Text="{Binding Title, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                             FontSize="16"
+                             Foreground="{StaticResource TextPrimaryBrush}"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             CaretBrush="White"
+                             AcceptsReturn="True"
+                             TextWrapping="Wrap"
+                             VerticalContentAlignment="Top"
+                             Margin="0,0,5,0"/>
+                </ScrollViewer>
+
+                <!-- 编辑保存提示 -->
+                <TextBlock Text="💡 编辑文本后，关闭窗口将自动保存更改。" 
+                           FontSize="11" Foreground="{StaticResource TextMutedBrush}"
+                           Margin="0,12,0,0" Opacity="0.8"/>
                            
             </StackPanel>
 
