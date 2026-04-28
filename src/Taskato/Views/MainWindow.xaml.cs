@@ -32,7 +32,7 @@ namespace Taskato.Views
                             "番茄钟时间到！",
                             "你已完成专注工作，要休息一下吗？",
                             onRest: () => vm.StartRest(),
-                            onContinue: () => { /* 什么都不做，用户继续工作 */ }
+                            onContinue: () => vm.ContinueWork()
                         );
                         toast.Show();
                     };
@@ -44,7 +44,7 @@ namespace Taskato.Views
                             "休息时间结束！",
                             "精力充沛了吗？开始新一轮专注吧！",
                             onRest: null,
-                            onContinue: () => { /* 用户手动点开始 */ },
+                            onContinue: () => vm.ContinueWork(),
                             isRestComplete: true
                         );
                         toast.Show();
@@ -145,6 +145,22 @@ namespace Taskato.Views
                 vm.DeleteTaskCommand.Execute(element.Tag);
             }
             e.Handled = true;
+        }
+
+        /// <summary>
+        /// 任务卡片被双击 → 弹出详情小窗体
+        /// </summary>
+        private void TaskCard_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ClickCount == 2 && sender is FrameworkElement element && element.DataContext is Models.TaskItem task)
+            {
+                var detailWindow = new TaskDetailWindow(task)
+                {
+                    Owner = this
+                };
+                detailWindow.ShowDialog();
+                e.Handled = true;
+            }
         }
     }
 }

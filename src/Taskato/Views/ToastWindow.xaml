@@ -44,7 +44,7 @@
                                 <DoubleAnimation Storyboard.TargetName="iconTransform"
                                                  Storyboard.TargetProperty="Y"
                                                  From="0" To="-6" Duration="0:0:1"
-                                                 EasingFunction="{StaticResource {x:Null}}"/>
+                                                 EasingFunction="{x:Null}"/>
                             </Storyboard>
                         </BeginStoryboard>
                     </EventTrigger>

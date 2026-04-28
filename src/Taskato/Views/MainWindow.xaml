@@ -59,7 +59,7 @@
                     <StackPanel Grid.Column="0" Orientation="Horizontal">
                         <!-- 小方块图标（紫色渐变） -->
                         <Border Width="24" Height="24" CornerRadius="6"
-                                Background="{StaticResource ThemeGradientBrush}">
+                                Background="{DynamicResource ThemeGradientBrush}">
                             <TextBlock Text="✦" FontSize="14" Foreground="White"
                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
@@ -109,7 +109,7 @@
             <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="20,0,20,8">
                 <TextBlock Text="📅" FontSize="12" VerticalAlignment="Center"/>
                 <TextBlock x:Name="DateLabel" FontSize="12" FontWeight="SemiBold"
-                           Foreground="{StaticResource ThemePrimaryBrush}"
+                           Foreground="{DynamicResource ThemePrimaryBrush}"
                            VerticalAlignment="Center" Margin="4,0,0,0"/>
                 <TextBlock FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"
                            VerticalAlignment="Center" Margin="12,0,0,0">
@@ -133,7 +133,8 @@
                                     Background="{StaticResource CardBackgroundBrush}"
                                     CornerRadius="10" Margin="0,0,0,6"
                                     BorderBrush="#0AFFFFFF" BorderThickness="1"
-                                    Padding="16,14" Cursor="Hand">
+                                    Padding="16,14" Cursor="Hand"
+                                    MouseLeftButtonDown="TaskCard_MouseLeftButtonDown">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto"/>
@@ -153,7 +154,7 @@
                                                 <Setter Property="Background" Value="Transparent"/>
                                                 <Style.Triggers>
                                                     <DataTrigger Binding="{Binding IsCompleted}" Value="True">
-                                                        <Setter Property="Background" Value="{StaticResource ThemeGradientBrush}"/>
+                                                        <Setter Property="Background" Value="{DynamicResource ThemeGradientBrush}"/>
                                                         <Setter Property="BorderBrush" Value="Transparent"/>
                                                     </DataTrigger>
                                                 </Style.Triggers>
@@ -201,11 +202,11 @@
                                         </TextBlock>
                                     </StackPanel>
 
-                                    <!-- 删除按钮（悬停显示） -->
                                     <TextBlock Grid.Column="2" Text="✕" FontSize="16"
                                                Foreground="{StaticResource DangerBrush}"
+                                               Background="Transparent"
                                                VerticalAlignment="Center" Cursor="Hand"
-                                               Opacity="0" Padding="4"
+                                               Padding="4"
                                                MouseLeftButtonDown="DeleteButton_Click"
                                                Tag="{Binding}">
                                         <TextBlock.Style>

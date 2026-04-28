@@ -18,6 +18,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Content Include="Assets\icon.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Resource Include="Assets\icon.png" />
     <Resource Include="Assets\icon.ico" />
   </ItemGroup>

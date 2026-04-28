@@ -38,5 +38,20 @@ namespace Taskato.Views
         {
             Close();
         }
+
+        /// <summary>
+        /// 点击删除按钮 → 删除历史任务
+        /// </summary>
+        private void DeleteButton_Click(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is FrameworkElement element && DataContext is HistoryViewModel vm)
+            {
+                if (vm.DeleteTaskCommand.CanExecute(element.Tag))
+                {
+                    vm.DeleteTaskCommand.Execute(element.Tag);
+                }
+            }
+            e.Handled = true;
+        }
     }
 }

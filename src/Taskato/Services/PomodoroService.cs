@@ -35,15 +35,11 @@ namespace Taskato.Services
 
         // ==================== 可配置的时间参数 ====================
 
-        /// <summary>
-        /// 工作时长（分钟），默认 25 分钟，可在设置中修改
-        /// </summary>
-        public int WorkMinutes { get; set; } = 25;
+        /// <summary>工作时长（分钟），可在设置中修改</summary>
+        public int WorkMinutes { get; set; }
 
-        /// <summary>
-        /// 休息时长（分钟），默认 5 分钟，可在设置中修改
-        /// </summary>
-        public int RestMinutes { get; set; } = 5;
+        /// <summary>休息时长（分钟），可在设置中修改</summary>
+        public int RestMinutes { get; set; }
 
         // ==================== 状态枚举 ====================
 
@@ -95,8 +91,11 @@ namespace Taskato.Services
         /// <summary>
         /// 构造函数 — 初始化计时器，设置每秒触发
         /// </summary>
-        public PomodoroService()
+        public PomodoroService(int defaultWorkMinutes = 25, int defaultRestMinutes = 5)
         {
+            WorkMinutes = defaultWorkMinutes;
+            RestMinutes = defaultRestMinutes;
+
             _timer = new DispatcherTimer
             {
                 Interval = TimeSpan.FromSeconds(1) // 每秒跳动一次
@@ -161,8 +160,8 @@ namespace Taskato.Services
             CurrentState = PomodoroState.Idle;
             StateChanged?.Invoke(CurrentState);
 
-            // 触发最后一次 Tick 更新 UI 显示为 00:00
-            Tick?.Invoke(0, 0, 0);
+            // 触发最后一次 Tick 更新 UI，恢复到随时准备工作的倒计时长
+            Tick?.Invoke(WorkMinutes, 0, 1.0);
         }
 
         /// <summary>
@@ -197,6 +196,9 @@ namespace Taskato.Services
                     WorkCompleted?.Invoke();
                 else if (previousState == PomodoroState.Resting)
                     RestCompleted?.Invoke();
+
+                // 恢复面板为主页常驻的默认时长
+                Tick?.Invoke(WorkMinutes, 0, 1.0);
             }
         }
 

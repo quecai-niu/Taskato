@@ -160,6 +160,7 @@
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
 
                                     <!-- 状态标签 -->
@@ -204,6 +205,26 @@
                                             </TextBlock.Text>
                                         </TextBlock>
                                     </StackPanel>
+
+                                    <!-- 删除按钮 -->
+                                    <TextBlock Grid.Column="2" Text="✕" FontSize="16"
+                                               Foreground="{StaticResource DangerBrush}"
+                                               Background="Transparent"
+                                               VerticalAlignment="Center" Cursor="Hand"
+                                               Padding="4"
+                                               MouseLeftButtonDown="DeleteButton_Click"
+                                               Tag="{Binding}">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Opacity" Value="0"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=Border}, Path=IsMouseOver}" Value="True">
+                                                        <Setter Property="Opacity" Value="0.6"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
                                 </Grid>
                             </Border>
                         </DataTemplate>

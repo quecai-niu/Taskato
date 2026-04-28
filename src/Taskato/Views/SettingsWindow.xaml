@@ -168,7 +168,7 @@
                 <TextBlock Text="🚀 系统" FontSize="12" FontWeight="SemiBold"
                            Foreground="{StaticResource TextSecondaryBrush}"
                            Margin="0,0,0,12"/>
-                <Border Background="#0AFFFFFF" CornerRadius="10" Padding="16,12" Margin="0,0,0,12">
+                <Border Background="#0AFFFFFF" CornerRadius="10" Padding="16,12" Margin="0,0,0,8">
                     <Grid>
                         <TextBlock Text="开机自启动" FontSize="14"
                                    Foreground="#CCCCCC" VerticalAlignment="Center"/>
@@ -176,6 +176,17 @@
                                   HorizontalAlignment="Right" VerticalAlignment="Center"
                                   Checked="AutoStartCheckBox_Changed"
                                   Unchecked="AutoStartCheckBox_Changed"/>
+                    </Grid>
+                </Border>
+                
+                <Border Background="#0AFFFFFF" CornerRadius="10" Padding="16,12" Margin="0,0,0,12">
+                    <Grid>
+                        <TextBlock Text="继续工作时自动开始倒计时" FontSize="14"
+                                   Foreground="#CCCCCC" VerticalAlignment="Center"/>
+                        <CheckBox x:Name="AutoStartNextCheckBox"
+                                  HorizontalAlignment="Right" VerticalAlignment="Center"
+                                  Checked="AutoStartNextCheckBox_Changed"
+                                  Unchecked="AutoStartNextCheckBox_Changed"/>
                     </Grid>
                 </Border>
             </StackPanel>

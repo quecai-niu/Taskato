@@ -18,6 +18,9 @@ namespace Taskato.Views
         /// <summary>番茄钟服务（直接修改工作/休息时长）</summary>
         private readonly PomodoroService _pomodoroService;
 
+        /// <summary>用户设置服务，用于持久化</summary>
+        private readonly SettingsService _settingsService;
+
         /// <summary>当前选中的颜色选项索引</summary>
         private int _selectedColorIndex = 0;
 
@@ -50,17 +53,23 @@ namespace Taskato.Views
         /// 构造函数
         /// </summary>
         /// <param name="pomodoroService">番茄钟服务实例</param>
-        public SettingsWindow(PomodoroService pomodoroService)
+        /// <param name="settingsService">设置服务实例</param>
+        public SettingsWindow(PomodoroService pomodoroService, SettingsService settingsService)
         {
             InitializeComponent();
             _pomodoroService = pomodoroService;
+            _settingsService = settingsService;
+
+            // 加载选中的主题索引
+            _selectedColorIndex = _settingsService.Config.SelectedColorIndex;
 
             // 显示当前的时长设置
             WorkTimeText.Text = $"{_pomodoroService.WorkMinutes} min";
             RestTimeText.Text = $"{_pomodoroService.RestMinutes} min";
 
-            // 读取开机自启状态
+            // 读取开机自启状态与连续专注状态
             AutoStartCheckBox.IsChecked = AutoStartService.IsAutoStartEnabled();
+            AutoStartNextCheckBox.IsChecked = _settingsService.Config.AutoStartNextPomodoro;
 
             // 构建颜色选择面板
             BuildColorPalette();
@@ -129,7 +138,7 @@ namespace Taskato.Views
         }
 
         /// <summary>
-        /// 应用主题颜色到全局资源（动态换肤）
+        /// 应用主题颜色到全局资源（动态换肤），并保存到配置
         /// </summary>
         private void ApplyThemeColor(Color primary, Color secondary)
         {
@@ -142,28 +151,48 @@ namespace Taskato.Views
             // 更新画刷资源
             resources["ThemePrimaryBrush"] = new SolidColorBrush(primary);
             resources["ThemeGradientBrush"] = new LinearGradientBrush(primary, secondary, 135);
+
+            // 保存配置
+            _settingsService.Config.ThemePrimaryColor = primary.ToString();
+            _settingsService.Config.ThemeSecondaryColor = secondary.ToString();
+            _settingsService.Config.SelectedColorIndex = _selectedColorIndex;
+            _settingsService.Save();
         }
 
         // ==================== 番茄钟时长调节 ====================
 
-        /// <summary>工作时长 -5分钟（最少 5 分钟）</summary>
+        /// <summary>工作时长 -5分钟（最少 1 分钟测试档）</summary>
         private void DecWorkTime_Click(object sender, RoutedEventArgs e)
         {
             if (_pomodoroService.WorkMinutes > 5)
             {
                 _pomodoroService.WorkMinutes -= 5;
-                WorkTimeText.Text = $"{_pomodoroService.WorkMinutes} min";
             }
+            else if (_pomodoroService.WorkMinutes == 5)
+            {
+                _pomodoroService.WorkMinutes = 1;
+            }
+            WorkTimeText.Text = $"{_pomodoroService.WorkMinutes} min";
+            
+            _settingsService.Config.WorkMinutes = _pomodoroService.WorkMinutes;
+            _settingsService.Save();
         }
 
         /// <summary>工作时长 +5分钟（最多 60 分钟）</summary>
         private void IncWorkTime_Click(object sender, RoutedEventArgs e)
         {
-            if (_pomodoroService.WorkMinutes < 60)
+            if (_pomodoroService.WorkMinutes == 1)
+            {
+                _pomodoroService.WorkMinutes = 5;
+            }
+            else if (_pomodoroService.WorkMinutes < 60)
             {
                 _pomodoroService.WorkMinutes += 5;
-                WorkTimeText.Text = $"{_pomodoroService.WorkMinutes} min";
             }
+            WorkTimeText.Text = $"{_pomodoroService.WorkMinutes} min";
+            
+            _settingsService.Config.WorkMinutes = _pomodoroService.WorkMinutes;
+            _settingsService.Save();
         }
 
         /// <summary>休息时长 -1分钟（最少 1 分钟）</summary>
@@ -173,6 +202,9 @@ namespace Taskato.Views
             {
                 _pomodoroService.RestMinutes -= 1;
                 RestTimeText.Text = $"{_pomodoroService.RestMinutes} min";
+                
+                _settingsService.Config.RestMinutes = _pomodoroService.RestMinutes;
+                _settingsService.Save();
             }
         }
 
@@ -183,10 +215,13 @@ namespace Taskato.Views
             {
                 _pomodoroService.RestMinutes += 1;
                 RestTimeText.Text = $"{_pomodoroService.RestMinutes} min";
+                
+                _settingsService.Config.RestMinutes = _pomodoroService.RestMinutes;
+                _settingsService.Save();
             }
         }
 
-        // ==================== 开机自启 ====================
+        // ==================== 系统设置 ====================
 
         /// <summary>
         /// 开机自启复选框状态变更
@@ -195,6 +230,18 @@ namespace Taskato.Views
         {
             var isChecked = AutoStartCheckBox.IsChecked == true;
             AutoStartService.SetAutoStart(isChecked);
+        }
+
+        /// <summary>
+        /// 继续工作时自动开始下个番茄钟的状态变更
+        /// </summary>
+        private void AutoStartNextCheckBox_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_settingsService != null) // 避免初始化时触发
+            {
+                _settingsService.Config.AutoStartNextPomodoro = AutoStartNextCheckBox.IsChecked == true;
+                _settingsService.Save();
+            }
         }
 
         // ==================== 窗体操作 ====================

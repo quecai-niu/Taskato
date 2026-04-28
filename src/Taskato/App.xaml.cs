@@ -2,6 +2,8 @@ using System.Windows;
 using Taskato.Services;
 using Taskato.ViewModels;
 using Taskato.Views;
+using System.Threading;
+using System.Windows.Media;
 
 namespace Taskato
 {
@@ -26,24 +28,44 @@ namespace Taskato
         /// <summary>系统托盘服务（全局单例）</summary>
         private TrayService _trayService = null!;
 
+        /// <summary>系统设置服务（全局单例）</summary>
+        private SettingsService _settingsService = null!;
+
+        /// <summary>单例应用锁</summary>
+        private static Mutex _mutex = null!;
+
         /// <summary>
         /// 应用启动事件 — 替代 StartupUri 的手动启动方式
         /// </summary>
         private async void Application_Startup(object sender, StartupEventArgs e)
         {
+            // ---- 0. 检测是否已经运行（单例控制） ----
+            _mutex = new Mutex(true, "TaskatoWpfAppMutex", out bool createdNew);
+            if (!createdNew)
+            {
+                MessageBox.Show("Taskato 已经在运行中了！请在右下角系统托盘查看。", "Taskato 提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                Shutdown();
+                return;
+            }
+
+            // ---- 0.1 初始化设置服务并应用主题颜色 ----
+            _settingsService = new SettingsService();
+            ApplySavedTheme();
             // ---- 1. 初始化数据库 ----
             _dbService = new DatabaseService();
             await _dbService.InitializeAsync();
 
-            // ---- 2. 初始化番茄钟 ----
-            _pomodoroService = new PomodoroService();
+            // ---- 2. 初始化番茄钟（加载配置中的时长） ----
+            _pomodoroService = new PomodoroService(
+                _settingsService.Config.WorkMinutes, 
+                _settingsService.Config.RestMinutes);
 
             // ---- 3. 初始化系统托盘 ----
             _trayService = new TrayService(_pomodoroService);
             _trayService.Initialize();
 
             // ---- 4. 创建主窗体和 ViewModel ----
-            var mainVM = new MainViewModel(_dbService, _pomodoroService);
+            var mainVM = new MainViewModel(_dbService, _pomodoroService, _settingsService);
             var mainWindow = new MainWindow
             {
                 DataContext = mainVM
@@ -69,6 +91,22 @@ namespace Taskato
             // ---- 6. 加载今日任务并显示窗口 ----
             await mainVM.LoadTodayTasksAsync();
             mainWindow.Show();
+        }
+
+        /// <summary>
+        /// 根据配置应用当前选择的主题色
+        /// </summary>
+        private void ApplySavedTheme()
+        {
+            var config = _settingsService.Config;
+            var primary = (Color)ColorConverter.ConvertFromString(config.ThemePrimaryColor);
+            var secondary = (Color)ColorConverter.ConvertFromString(config.ThemeSecondaryColor);
+
+            var resources = Current.Resources;
+            resources["ThemePrimaryColor"] = primary;
+            resources["ThemeSecondaryColor"] = secondary;
+            resources["ThemePrimaryBrush"] = new SolidColorBrush(primary);
+            resources["ThemeGradientBrush"] = new LinearGradientBrush(primary, secondary, 135);
         }
 
         /// <summary>

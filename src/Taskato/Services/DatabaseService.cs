@@ -60,13 +60,13 @@ namespace Taskato.Services
         }
 
         /// <summary>
-        /// 更新已有任务（根据 Id 匹配），用于勾选完成、修改标题等
+        /// 更新任务状态（防止全量 Update 造成的 CreatedAt 时区解析变异导致消失的 Bug）
         /// </summary>
-        /// <param name="task">要更新的任务对象</param>
-        /// <returns>受影响的行数</returns>
         public async Task<int> UpdateTaskAsync(TaskItem task)
         {
-            return await _db.UpdateAsync(task);
+            return await _db.ExecuteAsync(
+                "UPDATE TaskItems SET IsCompleted = ?, CompletedAt = ? WHERE Id = ?",
+                task.IsCompleted, task.CompletedAt, task.Id);
         }
 
         /// <summary>

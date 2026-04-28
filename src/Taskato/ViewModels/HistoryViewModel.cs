@@ -77,6 +77,9 @@ namespace Taskato.ViewModels
         /// <summary>导出 CSV 的命令</summary>
         public ICommand ExportCsvCommand { get; }
 
+        /// <summary>删除任务的命令</summary>
+        public ICommand DeleteTaskCommand { get; }
+
         // ==================== 构造函数 ====================
 
         public HistoryViewModel(DatabaseService dbService)
@@ -86,6 +89,16 @@ namespace Taskato.ViewModels
             SearchCommand = new RelayCommand(async _ => await SearchAsync());
             ExportCsvCommand = new RelayCommand(async _ => await ExportCsvAsync(),
                 _ => SearchResults.Count > 0);
+
+            DeleteTaskCommand = new RelayCommand(async param =>
+            {
+                if (param is TaskItem task)
+                {
+                    await _dbService.DeleteTaskAsync(task);
+                    SearchResults.Remove(task);
+                    ResultCount = SearchResults.Count;
+                }
+            });
         }
 
         // ==================== 方法 ====================

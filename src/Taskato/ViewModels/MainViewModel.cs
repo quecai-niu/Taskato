@@ -25,6 +25,9 @@ namespace Taskato.ViewModels
         /// <summary>番茄钟服务 — 负责计时逻辑</summary>
         private readonly PomodoroService _pomodoroService;
 
+        /// <summary>用户设置服务 — 负责持久化用户配置</summary>
+        private readonly SettingsService _settingsService;
+
         // ==================== 任务相关属性 ====================
 
         /// <summary>
@@ -150,10 +153,15 @@ namespace Taskato.ViewModels
         /// </summary>
         /// <param name="dbService">数据库服务</param>
         /// <param name="pomodoroService">番茄钟服务</param>
-        public MainViewModel(DatabaseService dbService, PomodoroService pomodoroService)
+        /// <param name="settingsService">设置服务</param>
+        public MainViewModel(DatabaseService dbService, PomodoroService pomodoroService, SettingsService settingsService)
         {
             _dbService = dbService;
             _pomodoroService = pomodoroService;
+            _settingsService = settingsService;
+
+            // 初始空闲状态时，展示倒计时时长
+            _timerDisplay = $"{_pomodoroService.WorkMinutes:D2}:00";
 
             // ---------- 初始化命令 ----------
 
@@ -307,6 +315,17 @@ namespace Taskato.ViewModels
             _pomodoroService.StartRest();
         }
 
+        /// <summary>
+        /// 继续工作（由 ToastWindow 调用）
+        /// </summary>
+        public void ContinueWork()
+        {
+            if (_settingsService.Config.AutoStartNextPomodoro)
+            {
+                StartPomodoro();
+            }
+        }
+
         // ==================== 子窗体打开 ====================
 
         /// <summary>
@@ -328,11 +347,18 @@ namespace Taskato.ViewModels
         /// </summary>
         private void OpenSettingsWindow()
         {
-            var settingsWindow = new Views.SettingsWindow(_pomodoroService)
+            var settingsWindow = new Views.SettingsWindow(_pomodoroService, _settingsService)
             {
                 Owner = Application.Current.MainWindow
             };
             settingsWindow.ShowDialog();
+
+            // 如果退回主界面且为待机状态，同步最新的配置展示
+            if (_pomodoroService.CurrentState == PomodoroService.PomodoroState.Idle)
+            {
+                TimerDisplay = $"{_pomodoroService.WorkMinutes:D2}:00";
+                TimerProgress = 1.0;
+            }
         }
     }
 }
