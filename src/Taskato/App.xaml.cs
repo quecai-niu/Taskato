@@ -81,6 +81,13 @@ namespace Taskato
                 mainWindow.Activate();
             };
 
+            // 托盘菜单"设置" → 直接弹出设置窗口
+            _trayService.ShowSettingsRequested += () =>
+            {
+                if (mainVM.OpenSettingsCommand.CanExecute(null))
+                    mainVM.OpenSettingsCommand.Execute(null);
+            };
+
             // 托盘菜单"退出" → 真正关闭应用
             _trayService.ExitRequested += () =>
             {

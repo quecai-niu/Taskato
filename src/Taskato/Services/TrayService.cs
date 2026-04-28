@@ -30,9 +30,14 @@ namespace Taskato.Services
         // ==================== 事件 ====================
 
         /// <summary>
-        /// 用户点击"显示主窗口"时触发
+        /// 用户点击"显示主界面"时触发
         /// </summary>
         public event Action? ShowWindowRequested;
+
+        /// <summary>
+        /// 用户点击"设置"时触发
+        /// </summary>
+        public event Action? ShowSettingsRequested;
 
         /// <summary>
         /// 用户点击"退出"时触发
@@ -66,18 +71,23 @@ namespace Taskato.Services
             // 双击托盘图标 → 显示主窗口
             _notifyIcon.DoubleClick += (s, e) => ShowWindowRequested?.Invoke();
 
-            // 创建右键菜单
+            // 创建右键菜单（支持高级暗黑渲染）
             var contextMenu = new WinForms.ContextMenuStrip
             {
                 Renderer = new DarkTrayMenuRenderer()
             };
 
-            // 菜单项 1: 显示主窗口
-            var showItem = new WinForms.ToolStripMenuItem("📱 显示主窗口");
+            // 菜单项 1: 显示主界面
+            var showItem = new WinForms.ToolStripMenuItem("✨ 显示主界面");
             showItem.Click += (s, e) => ShowWindowRequested?.Invoke();
             contextMenu.Items.Add(showItem);
 
-            // 菜单项 2: 番茄钟状态（动态更新文本）
+            // 菜单项 2: 设置 (V2 新增)
+            var settingsItem = new WinForms.ToolStripMenuItem("⚙️ 设置...");
+            settingsItem.Click += (s, e) => ShowSettingsRequested?.Invoke();
+            contextMenu.Items.Add(settingsItem);
+
+            // 菜单项 3: 番茄钟状态（动态更新文本）
             _pomodoroMenuItem = new WinForms.ToolStripMenuItem("🍅 番茄钟: 空闲");
             _pomodoroMenuItem.Enabled = false; // 只显示状态，不可点击
             contextMenu.Items.Add(_pomodoroMenuItem);
@@ -85,8 +95,8 @@ namespace Taskato.Services
             // 分隔线
             contextMenu.Items.Add(new WinForms.ToolStripSeparator());
 
-            // 菜单项 3: 退出应用
-            var exitItem = new WinForms.ToolStripMenuItem("✕ 退出 Taskato");
+            // 菜单项 4: 退出应用
+            var exitItem = new WinForms.ToolStripMenuItem("🔴 退出");
             exitItem.Click += (s, e) => ExitRequested?.Invoke();
             contextMenu.Items.Add(exitItem);
 

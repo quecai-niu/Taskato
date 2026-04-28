@@ -68,14 +68,13 @@ namespace Taskato.Services
         }
 
         /// <summary>
-        /// 更新任务状态（防止全量 Update 造成的 CreatedAt 时区解析变异导致消失的 Bug）
-        /// 核心：将 Title 也加入更新列表，以支持编辑功能
+        /// 更新任务内容（支持标题、完成状态、优先级、排序索引的全量更新）
         /// </summary>
         public async Task<int> UpdateTaskAsync(TaskItem task)
         {
             var result = await _db.ExecuteAsync(
-                "UPDATE TaskItems SET Title = ?, IsCompleted = ?, CompletedAt = ? WHERE Id = ?",
-                task.Title, task.IsCompleted, task.CompletedAt, task.Id);
+                "UPDATE TaskItems SET Title = ?, IsCompleted = ?, CompletedAt = ?, Priority = ?, OrderIndex = ? WHERE Id = ?",
+                task.Title, task.IsCompleted, task.CompletedAt, task.Priority, task.OrderIndex, task.Id);
             
             if (result > 0) OnDataChanged?.Invoke(); // 触发全局刷新通知
             return result;
@@ -94,8 +93,8 @@ namespace Taskato.Services
         }
 
         /// <summary>
-        /// 获取今日创建的所有任务（按创建时间降序排列，最新的在前面）
-        /// "今日" = 今天 00:00:00 至明天 00:00:00
+        /// 获取今日创建的所有任务
+        /// 排序规则：1. 优先级降序；2. 手动排序索引升序；3. 创建时间降序
         /// </summary>
         /// <returns>今日任务列表</returns>
         public async Task<List<TaskItem>> GetTodayTasksAsync()
@@ -105,31 +104,28 @@ namespace Taskato.Services
 
             return await _db.Table<TaskItem>()
                 .Where(t => t.CreatedAt >= todayStart && t.CreatedAt < todayEnd)
-                .OrderByDescending(t => t.CreatedAt)
+                .OrderByDescending(t => t.Priority)     // 级别高在前
+                .ThenBy(t => t.OrderIndex)               // 拖拽序号越小越靠前
+                .ThenByDescending(t => t.CreatedAt)      // 最后按时间倒序
                 .ToListAsync();
         }
 
         /// <summary>
         /// 按条件查询历史任务（用于历史查询窗体）
-        /// 支持按日期范围和关键词筛选
+        /// 同样应用多级排序规则
         /// </summary>
-        /// <param name="startDate">开始日期（含）</param>
-        /// <param name="endDate">结束日期（含，会自动扩展到当天结尾）</param>
-        /// <param name="keyword">搜索关键词（留空则不过滤关键词）</param>
-        /// <returns>符合条件的任务列表</returns>
         public async Task<List<TaskItem>> SearchTasksAsync(DateTime startDate, DateTime endDate, string keyword = "")
         {
-            // 结束日期扩展到当天 23:59:59，确保包含结束日期当天的所有任务
             var endDateTime = endDate.Date.AddDays(1);
 
             var query = _db.Table<TaskItem>()
-                .Where(t => t.CreatedAt >= startDate.Date && t.CreatedAt < endDateTime);
+                .Where(t => t.CreatedAt >= startDate.Date && t.CreatedAt < endDateTime)
+                .OrderByDescending(t => t.Priority)
+                .ThenBy(t => t.OrderIndex)
+                .ThenByDescending(t => t.CreatedAt);
 
-            // 获取结果后在内存中做关键词过滤
-            // （SQLite-net 的 LINQ 不支持 Contains 翻译为 SQL LIKE，所以在应用层过滤）
-            var results = await query.OrderByDescending(t => t.CreatedAt).ToListAsync();
+            var results = await query.ToListAsync();
 
-            // 如果用户输入了关键词，则进一步过滤标题
             if (!string.IsNullOrWhiteSpace(keyword))
             {
                 results = results
@@ -141,13 +137,14 @@ namespace Taskato.Services
         }
 
         /// <summary>
-        /// 获取所有任务（备份/导出用）
+        /// 获取所有任务（带多级排序）
         /// </summary>
-        /// <returns>全部任务列表</returns>
         public async Task<List<TaskItem>> GetAllTasksAsync()
         {
             return await _db.Table<TaskItem>()
-                .OrderByDescending(t => t.CreatedAt)
+                .OrderByDescending(t => t.Priority)
+                .ThenBy(t => t.OrderIndex)
+                .ThenByDescending(t => t.CreatedAt)
                 .ToListAsync();
         }
     }

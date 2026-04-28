@@ -38,10 +38,16 @@ namespace Taskato.Models
         public bool IsCompleted { get => _isCompleted; set => SetProperty(ref _isCompleted, value); }
 
         /// <summary>
-        /// 后台逻辑属性：拖拽排序索引
+        /// 优先级：0=无，1=低，2=中，3=高，4=紧急
         /// </summary>
-        private int _orderIndex;
-        public int OrderIndex { get => _orderIndex; set => SetProperty(ref _orderIndex, value); }
+        private int _priority = 0;
+        public int Priority { get => _priority; set => SetProperty(ref _priority, value); }
+
+        /// <summary>
+        /// 拖拽排序索引：默认0，越小排越前面（使用 double 以便在两项之间插入）
+        /// </summary>
+        private double _orderIndex = 0;
+        public double OrderIndex { get => _orderIndex; set => SetProperty(ref _orderIndex, value); }
 
         // ==================== 微解析系统 ====================
 
