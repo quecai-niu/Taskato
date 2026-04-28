@@ -83,27 +83,86 @@
                 </Grid>
             </Border>
 
-            <!-- ========== Row 1: 任务输入区域 ========== -->
-            <Grid Grid.Row="1" Margin="20,20,20,12">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
+            <!-- ========== Row 1: 任务输入区域 (像素级精密打磨版) ========== -->
+            <Border Grid.Row="1" 
+                    Background="#0FFFFFFF" 
+                    BorderBrush="#1AFFFFFF" 
+                    BorderThickness="1" 
+                    CornerRadius="12" 
+                    Height="44" 
+                    Margin="20,0,20,24">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
 
-                <!-- 任务输入框 -->
-                <TextBox Grid.Column="0"
-                         Style="{StaticResource DarkTextBox}"
-                         Text="{Binding NewTaskTitle, UpdateSourceTrigger=PropertyChanged}"
-                         Tag="输入新任务，按 Enter 添加..."
-                         KeyDown="TaskInput_KeyDown"
-                         Margin="0,0,10,0"/>
+                    <TextBox Grid.Column="0" 
+                             Text="{Binding NewTaskTitle, UpdateSourceTrigger=PropertyChanged}"
+                             Background="Transparent" 
+                             BorderThickness="0" 
+                             Foreground="White" 
+                             CaretBrush="White"
+                             FontSize="14" 
+                             VerticalContentAlignment="Center"
+                             Padding="16,0,10,0" 
+                             Style="{x:Null}" 
+                             KeyDown="TaskInput_KeyDown"/>
 
-                <!-- 添加按钮 -->
-                <Button Grid.Column="1"
-                        Style="{StaticResource PrimaryButton}"
-                        Content="+ 添加"
-                        Command="{Binding AddTaskCommand}"/>
-            </Grid>
+                    <ListBox Grid.Column="1" 
+                             SelectedIndex="{Binding NewTaskPriority}" 
+                             Background="Transparent" 
+                             BorderThickness="0" 
+                             VerticalAlignment="Center"
+                             Margin="0,0,12,0" 
+                             Padding="0" 
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                             ScrollViewer.VerticalScrollBarVisibility="Disabled">
+                        <ListBox.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center"/>
+                            </ItemsPanelTemplate>
+                        </ListBox.ItemsPanel>
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+                                <Setter Property="Background" Value="Transparent"/>
+                                <Setter Property="BorderThickness" Value="0"/>
+                                <Setter Property="Padding" Value="0"/>
+                                <Setter Property="Margin" Value="5,0"/>
+                                <Setter Property="Cursor" Value="Hand"/>
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="ListBoxItem">
+                                            <Border Background="Transparent">
+                                                <Ellipse x:Name="dot" Width="12" Height="12" 
+                                                         Fill="{TemplateBinding Foreground}" 
+                                                         Stroke="Transparent" StrokeThickness="2"
+                                                         VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsSelected" Value="True">
+                                                    <Setter TargetName="dot" Property="Stroke" Value="White"/>
+                                                    <Setter TargetName="dot" Property="Width" Value="16"/>
+                                                    <Setter TargetName="dot" Property="Height" Value="16"/>
+                                                </Trigger>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="dot" Property="Opacity" Value="0.8"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                        
+                        <ListBoxItem Foreground="{StaticResource Pri0Brush}" ToolTip="普通任务"/>
+                        <ListBoxItem Foreground="{StaticResource Pri1Brush}" ToolTip="中优先级"/>
+                        <ListBoxItem Foreground="{StaticResource Pri2Brush}" ToolTip="高优先级"/>
+                        <ListBoxItem Foreground="{StaticResource Pri3Brush}" ToolTip="紧急任务"/>
+                    </ListBox>
+                </Grid>
+            </Border>
 
             <!-- ========== Row 2: 日期标签 + 统计 ========== -->
             <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="20,0,20,8">
@@ -140,10 +199,10 @@
 
                                 <!-- 任务主体卡片（支持滑动） -->
                                 <Border x:Name="taskCard"
-                                        Background="{StaticResource WindowBackgroundBrush}"
-                                        CornerRadius="10"
-                                        BorderBrush="#1AFFFFFF" BorderThickness="1"
-                                        Padding="16,14" Cursor="Hand"
+                                        Background="{StaticResource CardBackgroundBrush}"
+                                        CornerRadius="14" Margin="0,0,0,12"
+                                        BorderBrush="#0AFFFFFF" BorderThickness="1"
+                                        Cursor="Hand" ClipToBounds="True"
                                         MouseLeftButtonDown="TaskCard_MouseLeftButtonDown"
                                         MouseMove="TaskCard_MouseMove"
                                         MouseLeftButtonUp="TaskCard_MouseLeftButtonUp"
@@ -151,7 +210,26 @@
                                     <Border.RenderTransform>
                                         <TranslateTransform X="0" />
                                     </Border.RenderTransform>
-                                    <Grid Background="Transparent">
+                                    <Grid>
+                                        <Rectangle HorizontalAlignment="Left" Width="4">
+                                            <Rectangle.Style>
+                                                <Style TargetType="Rectangle">
+                                                    <Setter Property="Fill" Value="{StaticResource Pri0Brush}"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Priority}" Value="1">
+                                                            <Setter Property="Fill" Value="{StaticResource Pri1Brush}"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Priority}" Value="2">
+                                                            <Setter Property="Fill" Value="{StaticResource Pri2Brush}"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Priority}" Value="3">
+                                                            <Setter Property="Fill" Value="{StaticResource Pri3Brush}"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Rectangle.Style>
+                                        </Rectangle>
+                                        <Grid Background="Transparent" Margin="18,16,16,16">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="*"/>
@@ -237,6 +315,7 @@
                                             </TextBlock.Text>
                                         </TextBlock>
                                     </StackPanel>
+                                    </Grid>
                                 </Grid>
                             </Border>
                         </Grid>

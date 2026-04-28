@@ -46,6 +46,16 @@ namespace Taskato.ViewModels
         }
 
         /// <summary>
+        /// 新任务快捷优先级：0=无, 1=中, 2=高, 3=紧急
+        /// </summary>
+        private int _newTaskPriority = 0;
+        public int NewTaskPriority
+        {
+            get => _newTaskPriority;
+            set => SetProperty(ref _newTaskPriority, value);
+        }
+
+        /// <summary>
         /// 今日统计：已完成任务数
         /// </summary>
         private int _completedCount;
@@ -265,11 +275,13 @@ namespace Taskato.ViewModels
             {
                 Title = NewTaskTitle.Trim(),
                 CreatedAt = DateTime.Now,
-                IsCompleted = false
+                IsCompleted = false,
+                Priority = NewTaskPriority
             };
 
             await _dbService.AddTaskAsync(task);
             NewTaskTitle = string.Empty;  // 清空输入框
+            NewTaskPriority = 0;          // 重置优先级
             await LoadTodayTasksAsync();  // 刷新列表
         }
 

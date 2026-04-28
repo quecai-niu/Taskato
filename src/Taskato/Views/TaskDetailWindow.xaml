@@ -112,6 +112,15 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
 
+                <!-- 优先级选择 -->
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                    <TextBlock Text="优先级：" VerticalAlignment="Center" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,12,0" FontSize="13"/>
+                    <RadioButton Content="无" IsChecked="{Binding Priority, Converter={StaticResource IntToBoolConverter}, ConverterParameter=0}" Style="{StaticResource DarkRadioButton}" Margin="0,0,12,0"/>
+                    <RadioButton Content="中" IsChecked="{Binding Priority, Converter={StaticResource IntToBoolConverter}, ConverterParameter=1}" Style="{StaticResource DarkRadioButton}" Margin="0,0,12,0"/>
+                    <RadioButton Content="高" IsChecked="{Binding Priority, Converter={StaticResource IntToBoolConverter}, ConverterParameter=2}" Style="{StaticResource DarkRadioButton}" Margin="0,0,12,0"/>
+                    <RadioButton Content="紧急" IsChecked="{Binding Priority, Converter={StaticResource IntToBoolConverter}, ConverterParameter=3}" Style="{StaticResource DarkRadioButton}"/>
+                </StackPanel>
+
                 <!-- 可编辑文本区：使用 ScrollViewer 包裹防止内容过多撑出窗口 -->
                 <ScrollViewer MaxHeight="350" VerticalScrollBarVisibility="Auto">
                     <TextBox Text="{Binding Title, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
@@ -126,10 +135,15 @@
                              Margin="0,0,5,0"/>
                 </ScrollViewer>
 
-                <!-- 编辑保存提示 -->
-                <TextBlock Text="💡 编辑文本后，关闭窗口将自动保存更改。" 
-                           FontSize="11" Foreground="{StaticResource TextMutedBrush}"
-                           Margin="0,12,0,0" Opacity="0.8"/>
+                <!-- 底部操作按钮 -->
+                <Grid Margin="0,20,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Button Grid.Column="0" Content="取消" Style="{StaticResource SecondaryButton}" Click="CancelButton_Click" Margin="0,0,8,0" Padding="0,10"/>
+                    <Button Grid.Column="1" Content="保存修改" Style="{StaticResource PrimaryButton}" Click="SaveButton_Click" Margin="8,0,0,0" Padding="0,10"/>
+                </Grid>
                            
             </StackPanel>
 

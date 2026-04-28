@@ -20,6 +20,7 @@
             <converters:InverseBoolConverter x:Key="InverseBoolConverter"/>
             <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
             <converters:TaskTimeDisplayConverter x:Key="TaskTimeDisplayConverter"/>
+            <converters:IntToBoolConverter x:Key="IntToBoolConverter"/>
 
             <!-- ============================================
                  全局颜色常量（主题色系）
@@ -212,6 +213,39 @@
                 </Setter>
             </Style>
 
+            <!-- 极简暗色单选按钮样式 -->
+            <Style x:Key="DarkRadioButton" TargetType="RadioButton">
+                <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+                <Setter Property="FontSize" Value="13"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="RadioButton">
+                            <Border Background="Transparent" Padding="4">
+                                <StackPanel Orientation="Horizontal">
+                                    <Grid Width="16" Height="16">
+                                        <Ellipse x:Name="OuterCircle" Stroke="{StaticResource TextMutedBrush}" StrokeThickness="1"/>
+                                        <Ellipse x:Name="InnerDot" Fill="{DynamicResource ThemePrimaryBrush}" Margin="4" Opacity="0"/>
+                                    </Grid>
+                                    <ContentPresenter Margin="8,0,0,0" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsChecked" Value="True">
+                                    <Setter TargetName="OuterCircle" Property="Stroke" Value="{DynamicResource ThemePrimaryBrush}"/>
+                                    <Setter TargetName="OuterCircle" Property="StrokeThickness" Value="2"/>
+                                    <Setter TargetName="InnerDot" Property="Opacity" Value="1"/>
+                                </Trigger>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="OuterCircle" Property="Stroke" Value="{DynamicResource ThemePrimaryBrush}"/>
+                                    <Setter Property="Opacity" Value="0.9"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
             <!-- 极简滚动条滑块样式 (V2 Phase 1) -->
             <Style x:Key="ModernScrollBarThumb" TargetType="{x:Type Thumb}">
                 <Setter Property="OverridesDefaultStyle" Value="true"/>
@@ -238,6 +272,7 @@
 
             <!-- 全局滚动条美化：去箭头、纤细化 (5px) -->
             <Style TargetType="{x:Type ScrollBar}">
+                <Setter Property="OverridesDefaultStyle" Value="True"/>
                 <Setter Property="Background" Value="Transparent"/>
                 <Setter Property="Width" Value="5"/>
                 <Setter Property="Template">
@@ -266,6 +301,51 @@
                         <Setter Property="Height" Value="5"/>
                     </Trigger>
                 </Style.Triggers>
+            </Style>
+
+            <!-- 全局 ScrollViewer 样式重构：解决 17px 空白占用问题 -->
+            <Style TargetType="{x:Type ScrollViewer}">
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="{x:Type ScrollViewer}">
+                            <Grid x:Name="Grid" Background="{TemplateBinding Background}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/> <!-- 关键：设为 Auto 紧贴边缘，不再预留 17px -->
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <ScrollContentPresenter x:Name="PART_ScrollContentPresenter" 
+                                                        CanContentScroll="{TemplateBinding CanContentScroll}" 
+                                                        CanHorizontallyScroll="False" 
+                                                        CanVerticallyScroll="False" 
+                                                        Content="{TemplateBinding Content}" 
+                                                        ContentTemplate="{TemplateBinding ContentTemplate}" 
+                                                        Grid.Column="0" Grid.Row="0" 
+                                                        Margin="{TemplateBinding Padding}" 
+                                                        SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
+                                <ScrollBar x:Name="PART_VerticalScrollBar" 
+                                           AutomationProperties.AutomationId="VerticalScrollBar" 
+                                           Cursor="Arrow" Grid.Column="1" 
+                                           Maximum="{TemplateBinding ScrollableHeight}" 
+                                           Minimum="0" Grid.Row="0" 
+                                           Visibility="{TemplateBinding ComputedVerticalScrollBarVisibility}" 
+                                           Value="{Binding VerticalOffset, Mode=OneWay, RelativeSource={RelativeSource TemplatedParent}}" 
+                                           ViewportSize="{TemplateBinding ViewportHeight}"/>
+                                <ScrollBar x:Name="PART_HorizontalScrollBar" 
+                                           AutomationProperties.AutomationId="HorizontalScrollBar" 
+                                           Cursor="Arrow" Grid.Column="0" 
+                                           Maximum="{TemplateBinding ScrollableWidth}" 
+                                           Minimum="0" Orientation="Horizontal" Grid.Row="1" 
+                                           Visibility="{TemplateBinding ComputedHorizontalScrollBarVisibility}" 
+                                           Value="{Binding HorizontalOffset, Mode=OneWay, RelativeSource={RelativeSource TemplatedParent}}" 
+                                           ViewportSize="{TemplateBinding ViewportWidth}"/>
+                            </Grid>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
             </Style>
 
             <!-- 气泡风托盘菜单样式 (V2 Phase 1) -->

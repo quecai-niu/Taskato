@@ -164,10 +164,17 @@ namespace Taskato.Views
                 var detailWindow = new TaskDetailWindow(task) { Owner = this };
                 detailWindow.ShowDialog();
                 
-                // 弹窗关闭后，如果是在主界面，则调用 ViewModel 的保存方法确保修改持久化
-                if (DataContext is MainViewModel vm)
+                // 弹窗关闭后，判断用户是否点击了保存
+                if (detailWindow.IsSaved)
                 {
-                    await vm.SaveTaskEditAsync(task);
+                    // 如果用户点击了保存，将替身的数据覆盖回本体
+                    task.Title = detailWindow.EditingTask.Title;
+                    task.Priority = detailWindow.EditingTask.Priority;
+                    
+                    if (DataContext is MainViewModel vm)
+                    {
+                        await vm.SaveTaskEditAsync(task);
+                    }
                 }
 
                 e.Handled = true;

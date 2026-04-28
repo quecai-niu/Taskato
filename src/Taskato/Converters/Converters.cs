@@ -84,4 +84,26 @@ namespace Taskato.Converters
             throw new NotImplementedException();
         }
     }
+
+    /// <summary>
+    /// 整数与布尔值双向转换器 — 用于 RadioButton 的组合选择
+    /// 
+    /// 逻辑：
+    /// Convert: return (value == parameter)
+    /// ConvertBack: if (value == true) return parameter
+    /// </summary>
+    public class IntToBoolConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (value == null || parameter == null) return false;
+            return value.ToString() == parameter.ToString();
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (value == null || parameter == null) return System.Windows.Data.Binding.DoNothing;
+            return (bool)value ? int.Parse(parameter.ToString()!) : System.Windows.Data.Binding.DoNothing;
+        }
+    }
 }

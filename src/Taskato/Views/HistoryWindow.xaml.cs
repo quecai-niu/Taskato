@@ -64,10 +64,17 @@ namespace Taskato.Views
                 var detailWindow = new TaskDetailWindow(task) { Owner = this };
                 detailWindow.ShowDialog();
                 
-                // 详情页关闭后，立即调用 ViewModel 方法保存对其 Title 的任何编辑
-                if (DataContext is HistoryViewModel vm)
+                // 详情页关闭后，判断用户是否点击了保存
+                if (detailWindow.IsSaved)
                 {
-                    await vm.SaveTaskEditAsync(task);
+                    // 将替身数据覆盖回本体
+                    task.Title = detailWindow.EditingTask.Title;
+                    task.Priority = detailWindow.EditingTask.Priority;
+
+                    if (DataContext is HistoryViewModel vm)
+                    {
+                        await vm.SaveTaskEditAsync(task);
+                    }
                 }
                 
                 e.Handled = true;

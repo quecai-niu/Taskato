@@ -99,28 +99,28 @@ namespace Taskato.Services
                 Placement = System.Windows.Controls.Primitives.PlacementMode.MousePoint
             };
 
-            // 菜单项 1: 显示主界面
+            // 菜单项 1: 呼唤主界面
             var item1 = new System.Windows.Controls.MenuItem
             {
-                Header = "🎈 呼唤主界面",
+                Header = CreateCuteHeader("🎈", "呼唤主界面", "#FF4757"),
                 Style = (Style)Application.Current.Resources["BubbleTrayMenuItem"]
             };
             item1.Click += (s, e) => ShowWindowRequested?.Invoke();
             menu.Items.Add(item1);
 
-            // 菜单项 2: 番茄钟状态
+            // 菜单项 2: 专注小统计 (橙色)
             _pomodoroMenuItem = new System.Windows.Controls.MenuItem
             {
-                Header = "🍅 专注小统计: 空闲",
+                Header = CreateCuteHeader("🍅", "专注小统计: 空闲", "#FFA502"),
                 Style = (Style)Application.Current.Resources["BubbleTrayMenuItem"],
                 IsEnabled = false // 状态展示，不可点击
             };
             menu.Items.Add(_pomodoroMenuItem);
 
-            // 菜单项 3: 设置
+            // 菜单项 3: 设置 (绿色)
             var item3 = new System.Windows.Controls.MenuItem
             {
-                Header = "🎨 偏好设置",
+                Header = CreateCuteHeader("🎨", "偏好设置", "#2ED573"),
                 Style = (Style)Application.Current.Resources["BubbleTrayMenuItem"]
             };
             item3.Click += (s, e) => ShowSettingsRequested?.Invoke();
@@ -129,17 +129,63 @@ namespace Taskato.Services
             // 分隔线
             menu.Items.Add(new System.Windows.Controls.Separator { Style = (Style)Application.Current.Resources["BubbleTraySeparator"] });
 
-            // 菜单项 4: 退出 (注：Foreground 使用西瓜红)
+            // 菜单项 4: 退出 (灰色)
+            var dangerBrush = (System.Windows.Media.Brush)Application.Current.Resources["Pri3Brush"];
             var item4 = new System.Windows.Controls.MenuItem
             {
-                Header = "💨 溜了溜了 (退出)",
-                Style = (Style)Application.Current.Resources["BubbleTrayMenuItem"],
-                Foreground = (System.Windows.Media.Brush)Application.Current.Resources["Pri3Brush"]
+                Header = CreateCuteHeader("💨", "溜了溜了 (退出)", "#747D8C", dangerBrush),
+                Style = (Style)Application.Current.Resources["BubbleTrayMenuItem"]
             };
             item4.Click += (s, e) => ExitRequested?.Invoke();
             menu.Items.Add(item4);
 
             return menu;
+        }
+
+        /// <summary>
+        /// 生成带有可爱“果冻底座”的菜单头部。
+        /// 这样即使系统 Emoji 渲染降级为单色，也能保持完美的彩色视觉效果。
+        /// </summary>
+        private object CreateCuteHeader(string emoji, string text, string hexColor, System.Windows.Media.Brush? textBrush = null)
+        {
+            var sp = new System.Windows.Controls.StackPanel { Orientation = System.Windows.Controls.Orientation.Horizontal };
+            var bc = new System.Windows.Media.BrushConverter();
+            
+            // 解析传入的主题色
+            var mainColorBrush = (System.Windows.Media.Brush)bc.ConvertFrom(hexColor)!;
+            // 生成 15% 透明度的背景色 (在 hex 前加 26)
+            var bgColorBrush = (System.Windows.Media.Brush)bc.ConvertFrom(hexColor.Replace("#", "#26"))!;
+
+            // 1. 构建果冻底座 (Border)
+            var iconBorder = new System.Windows.Controls.Border
+            {
+                Width = 28, Height = 28,
+                CornerRadius = new CornerRadius(8),
+                Background = bgColorBrush,
+                Margin = new System.Windows.Thickness(0, 0, 12, 0)
+            };
+
+            // 2. 放入 Emoji，强制使用主题色
+            var emojiText = new System.Windows.Controls.TextBlock
+            {
+                Text = emoji, FontSize = 14,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center,
+                FontFamily = new System.Windows.Media.FontFamily("Segoe UI Emoji"),
+                Foreground = mainColorBrush 
+            };
+            iconBorder.Child = emojiText;
+            sp.Children.Add(iconBorder);
+
+            // 3. 添加菜单文字
+            sp.Children.Add(new System.Windows.Controls.TextBlock
+            {
+                Text = text, FontSize = 13,
+                VerticalAlignment = VerticalAlignment.Center,
+                Foreground = textBrush ?? System.Windows.Media.Brushes.White
+            });
+
+            return sp;
         }
 
         /// <summary>
@@ -149,7 +195,7 @@ namespace Taskato.Services
         {
             if (_pomodoroMenuItem != null)
             {
-                _pomodoroMenuItem.Header = $"🍅 专注小统计: {minutes:D2}:{seconds:D2}";
+                _pomodoroMenuItem.Header = CreateCuteHeader("🍅", $"专注小统计: {minutes:D2}:{seconds:D2}", "#FFA502");
             }
         }
 
@@ -167,7 +213,7 @@ namespace Taskato.Services
                     PomodoroService.PomodoroState.Resting => "休息中",
                     _ => "空闲"
                 };
-                _pomodoroMenuItem.Header = $"🍅 专注小统计: {stateText}";
+                _pomodoroMenuItem.Header = CreateCuteHeader("🍅", $"专注小统计: {stateText}", "#FFA502");
             }
         }
 
