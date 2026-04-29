@@ -60,33 +60,10 @@
                                    Foreground="{StaticResource TextSecondaryBrush}"/>
                     </StackPanel>
 
-                    <!-- 关闭按钮 -->
-                    <Border HorizontalAlignment="Right" VerticalAlignment="Center"
-                            Width="24" Height="24" CornerRadius="12"
-                            Background="#0AFFFFFF" Cursor="Hand"
-                            MouseLeftButtonDown="CloseButton_Click">
-                        <Border.Style>
-                            <Style TargetType="Border">
-                                <Style.Triggers>
-                                    <Trigger Property="IsMouseOver" Value="True">
-                                        <Setter Property="Background" Value="#33EF4444"/>
-                                    </Trigger>
-                                </Style.Triggers>
-                            </Style>
-                        </Border.Style>
-                        <TextBlock Text="✕" FontSize="14" Foreground="{StaticResource TextSecondaryBrush}"
-                                   HorizontalAlignment="Center" VerticalAlignment="Center">
-                            <TextBlock.Style>
-                                <Style TargetType="TextBlock">
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=Border}, Path=IsMouseOver}" Value="True">
-                                            <Setter Property="Foreground" Value="#EF4444"/>
-                                        </DataTrigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </TextBlock.Style>
-                        </TextBlock>
-                    </Border>
+                    <!-- 关闭按钮 (V2 可爱风格) -->
+                    <Button Content="✕" Style="{StaticResource CuteWinCloseBtn}" 
+                            HorizontalAlignment="Right" Click="CloseButton_Click"/>
+
                 </Grid>
             </Border>
 

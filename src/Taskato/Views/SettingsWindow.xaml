@@ -24,9 +24,11 @@
                 <Grid Margin="20,14">
                     <TextBlock Text="⚙ 设置" FontSize="16" FontWeight="SemiBold"
                                Foreground="{StaticResource TextPrimaryBrush}"/>
-                    <Ellipse Width="14" Height="14" Fill="#EF4444" Cursor="Hand"
-                             HorizontalAlignment="Right" VerticalAlignment="Center"
-                             MouseLeftButtonDown="CloseButton_Click"/>
+                    <!-- 关闭按钮 (V2 可爱风格) -->
+                    <Button Content="✕" Style="{StaticResource CuteWinCloseBtn}" 
+                            HorizontalAlignment="Right" VerticalAlignment="Center"
+                            Click="CloseButton_Click"/>
+
                 </Grid>
             </Border>
 

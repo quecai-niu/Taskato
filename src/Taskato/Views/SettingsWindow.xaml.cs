@@ -251,7 +251,10 @@ namespace Taskato.Views
             DragMove();
         }
 
-        private void CloseButton_Click(object sender, MouseButtonEventArgs e)
+        /// <summary>
+        /// 关闭按钮 (RoutedEventArgs 版本)
+        /// </summary>
+        private void CloseButton_Click(object sender, RoutedEventArgs e)
         {
             Close();
         }

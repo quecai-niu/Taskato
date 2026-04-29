@@ -1,0 +1,83 @@
+<Window x:Class="Taskato.Views.ConfirmDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="确认" Width="360" Height="240"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        ResizeMode="NoResize">
+
+    <Border CornerRadius="24" BorderThickness="1" BorderBrush="#14FFFFFF">
+        <Border.Background>
+            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                <GradientStop Color="#1e1a35" Offset="0"/>
+                <GradientStop Color="#151225" Offset="1"/>
+            </LinearGradientBrush>
+        </Border.Background>
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="40" ShadowDepth="12" Opacity="0.6" Color="Black"/>
+        </Border.Effect>
+
+        <StackPanel Margin="28">
+            <!-- 图标 -->
+            <Border Width="48" Height="48" CornerRadius="14"
+                    Background="#1AF87171" HorizontalAlignment="Center" Margin="0,0,0,16">
+                <TextBlock Text="🗑️" FontSize="22" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+
+            <!-- 标题 -->
+            <TextBlock x:Name="TitleText" Text="确认删除？"
+                       FontSize="17" FontWeight="Bold" Foreground="#F1F5F9"
+                       HorizontalAlignment="Center" Margin="0,0,0,8"/>
+
+            <!-- 消息 -->
+            <TextBlock x:Name="MessageText" Text="此操作无法撤销。"
+                       FontSize="13.5" Foreground="#475569" TextWrapping="Wrap"
+                       TextAlignment="Center" LineHeight="22"
+                       HorizontalAlignment="Center" Margin="0,0,0,24"/>
+
+            <!-- 按钮 -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="10"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <Button Grid.Column="0" x:Name="CancelBtn" Content="取消"
+                        Height="44" Click="CancelBtn_Click"
+                        Foreground="#94A3B8" FontSize="14" FontWeight="SemiBold" Cursor="Hand">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="bg" CornerRadius="12"
+                                    Background="#0DFFFFFF" BorderBrush="#14FFFFFF" BorderThickness="1">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="bg" Property="Background" Value="#14FFFFFF"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+
+                <Button Grid.Column="2" x:Name="ConfirmBtn" Content="删除"
+                        Height="44" Click="ConfirmBtn_Click"
+                        Foreground="White" FontSize="14" FontWeight="SemiBold" Cursor="Hand">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="bg" CornerRadius="12" Background="#F87171">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="bg" Property="Background" Value="#EF4444"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+            </Grid>
+        </StackPanel>
+    </Border>
+</Window>

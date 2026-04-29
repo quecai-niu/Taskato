@@ -32,21 +32,21 @@ namespace Taskato.Views
         }
 
         /// <summary>
-        /// 关闭按钮
+        /// 关闭按钮 (RoutedEventArgs 版本，兼容 Button 控件)
         /// </summary>
-        private void CloseButton_Click(object sender, MouseButtonEventArgs e)
+        private void CloseButton_Click(object sender, RoutedEventArgs e)
         {
             Close();
         }
 
         /// <summary>
-        /// 点击删除按钮 → 删除历史任务
+        /// 点击删除按钮 → 弹出确认并执行历史删除
         /// </summary>
         private void DeleteButton_Click(object sender, MouseButtonEventArgs e)
         {
             if (sender is FrameworkElement element && DataContext is HistoryViewModel vm)
             {
-                if (vm.DeleteTaskCommand.CanExecute(element.Tag))
+                if (ConfirmDialog.Show(this, "确定要从历史记录中删除这个任务吗？"))
                 {
                     vm.DeleteTaskCommand.Execute(element.Tag);
                 }

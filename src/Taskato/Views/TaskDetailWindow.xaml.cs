@@ -64,7 +64,10 @@ namespace Taskato.Views
             Close();
         }
 
-        private void CloseButton_Click(object sender, MouseButtonEventArgs e)
+        /// <summary>
+        /// 关闭按钮 (RoutedEventArgs 版本)
+        /// </summary>
+        private void CloseButton_Click(object sender, RoutedEventArgs e)
         {
             // 点击右上角 X 默认视为取消
             IsSaved = false;

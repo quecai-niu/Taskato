@@ -47,11 +47,11 @@
                                    VerticalAlignment="Center" Margin="10,0,0,0"/>
                     </StackPanel>
 
+                    <!-- 右侧：Windows 风格窗口控制按钮面板 (V2) -->
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                        <Ellipse Width="14" Height="14" Fill="#F59E0B" Cursor="Hand" Margin="0,0,8,0"/>
-                        <Ellipse Width="14" Height="14" Fill="#22C55E" Cursor="Hand" Margin="0,0,8,0"/>
-                        <Ellipse Width="14" Height="14" Fill="#EF4444" Cursor="Hand"
-                                 MouseLeftButtonDown="CloseButton_Click"/>
+                        <Button Content="—" Style="{StaticResource CuteWinBtn}" Opacity="0.5" IsEnabled="False"/>
+                        <Button Content="⬜" Style="{StaticResource CuteWinBtn}" Opacity="0.5" IsEnabled="False" FontSize="10"/>
+                        <Button Content="✕" Style="{StaticResource CuteWinCloseBtn}" Click="CloseButton_Click"/>
                     </StackPanel>
                 </Grid>
             </Border>
