@@ -32,7 +32,8 @@
         <!-- 弹窗内容 -->
         <StackPanel HorizontalAlignment="Center">
             <!-- 番茄图标（会上下弹跳） -->
-            <TextBlock x:Name="ToastIcon" Text="🍅" FontSize="48"
+            <TextBlock x:Name="ToastIcon" Text="🍅" FontSize="48" FontFamily="Segoe UI Emoji"
+                       Foreground="{DynamicResource ThemePrimaryBrush}"
                        HorizontalAlignment="Center" Margin="0,0,0,16">
                 <TextBlock.RenderTransform>
                     <TranslateTransform x:Name="iconTransform"/>

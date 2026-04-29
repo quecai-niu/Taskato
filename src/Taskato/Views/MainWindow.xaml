@@ -196,7 +196,9 @@
 
             <!-- ========== Row 2: 日期标签 + 统计 ========== -->
             <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="20,0,20,8">
-                <TextBlock Text="📅" FontSize="12" VerticalAlignment="Center"/>
+                <TextBlock Text="📅" FontSize="12" FontFamily="Segoe UI Emoji" 
+                           Foreground="{DynamicResource TextSecondaryBrush}" 
+                           VerticalAlignment="Center" Opacity="0.8"/>
                 <TextBlock x:Name="DateLabel" FontSize="12" FontWeight="SemiBold"
                            Foreground="{DynamicResource ThemePrimaryBrush}"
                            VerticalAlignment="Center" Margin="4,0,0,0"/>
@@ -380,7 +382,7 @@
                                  Padding="0,0,0,2" 强制微调 Emoji 重心，解决视觉偏低的问题 -->
                             <Border Width="26" Height="26" CornerRadius="8"
                                     Background="#1FCD1A1A" VerticalAlignment="Center">
-                                <TextBlock Text="🍅" FontSize="14" Foreground="#CD1A1A"
+                                <TextBlock Text="🍅" FontSize="14" Foreground="#FF4D4D"
                                            FontFamily="Segoe UI Emoji"
                                            HorizontalAlignment="Center" VerticalAlignment="Center"
                                            Padding="0,0,0,2"/>

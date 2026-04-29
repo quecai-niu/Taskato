@@ -39,8 +39,11 @@
                 <Grid Margin="20,14">
                     <StackPanel Orientation="Horizontal">
                         <Border Width="24" Height="24" CornerRadius="6" Background="#336366F1">
-                            <TextBlock Text="📋" FontSize="14"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            <!-- 优化：使用矢量剪贴板图标替代 Emoji -->
+                            <Path Data="{StaticResource IconHistory}" 
+                                  Fill="{StaticResource ThemePrimaryBrush}" 
+                                  Width="12" Height="12" Stretch="Uniform" 
+                                  HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <TextBlock Text="历史任务查询" FontSize="14" FontWeight="SemiBold"
                                    Foreground="{StaticResource TextPrimaryBrush}"
@@ -102,13 +105,28 @@
 
                     <Button Grid.Column="2"
                             Style="{StaticResource PrimaryButton}"
-                            Content="🔍 搜索"
                             Command="{Binding SearchCommand}"
-                            Padding="16,8" FontSize="13" Margin="0,0,8,0"/>
+                            Padding="16,8" FontSize="13" Margin="0,0,8,0">
+                        <!-- 优化：放大镜矢量图标 + 文字组合 -->
+                        <StackPanel Orientation="Horizontal">
+                            <Path Data="{StaticResource IconSearch}" Fill="White" 
+                                  Width="13" Height="13" Stretch="Uniform" 
+                                  Margin="0,0,8,0" VerticalAlignment="Center"/>
+                            <TextBlock Text="搜索" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Button>
 
                     <Button Grid.Column="3" Padding="16,8" FontSize="13" Cursor="Hand"
-                            Content="📥 导出"
                             Command="{Binding ExportCsvCommand}">
+                        <Button.Content>
+                            <!-- 优化：导出矢量图标 + 文字组合 -->
+                            <StackPanel Orientation="Horizontal">
+                                <Path Data="{StaticResource IconExport}" Fill="#4ADE80" 
+                                      Width="13" Height="13" Stretch="Uniform" 
+                                      Margin="0,0,8,0" VerticalAlignment="Center"/>
+                                <TextBlock Text="导出" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button.Content>
                         <Button.Style>
                             <Style TargetType="Button">
                                 <Setter Property="Background" Value="#1F22C55E"/>

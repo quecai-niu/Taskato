@@ -20,8 +20,10 @@
         <StackPanel Margin="28">
             <!-- 图标 -->
             <Border Width="48" Height="48" CornerRadius="14"
-                    Background="#1AF87171" HorizontalAlignment="Center" Margin="0,0,0,16">
-                <TextBlock Text="🗑️" FontSize="22" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    Background="{DynamicResource JellyBaseBrush}" HorizontalAlignment="Center" Margin="0,0,0,16">
+                <TextBlock Text="🗑️" FontSize="22" FontFamily="Segoe UI Emoji"
+                           Foreground="{DynamicResource DangerBrush}"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Border>
 
             <!-- 标题 -->
