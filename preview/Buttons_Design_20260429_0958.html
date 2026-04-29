@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Taskato 番茄钟按钮设计方案预览 (V2)</title>
+    <style>
+        :root {
+            --bg-color: #0F0F1A;
+            --primary-color: #6366F1;
+            --primary-glow: rgba(99, 102, 241, 0.5);
+            --text-color: #E2E8F0;
+            --danger-color: #F43F5E;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Outfit', 'Segoe UI', system-ui, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #A5B4FC, #6366F1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            color: #64748B;
+            font-size: 14px;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        .option-card {
+            background: rgba(30, 41, 59, 0.4);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 20px;
+            padding: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: all 0.3s ease;
+        }
+
+        .option-card:hover {
+            background: rgba(30, 41, 59, 0.6);
+            border-color: rgba(99, 102, 241, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .info {
+            flex: 1;
+        }
+
+        .title {
+            font-size: 17px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .title::before {
+            content: '';
+            display: inline-block;
+            width: 6px;
+            height: 18px;
+            background: var(--primary-color);
+            border-radius: 3px;
+        }
+
+        .description {
+            font-size: 13px;
+            color: #94A3B8;
+            line-height: 1.5;
+        }
+
+        .preview-area {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-left: 40px;
+        }
+
+        .time-display {
+            font-size: 36px;
+            font-weight: 800;
+            font-family: 'JetBrains Mono', 'Consolas', monospace;
+            letter-spacing: -1px;
+        }
+
+        /* --- Style 1: Jelly Capsule --- */
+        .btn-jelly {
+            width: 32px;
+            height: 32px;
+            background: rgba(99, 102, 241, 0.15);
+            border: none;
+            border-radius: 10px;
+            color: var(--primary-color);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: 800;
+            transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .btn-jelly:hover {
+            background: var(--primary-color);
+            color: white;
+            box-shadow: 0 4px 15px var(--primary-glow);
+            transform: scale(1.15) rotate(5deg);
+        }
+
+        .btn-jelly:active {
+            transform: scale(0.9);
+        }
+
+        /* --- Style 2: Neon Pulse --- */
+        .btn-neon {
+            width: 36px;
+            height: 36px;
+            background: transparent;
+            border: none;
+            color: var(--primary-color);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            transition: all 0.4s ease;
+            position: relative;
+        }
+
+        .btn-neon:hover {
+            color: white;
+            filter: drop-shadow(0 0 8px var(--primary-color));
+            animation: pulse-glow 1.5s infinite;
+        }
+
+        @keyframes pulse-glow {
+            0% { transform: scale(1); filter: drop-shadow(0 0 5px var(--primary-color)); }
+            50% { transform: scale(1.2); filter: drop-shadow(0 0 15px var(--primary-color)); }
+            100% { transform: scale(1); filter: drop-shadow(0 0 5px var(--primary-color)); }
+        }
+
+        /* --- Style 3: Orbital Ring --- */
+        .btn-orbital {
+            width: 32px;
+            height: 32px;
+            background: transparent;
+            border: 2px solid rgba(99, 102, 241, 0.2);
+            border-radius: 50%;
+            color: var(--primary-color);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-orbital:hover {
+            border-color: var(--primary-color);
+            border-width: 8px; /* 产生内缩效果 */
+            color: white;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.2);
+        }
+
+        .footer {
+            margin-top: 40px;
+            color: #475569;
+            font-size: 12px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>番茄钟调节按键设计方案 (V2)</h1>
+        <p>基于现代玻璃拟态与流光交互设计</p>
+    </div>
+
+    <div class="container">
+        <!-- Option 1 -->
+        <div class="option-card">
+            <div class="info">
+                <div class="title">方案 1: 果冻胶囊 (Jelly Capsule)</div>
+                <div class="description">延续 Taskato 核心视觉。半透明柔光底座，搭配 Q 弹的交互反馈，手感极佳。</div>
+            </div>
+            <div class="preview-area">
+                <button class="btn-jelly">－</button>
+                <div class="time-display">25:00</div>
+                <button class="btn-jelly">＋</button>
+            </div>
+        </div>
+
+        <!-- Option 2 -->
+        <div class="option-card">
+            <div class="info">
+                <div class="title">方案 2: 霓虹呼吸 (Neon Pulse)</div>
+                <div class="description">去底座设计。采用动态光影，符号在悬停时会像生命体一样自然呼吸发光。</div>
+            </div>
+            <div class="preview-area">
+                <button class="btn-neon">－</button>
+                <div class="time-display">25:00</div>
+                <button class="btn-neon">＋</button>
+            </div>
+        </div>
+
+        <!-- Option 3 -->
+        <div class="option-card">
+            <div class="info">
+                <div class="title">方案 3: 轨道收缩 (Orbital Ring)</div>
+                <div class="description">精密几何风格。加减号被束缚在力场轨道中，点击时轨道会向内聚拢。</div>
+            </div>
+            <div class="preview-area">
+                <button class="btn-orbital">－</button>
+                <div class="time-display">25:00</div>
+                <button class="btn-orbital">＋</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        预览版本: 20260429_0958 | 仅供设计参考
+    </div>
+
+</body>
+</html>

@@ -373,21 +373,28 @@
                     <!-- 标题行: 番茄钟图标(果冻底座) + 状态标签 -->
                     <Grid Margin="0,0,0,8">
                         <StackPanel Orientation="Horizontal">
-                            <!-- 果冻底座图标：半透明紫色圆角背景 + 白色单色计时器符号。
-                                 替代彩色 emoji，WPF 对复杂彩色 emoji 渲染不稳定，单色更可靠美观。 -->
-                            <Border Width="22" Height="22" CornerRadius="7"
-                                    Background="#266366F1" VerticalAlignment="Center">
-                                <TextBlock Text="⏱" FontSize="11" Foreground="White"
-                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            <!-- 番茄钟标识：通过颜色和符号快速识别功能区域 -->
+                            <!-- 番茄钟图标：精调深红“果冻”风格
+                                 背景 #1FCD1A1A 为深红色的 12% 透明版本，确保底座有色且轻盈比较通透
+                                 Foreground #CD1A1A 为更正宗的番茄深红色
+                                 Padding="0,0,0,2" 强制微调 Emoji 重心，解决视觉偏低的问题 -->
+                            <Border Width="26" Height="26" CornerRadius="8"
+                                    Background="#1FCD1A1A" VerticalAlignment="Center">
+                                <TextBlock Text="🍅" FontSize="14" Foreground="#CD1A1A"
+                                           FontFamily="Segoe UI Emoji"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                                           Padding="0,0,0,2"/>
                             </Border>
                             <TextBlock Text=" 番茄钟" FontSize="13" FontWeight="SemiBold"
                                        Foreground="#A78BFA" VerticalAlignment="Center"/>
                         </StackPanel>
 
-                        <Border HorizontalAlignment="Right" CornerRadius="20"
-                                Background="#266366F1" Padding="10,4">
+                        <!-- 状态标签：精调文字对齐，解决视觉偏高的问题 -->
+                        <Border HorizontalAlignment="Right" VerticalAlignment="Center" 
+                                CornerRadius="20" Background="#266366F1" Padding="10,3">
                             <TextBlock Text="{Binding PomodoroStatusText}"
-                                       FontSize="11" FontWeight="Medium" Foreground="#A78BFA"/>
+                                       FontSize="11" FontWeight="Medium" Foreground="#A78BFA"
+                                       VerticalAlignment="Center" HorizontalAlignment="Center"/>
                         </Border>
                     </Grid>
 
@@ -395,7 +402,7 @@
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,6">
                         <Button Content="－" Command="{Binding DecreaseTimeCommand}">
                             <Button.Style>
-                                <Style TargetType="Button" BasedOn="{StaticResource TinyIconBtn}">
+                                <Style TargetType="Button" BasedOn="{StaticResource JellyIconBtn}">
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding IsTimerRunning}" Value="True">
                                             <Setter Property="Visibility" Value="Collapsed"/>
@@ -404,11 +411,11 @@
                                 </Style>
                             </Button.Style>
                         </Button>
-                        <!-- 计时器数字：字号40偏紧凑，保持番茄钟区域不过于膨胀 -->
-                        <TextBlock Text="{Binding TimerDisplay}" FontSize="40" FontWeight="Bold" Foreground="White" Margin="12,0"/>
+                        <!-- 计时器数字：增加左右边距（从 12 拉大到 24）以缓解拥挤感 -->
+                        <TextBlock Text="{Binding TimerDisplay}" FontSize="40" FontWeight="Bold" Foreground="White" Margin="24,0"/>
                         <Button Content="＋" Command="{Binding IncreaseTimeCommand}">
                             <Button.Style>
-                                <Style TargetType="Button" BasedOn="{StaticResource TinyIconBtn}">
+                                <Style TargetType="Button" BasedOn="{StaticResource JellyIconBtn}">
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding IsTimerRunning}" Value="True">
                                             <Setter Property="Visibility" Value="Collapsed"/>
@@ -462,14 +469,44 @@
                          Content 为"☕ 提前休息"、Command 为 EarlyRestCommand，
                          点击即直接跳入休息倒计时，无需额外显隐第四个按钮。 -->
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                        <!-- 开始按钮 -->
-                        <Button Style="{StaticResource PrimaryButton}" Content="▶ 开始"
-                                Command="{Binding StartPomodoroCommand}"
-                                Margin="0,0,8,0" Padding="20,9"/>
-                        <!-- 暂停按钮 -->
-                        <Button Style="{StaticResource SecondaryButton}" Content="⏸ 暂停"
-                                Command="{Binding PausePomodoroCommand}"
-                                Margin="0,0,8,0" Padding="20,9"/>
+                        <!-- 开始按钮：倒计时开始后变为“🚀 运行中”并呈半透明禁用态 -->
+                        <Button Margin="0,0,8,0" Padding="20,9"
+                                Command="{Binding StartPomodoroCommand}">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+                                    <Setter Property="Content" Value="▶ 开始"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsTimerRunning}" Value="True">
+                                            <Setter Property="Content" Value="🚀 运行中"/>
+                                            <Setter Property="Opacity" Value="0.6"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
+
+                        <!-- 暂停/继续按钮：暂停时变为“▶ 继续”并切换为高亮的主要按钮样式 -->
+                        <Button Margin="0,0,8,0" Padding="20,9"
+                                Command="{Binding PausePomodoroCommand}">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource SecondaryButton}">
+                                    <Setter Property="Content" Value="⏸ 暂停"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsPaused}" Value="True">
+                                            <!-- 暂停时切换为 PrimaryButton 的渐变底纹和文字内容 -->
+                                            <Setter Property="Content" Value="▶ 继续"/>
+                                            <Setter Property="Background" Value="{DynamicResource ThemeGradientBrush}"/>
+                                            <Setter Property="Foreground" Value="White"/>
+                                            <Setter Property="BorderThickness" Value="0"/>
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding IsTimerRunning}" Value="False">
+                                            <!-- 未运行状态下禁用暂停按钮 -->
+                                            <Setter Property="IsEnabled" Value="False"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
                         <!-- 停止/提前休息 二合一按钮 -->
                         <Button Padding="20,9">
                             <Button.Style>
@@ -482,6 +519,10 @@
                                         <DataTrigger Binding="{Binding IsWorkingState}" Value="True">
                                             <Setter Property="Content" Value="☕ 提前休息"/>
                                             <Setter Property="Command" Value="{Binding EarlyRestCommand}"/>
+                                        </DataTrigger>
+                                        <!-- 休息倒计时中：切换为结束休息 -->
+                                        <DataTrigger Binding="{Binding IsRestingState}" Value="True">
+                                            <Setter Property="Content" Value="⏹ 结束休息"/>
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>

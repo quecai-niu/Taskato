@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Taskato 昼夜模式方案预览 (V3)</title>
+    <style>
+        :root {
+            /* 默认暗色主题定义 (现有的) */
+            --bg-color: #1A1A2E;
+            --card-bg: rgba(255, 255, 255, 0.05);
+            --text-primary: #FFFFFF;
+            --text-secondary: #94A3B8;
+            --primary-color: #6366F1;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --shadow: 0 4px 12px rgba(0,0,0,0.3);
+            --jelly-bg: rgba(99, 102, 241, 0.15);
+        }
+
+        /* 亮色模式定义 (核心：纸感简约) */
+        .light-mode {
+            --bg-color: #F8FAFC;
+            --card-bg: #FFFFFF;
+            --text-primary: #1E293B;
+            --text-secondary: #64748B;
+            --primary-color: #6366F1; /* 主题色保持不变 */
+            --border-color: #E2E8F0;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            --jelly-bg: rgba(99, 102, 241, 0.1);
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .phone-mockup {
+            width: 380px;
+            height: 650px;
+            background: var(--bg-color);
+            border: 8px solid #333;
+            border-radius: 40px;
+            box-shadow: 0 50px 100px rgba(0,0,0,0.5);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .header {
+            padding: 40px 24px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 { font-size: 24px; margin: 0; }
+
+        .mode-toggle {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            transition: 0.3s;
+        }
+
+        .mode-toggle:hover {
+            transform: scale(1.05);
+            border-color: var(--primary-color);
+        }
+
+        .task-list {
+            padding: 0 20px;
+            flex: 1;
+        }
+
+        .task-item {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            margin-bottom: 12px;
+            padding: 16px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: var(--shadow);
+        }
+
+        .check {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--primary-color);
+            border-radius: 6px;
+        }
+
+        .pomodoro-area {
+            background: var(--card-bg);
+            border-top: 1px solid var(--border-color);
+            padding: 24px;
+            text-align: center;
+            border-top-left-radius: 30px;
+            border-top-right-radius: 30px;
+            box-shadow: 0 -10px 30px rgba(0,0,0,0.05);
+        }
+
+        .timer {
+            font-size: 54px;
+            font-weight: 800;
+            margin: 15px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        /* 复考 WPF 果冻按钮 */
+        .btn-jelly {
+            width: 34px;
+            height: 34px;
+            background: var(--jelly-bg);
+            border: none;
+            border-radius: 10px;
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        
+        .btn-jelly:hover {
+            background: var(--primary-color);
+            color: white;
+            transform: scale(1.1) rotate(5deg);
+        }
+
+        .controls {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+
+        .btn-main {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 12px;
+            font-weight: bold;
+        }
+
+        .status-tag {
+            font-size: 12px;
+            background: var(--jelly-bg);
+            color: var(--primary-color);
+            padding: 4px 12px;
+            border-radius: 20px;
+            margin-bottom: 10px;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body id="body">
+
+    <div style="margin-bottom: 20px; text-align: center;">
+        <h2 style="font-weight: 300; opacity: 0.8;">Taskato 昼夜模式切换预览</h2>
+        <p style="font-size: 14px; color: var(--text-secondary);">点击模拟器内的按钮体验实时切换效果</p>
+    </div>
+
+    <div class="phone-mockup">
+        <div class="header">
+            <div>
+                <h1>Taskato</h1>
+                <p style="font-size: 12px; color: var(--text-secondary); margin: 0;">2026年4月29日</p>
+            </div>
+            <button class="mode-toggle" onclick="toggleMode()">切换模式</button>
+        </div>
+
+        <div class="task-list">
+            <div class="task-item">
+                <div class="check"></div>
+                <div>完成日间模式方案预览制作</div>
+            </div>
+            <div class="task-item">
+                <div class="check"></div>
+                <div style="color: var(--text-secondary)">WPF 背景资源字典重构计划</div>
+            </div>
+        </div>
+
+        <div class="pomodoro-area">
+            <div class="status-tag">专注中</div>
+            <div class="timer">
+                <button class="btn-jelly">－</button>
+                <span>25:00</span>
+                <button class="btn-jelly">＋</button>
+            </div>
+            <div class="controls">
+                <button class="btn-main">▶ 开始</button>
+                <button class="btn-main" style="background: var(--card-bg); color: var(--text-primary); border: 1px solid var(--border-color);">⏸ 暂停</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleMode() {
+            document.body.classList.toggle('light-mode');
+            const btn = document.querySelector('.mode-toggle');
+            if(document.body.classList.contains('light-mode')) {
+                btn.innerText = "⭐ 暗色模式";
+            } else {
+                btn.innerText = "☀️ 亮色模式";
+            }
+        }
+    </script>
+</body>
+</html>

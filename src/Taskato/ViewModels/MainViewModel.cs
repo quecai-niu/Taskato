@@ -118,9 +118,24 @@ namespace Taskato.ViewModels
         }
 
         /// <summary>
-        /// 番茄钟是否处于工作阶段（用于控制提前休息按钮显隐）
+        /// 番茄钟是否处于暂停状态
+        /// </summary>
+        private bool _isPaused;
+        public bool IsPaused
+        {
+            get => _isPaused;
+            set => SetProperty(ref _isPaused, value);
+        }
+
+        /// <summary>
+        /// 番茄钟是否处于工作阶段
         /// </summary>
         public bool IsWorkingState => _pomodoroService.CurrentState == PomodoroService.PomodoroState.Working;
+
+        /// <summary>
+        /// 番茄钟是否处于休息阶段
+        /// </summary>
+        public bool IsRestingState => _pomodoroService.CurrentState == PomodoroService.PomodoroState.Resting;
 
         // ==================== 命令绑定 ====================
 
@@ -268,9 +283,11 @@ namespace Taskato.ViewModels
                 };
 
                 IsTimerRunning = state != PomodoroService.PomodoroState.Idle;
+                IsPaused = state == PomodoroService.PomodoroState.Paused;
                 
-                // 通知工作状态变更，触发 UI 按钮显隐
+                // 通知状态变更，触发 UI 按钮显隐和文字切换
                 OnPropertyChanged(nameof(IsWorkingState));
+                OnPropertyChanged(nameof(IsRestingState));
             };
 
             // 工作完成 → 通知 View 弹出提醒窗口

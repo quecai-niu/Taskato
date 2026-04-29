@@ -452,30 +452,109 @@
                 </Setter>
             </Style>
 
-            <!-- 极简微型图标按钮（用于番茄钟加减时间） -->
-            <Style x:Key="TinyIconBtn" TargetType="Button">
-                <Setter Property="Width" Value="24"/>
-                <Setter Property="Height" Value="24"/>
+            <!-- 
+                 【Q弹果冻图标按钮】 JellyIconBtn
+                 完美复刻 HTML 预览版方案 1 的物理质感。
+                 - 悬停：底座由 15% 透明度变为实色，符号变白，整体放大 1.15 倍并顺时针旋转 5 度。
+                 - 物理感：使用 BackEase 缓动函数实现类似弹性回弹的效果。
+                 - 阴影：动态阴影随悬停显现。
+            -->
+            <Style x:Key="JellyIconBtn" TargetType="Button">
+                <Setter Property="Width" Value="32"/>
+                <Setter Property="Height" Value="32"/>
                 <Setter Property="Background" Value="Transparent"/>
-                <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
                 <Setter Property="Cursor" Value="Hand"/>
                 <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="Button">
-                            <Border x:Name="bd" Background="{TemplateBinding Background}" CornerRadius="6">
-                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            </Border>
+                                <!-- 容器：整体进行几何变换 -->
+                                <Grid x:Name="container" RenderTransformOrigin="0.5,0.5">
+                                    <Grid.RenderTransform>
+                                        <TransformGroup>
+                                            <ScaleTransform x:Name="scale" ScaleX="1" ScaleY="1"/>
+                                            <RotateTransform x:Name="rotate" Angle="0"/>
+                                        </TransformGroup>
+                                    </Grid.RenderTransform>
+
+                                    <!-- 下层：果冻底座 -->
+                                    <Border x:Name="bd"
+                                            Background="{DynamicResource ThemePrimaryBrush}"
+                                            Opacity="0.15"
+                                            CornerRadius="10">
+                                        <Border.Effect>
+                                            <DropShadowEffect x:Name="shadow" Color="{DynamicResource ThemePrimaryColor}"
+                                                              BlurRadius="0" ShadowDepth="0" Opacity="0"/>
+                                        </Border.Effect>
+                                    </Border>
+
+                                    <!-- 上层：矢量加减符号 (摒弃文字，改用绘图) -->
+                                    <Path x:Name="symbolPath"
+                                          Stroke="{DynamicResource ThemePrimaryBrush}"
+                                          StrokeThickness="2.5"
+                                          StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                          HorizontalAlignment="Center" VerticalAlignment="Center"
+                                          Margin="8" Stretch="Uniform"/>
+                                </Grid>
+
                             <ControlTemplate.Triggers>
+                                <!-- 根据 Content 自动切换 Path 数据 -->
+                                <Trigger Property="Content" Value="＋">
+                                    <Setter TargetName="symbolPath" Property="Data" Value="M 0,5 H 10 M 5,0 V 10"/>
+                                </Trigger>
+                                <Trigger Property="Content" Value="－">
+                                    <Setter TargetName="symbolPath" Property="Data" Value="M 0,5 H 10"/>
+                                </Trigger>
+
+                                <!-- 鼠标进入：执行进入动画 (HoverOn) -->
                                 <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="bd" Property="Background" Value="#1AFFFFFF"/>
-                                    <Setter Property="Foreground" Value="White"/>
+                                    <Trigger.EnterActions>
+                                        <BeginStoryboard x:Name="HoverOn_Begin">
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetName="bd" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.25">
+                                                    <DoubleAnimation.EasingFunction><BackEase Amplitude="0.4" EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                                </DoubleAnimation>
+                                                <!-- 符号变白 -->
+                                                <ColorAnimation Storyboard.TargetName="symbolPath" Storyboard.TargetProperty="(Path.Stroke).(SolidColorBrush.Color)" To="White" Duration="0:0:0.2"/>
+                                                <DoubleAnimation Storyboard.TargetName="scale" Storyboard.TargetProperty="ScaleX" To="1.15" Duration="0:0:0.25">
+                                                    <DoubleAnimation.EasingFunction><BackEase Amplitude="0.8" EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                                </DoubleAnimation>
+                                                <DoubleAnimation Storyboard.TargetName="scale" Storyboard.TargetProperty="ScaleY" To="1.15" Duration="0:0:0.25">
+                                                    <DoubleAnimation.EasingFunction><BackEase Amplitude="0.8" EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                                </DoubleAnimation>
+                                                <DoubleAnimation Storyboard.TargetName="rotate" Storyboard.TargetProperty="Angle" To="5" Duration="0:0:0.2"/>
+                                                <DoubleAnimation Storyboard.TargetName="shadow" Storyboard.TargetProperty="BlurRadius" To="12" Duration="0:0:0.25"/>
+                                                <DoubleAnimation Storyboard.TargetName="shadow" Storyboard.TargetProperty="Opacity" To="0.4" Duration="0:0:0.25"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </Trigger.EnterActions>
+                                    <Trigger.ExitActions>
+                                        <StopStoryboard BeginStoryboardName="HoverOn_Begin"/>
+                                    </Trigger.ExitActions>
+                                </Trigger>
+
+                                <!-- 点击按下：产生按压感 -->
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Trigger.EnterActions>
+                                        <BeginStoryboard x:Name="PressOn_Begin">
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetName="scale" Storyboard.TargetProperty="ScaleX" To="0.85" Duration="0:0:0.1"/>
+                                                <DoubleAnimation Storyboard.TargetName="scale" Storyboard.TargetProperty="ScaleY" To="0.85" Duration="0:0:0.1"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </Trigger.EnterActions>
+                                    <Trigger.ExitActions>
+                                        <StopStoryboard BeginStoryboardName="PressOn_Begin"/>
+                                    </Trigger.ExitActions>
                                 </Trigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>
                     </Setter.Value>
                 </Setter>
             </Style>
+
+            <!-- 极简微型图标按钮（通用，保留备用） -->
 
         </ResourceDictionary>
     </Application.Resources>

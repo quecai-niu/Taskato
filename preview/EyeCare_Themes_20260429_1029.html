@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Taskato 护眼主题实验室 (V4)</title>
+    <style>
+        :root {
+            /* 默认暗色模式 */
+            --bg-color: #1A1A2E;
+            --card-bg: rgba(255, 255, 255, 0.05);
+            --text-primary: #FFFFFF;
+            --text-secondary: #94A3B8;
+            --border: rgba(255, 255, 255, 0.1);
+            --primary: #6366F1;
+            --jelly: rgba(99, 102, 241, 0.2);
+        }
+
+        /* 方案 A: 柔沙暖白 - 降低蓝光 */
+        .theme-sand {
+            --bg-color: #FDF6E3;
+            --card-bg: #EEE8D5;
+            --text-primary: #586E75;
+            --text-secondary: #839496;
+            --border: #DED6C1;
+            --jelly: rgba(99, 102, 241, 0.15);
+        }
+
+        /* 方案 B: 北欧静谧灰 - 低增益灰 */
+        .theme-grey {
+            --bg-color: #E6E9ED;
+            --card-bg: #F5F7FA;
+            --text-primary: #434A54;
+            --text-secondary: #656D78;
+            --border: #CCD1D9;
+            --jelly: rgba(99, 102, 241, 0.12);
+        }
+
+        /* 方案 C: 淡茶清绿 - 护眼之选 */
+        .theme-sage {
+            --bg-color: #E8F3E8;
+            --card-bg: #D8E6D8;
+            --text-primary: #2D3E2D;
+            --text-secondary: #5E7D5E;
+            --border: #C8D6C8;
+            --jelly: rgba(67, 160, 71, 0.2);
+        }
+
+        /* 方案 D: 复古羊皮纸 */
+        .theme-vintage {
+            --bg-color: #EBDCB2;
+            --card-bg: #D9C9A3;
+            --text-primary: #4E3B31;
+            --text-secondary: #705E52;
+            --border: #C9B993;
+            --jelly: rgba(121, 85, 72, 0.2);
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            transition: all 0.5s ease;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .controls {
+            margin-bottom: 30px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 800px;
+        }
+
+        .theme-btn {
+            border: 2px solid var(--border);
+            padding: 10px 18px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            background: var(--card-bg);
+            color: var(--text-primary);
+            transition: 0.3s;
+        }
+
+        .theme-btn:hover { border-color: var(--primary); }
+        .theme-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+        .app-mockup {
+            width: 400px;
+            height: 600px;
+            background: var(--bg-color);
+            border-radius: 30px;
+            border: 8px solid #222;
+            box-shadow: 0 40px 80px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .app-header { padding: 30px 20px 10px; }
+        .app-header h1 { font-size: 20px; margin: 0; }
+
+        .content { padding: 20px; flex: 1; }
+        .task {
+            background: var(--card-bg);
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+        }
+
+        .pomodoro {
+            background: var(--card-bg);
+            margin-top: auto;
+            border-top: 1px solid var(--border);
+            padding: 30px;
+            text-align: center;
+            border-radius: 40px 40px 0 0;
+        }
+
+        .timer-val { font-size: 48px; font-weight: 800; margin: 10px 0; }
+
+        .btn-jelly {
+            display: inline-flex;
+            width: 32px; height: 32px;
+            background: var(--jelly);
+            color: var(--primary);
+            border-radius: 10px;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body id="mainBody">
+
+    <div class="controls">
+        <button class="theme-btn active" onclick="setTheme('', this)">🌙 默认暗色</button>
+        <button class="theme-btn" onclick="setTheme('theme-sand', this)">☀️ 柔沙暖白</button>
+        <button class="theme-btn" onclick="setTheme('theme-grey', this)">🌫️ 静谧灰</button>
+        <button class="theme-btn" onclick="setTheme('theme-sage', this)">🌿 淡茶绿</button>
+        <button class="theme-btn" onclick="setTheme('theme-vintage', this)">📜 复古卷轴</button>
+    </div>
+
+    <div class="app-mockup">
+        <div class="app-header">
+            <h1>Taskato</h1>
+            <p style="font-size: 12px; opacity: 0.6; margin: 0;">专注每一天</p>
+        </div>
+        <div class="content">
+            <div class="task">
+                <div style="width:16px; height:16px; border:2px solid var(--primary); border-radius:4px;"></div>
+                测试多主题切换效果
+            </div>
+            <div class="task">
+                <div style="width:16px; height:16px; border:2px solid var(--primary); border-radius:4px;"></div>
+                确认低饱和度护眼配色
+            </div>
+        </div>
+        <div class="pomodoro">
+            <div style="font-size: 11px; background:var(--jelly); color:var(--primary); padding:2px 10px; border-radius:20px; display:inline-block;">专注中</div>
+            <div class="timer-val">
+                <span class="btn-jelly">－</span>
+                <span style="margin: 0 15px;">25:00</span>
+                <span class="btn-jelly">＋</span>
+            </div>
+            <div style="background:var(--primary); color:white; padding:10px 20px; border-radius:8px; display:inline-block; font-weight:bold;">▶ 开始</div>
+        </div>
+    </div>
+
+    <script>
+        function setTheme(themeClass, btn) {
+            document.getElementById('mainBody').className = themeClass;
+            document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        }
+    </script>
+</body>
+</html>
