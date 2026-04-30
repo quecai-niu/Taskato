@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>子窗体视觉风格设计提案 - Taskato</title>
+    <style>
+        :root {
+            --main-bg: #1a1a2e;
+            --primary: #6366f1;
+            --secondary: #a855f7;
+            --border-glow: rgba(99, 102, 241, 0.5);
+        }
+
+        body {
+            background-color: #0b0b1a;
+            color: #e0e0e0;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 50px;
+            margin: 0;
+        }
+
+        .desktop-sim {
+            width: 1000px;
+            height: 600px;
+            background: linear-gradient(135deg, #1a1a2e 0%, #0f172a 100%);
+            border-radius: 20px;
+            position: relative;
+            box-shadow: 0 50px 100px rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(255,255,255,0.05);
+            margin-bottom: 50px;
+            overflow: hidden;
+        }
+
+        .main-window-mock {
+            width: 800px;
+            height: 450px;
+            background: var(--main-bg);
+            border-radius: 16px;
+            opacity: 0.5;
+            filter: blur(2px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .sub-window {
+            position: absolute;
+            width: 360px;
+            height: 240px;
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            padding: 24px;
+            box-sizing: border-box;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            cursor: pointer;
+        }
+
+        .sub-window:hover {
+            transform: scale(1.02) translateY(-5px);
+        }
+
+        .title { font-size: 18px; font-weight: 600; margin-bottom: 15px; }
+        .content { font-size: 14px; opacity: 0.7; line-height: 1.6; }
+
+        /* --- 方案 01: 霓虹流光边缘 (Neon Border) --- */
+        .style-01 {
+            background: #11111f;
+            border: 1px solid transparent;
+            background-image: linear-gradient(#11111f, #11111f), linear-gradient(135deg, #6366f1, #a855f7);
+            background-origin: border-box;
+            background-clip: padding-box, border-box;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.6), 0 0 20px rgba(99, 102, 241, 0.2);
+        }
+        .style-01 .title { color: #fff; text-shadow: 0 0 10px rgba(99, 102, 241, 0.5); }
+
+        /* --- 方案 02: 渐变毛玻璃 (Gradient Frost) --- */
+        .style-02 {
+            background: linear-gradient(135deg, rgba(30, 30, 50, 0.9), rgba(20, 20, 40, 0.95));
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 30px 60px rgba(0,0,0,0.7), inset 0 0 20px rgba(168, 85, 247, 0.1);
+        }
+        .style-02::after {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 4px;
+            background: linear-gradient(90deg, #6366f1, #a855f7);
+            border-radius: 20px 20px 0 0;
+        }
+
+        /* --- 方案 03: 悬浮深邃卡片 (Deep Overlay) --- */
+        .style-03 {
+            background: #0d0d18;
+            border: 1px solid #333;
+            box-shadow: 0 0 0 1000px rgba(0,0,0,0.4), 0 40px 80px rgba(0,0,0,0.8);
+            z-index: 10;
+        }
+        .style-03 .title { color: var(--primary); }
+
+        /* --- 方案 04: 彩色外溢 (Color Spill) --- */
+        .style-04 {
+            background: #1a1a2e;
+            border: 1.5px solid rgba(168, 85, 247, 0.4);
+            box-shadow: 0 0 30px rgba(168, 85, 247, 0.3);
+        }
+
+        .label-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 40px;
+            margin-top: 20px;
+        }
+
+        .desc-card {
+            background: rgba(255,255,255,0.03);
+            padding: 20px;
+            border-radius: 12px;
+            width: 400px;
+        }
+        .desc-card h3 { margin-top: 0; color: var(--primary); }
+    </style>
+</head>
+<body>
+    <h1>子窗体 (Dialog) 视觉进化提案</h1>
+
+    <div class="desktop-sim">
+        <div class="main-window-mock">MainWindow.xaml (已背景模糊)</div>
+        
+        <!-- 预览窗口 -->
+        <div id="preview-win" class="sub-window style-01">
+            <div class="title">✨ 子窗体标题</div>
+            <div class="content">
+                这里是子窗体的内容区域。我们增加了明显的边界感、渐变背景以及深度阴影，确保用户能一眼分清主次。
+            </div>
+        </div>
+    </div>
+
+    <div class="label-grid">
+        <div class="desc-card" onclick="changeStyle('style-01')">
+            <h3>方案 01: 霓虹流光边缘</h3>
+            <p>使用 1px 的渐变流光边框包裹，配合微弱的外发光，边界感极强，具有高端科技感。</p>
+        </div>
+        <div class="desc-card" onclick="changeStyle('style-02')">
+            <h3>方案 02: 渐变毛玻璃 + 顶置色条</h3>
+            <p>采用深色渐变微透背景，并在窗体顶部增加一条窄窄的主题色装饰条，优雅且现代。</p>
+        </div>
+        <div class="desc-card" onclick="changeStyle('style-03')">
+            <h3>方案 03: 悬浮深邃模式</h3>
+            <p>使用比主窗体更深的纯色背景，配合超大范围的软阴影，营造出极强的空间垂直感。</p>
+        </div>
+        <div class="desc-card" onclick="changeStyle('style-04')">
+            <h3>方案 04: 彩色外溢描边</h3>
+            <p>边框直接采用主题色半透明效果，光效向外轻微溢出，强调窗体的活动状态。</p>
+        </div>
+    </div>
+
+    <script>
+        function changeStyle(styleName) {
+            const win = document.getElementById('preview-win');
+            win.className = 'sub-window ' + styleName;
+        }
+    </script>
+</body>
+</html>

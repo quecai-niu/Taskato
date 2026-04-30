@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taskato 窗体控制按钮设计方案预览</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --primary: #6366f1;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --success: #10b981;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            font-family: 'Outfit', 'Inter', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 50px 20px;
+            margin: 0;
+            overflow-x: hidden;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, #818cf8, #c084fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+
+        .showcase {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 40px;
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        .design-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 30px;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .design-card:hover {
+            transform: translateY(-10px);
+            border-color: var(--primary);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        .design-title {
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: var(--primary);
+        }
+
+        .design-desc {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            margin-bottom: 25px;
+            line-height: 1.5;
+        }
+
+        /* 模拟标题栏 */
+        .titlebar-preview {
+            background: rgba(15, 23, 42, 0.6);
+            height: 50px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 15px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .window-title {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        /* ==================== 方案 1: 极简悬浮 (Glass Minimalist) ==================== */
+        .controls-v1 {
+            display: flex;
+            gap: 4px;
+        }
+
+        .btn-v1 {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .btn-v1:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            transform: scale(1.1);
+        }
+
+        .btn-v1.close:hover {
+            background: var(--danger);
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.5);
+        }
+
+        /* ==================== 方案 2: 灵动糖果 (Mac OS Style) ==================== */
+        .controls-v2 {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-v2 {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(0,0,0,0.1);
+        }
+
+        .btn-v2::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 8px;
+            opacity: 0;
+            transition: opacity 0.2s;
+            color: rgba(0,0,0,0.5);
+        }
+
+        .controls-v2:hover .btn-v2::after {
+            opacity: 1;
+        }
+
+        .btn-v2.close { background-color: #ff5f57; }
+        .btn-v2.minimize { background-color: #ffbd2e; }
+        .btn-v2.maximize { background-color: #28c940; }
+
+        .btn-v2.close::after { content: '×'; }
+        .btn-v2.minimize::after { content: '−'; }
+        .btn-v2.maximize::after { content: '＋'; }
+
+        .btn-v2:hover {
+            filter: brightness(1.1);
+            transform: scale(1.2);
+        }
+
+        /* ==================== 方案 3: 霓虹边框 (Neon Border) ==================== */
+        .controls-v3 {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn-v3 {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            border: 1.5px solid var(--text-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 10px;
+            color: var(--text-secondary);
+        }
+
+        .btn-v3:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            box-shadow: 0 0 10px var(--primary);
+            transform: translateY(-2px) rotate(90deg);
+        }
+
+        .btn-v3.close:hover {
+            border-color: var(--danger);
+            color: var(--danger);
+            box-shadow: 0 0 10px var(--danger);
+        }
+
+        /* ==================== 方案 4: Q弹果冻 (Jelly Buttons) ==================== */
+        .controls-v4 {
+            display: flex;
+            gap: 0;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 2px;
+        }
+
+        .btn-v4 {
+            padding: 6px 14px;
+            border-radius: 18px;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .btn-v4:hover {
+            background: var(--primary);
+            color: white;
+            padding: 6px 20px;
+        }
+
+        .btn-v4.close:hover {
+            background: var(--danger);
+        }
+
+        .footer {
+            margin-top: 60px;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            opacity: 0.6;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Window Control Aesthetics</h1>
+        <p>为你的 Taskato 选择一款最匹配的交互方案</p>
+    </div>
+
+    <div class="showcase">
+        <!-- 方案 1 -->
+        <div class="design-card">
+            <div class="design-title">01. 极简悬浮 (Glassy)</div>
+            <div class="design-desc">现代 Windows 11 风格的演进版。大圆角悬浮底座，关闭按钮在悬停时呈现柔和红光。</div>
+            <div class="titlebar-preview">
+                <div class="window-title">Taskato - Modern</div>
+                <div class="controls-v1">
+                    <div class="btn-v1">−</div>
+                    <div class="btn-v1">▢</div>
+                    <div class="btn-v1 close">✕</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 方案 2 -->
+        <div class="design-card">
+            <div class="design-title">02. 灵动糖果 (Mac Style)</div>
+            <div class="design-desc">经典的“红黄绿”三色圆点。平时隐藏符号以保持极致简洁，鼠标划入控制区时优雅浮现符号。</div>
+            <div class="titlebar-preview">
+                <div class="window-title">Taskato - Creative</div>
+                <div class="controls-v2">
+                    <div class="btn-v2 close"></div>
+                    <div class="btn-v2 minimize"></div>
+                    <div class="btn-v2 maximize"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 方案 3 -->
+        <div class="design-card">
+            <div class="design-title">03. 霓虹线框 (Cyber)</div>
+            <div class="design-desc">科幻感的环形线框。悬停时图标会顺时针旋转 90 度并激发霓虹光效，具有极强的交互反馈感。</div>
+            <div class="titlebar-preview">
+                <div class="window-title">Taskato - Pro</div>
+                <div class="controls-v3">
+                    <div class="btn-v3">−</div>
+                    <div class="btn-v3">▢</div>
+                    <div class="btn-v3 close">✕</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 方案 4 -->
+        <div class="design-card">
+            <div class="design-title">04. Q弹果冻 (Jelly Capsule)</div>
+            <div class="design-desc">胶囊型集成化设计。背景是一体化的半透明深色槽，悬停时激活项会像果冻一样左右弹跳伸缩。</div>
+            <div class="titlebar-preview">
+                <div class="window-title">Taskato - Playful</div>
+                <div class="controls-v4">
+                    <div class="btn-v4">min</div>
+                    <div class="btn-v4">max</div>
+                    <div class="btn-v4 close">exit</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        © 2026 Taskato Design Lab. Designed by Antigravity.
+    </div>
+
+</body>
+</html>

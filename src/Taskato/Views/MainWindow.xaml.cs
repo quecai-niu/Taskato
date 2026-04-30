@@ -13,6 +13,12 @@ namespace Taskato.Views
     /// </summary>
     public partial class MainWindow : Window
     {
+        /// <summary>
+        /// 是否正在退出整个应用程序。
+        /// 如果为 true，则允许窗口真正关闭；否则只允许隐藏。
+        /// </summary>
+        public bool IsAppShuttingDown { get; set; } = false;
+
         public MainWindow()
         {
             InitializeComponent();
@@ -103,6 +109,25 @@ namespace Taskato.Views
             WindowState = WindowState == WindowState.Maximized
                 ? WindowState.Normal
                 : WindowState.Maximized;
+        }
+
+        /// <summary>
+        /// 关键：拦截窗口关闭事件
+        /// 当用户通过 Alt+F4、任务栏右键或其他系统方式关闭窗口时，
+        /// 拦截该行为并改为“隐藏”，以防止窗口对象被销毁导致无法再次通过托盘唤起。
+        /// </summary>
+        protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+        {
+            if (IsAppShuttingDown)
+            {
+                // 如果是应用正在退出，允许窗口正常关闭
+                return;
+            }
+
+            // 拦截手动关闭操作
+            e.Cancel = true;
+            // 改为隐藏
+            this.Hide();
         }
 
         // ==================== 任务列表操作 ====================

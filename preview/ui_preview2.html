@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>Taskato V2 · 主页优化设计稿</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+    --bg: #12101f;
+    --bg-card: rgba(255,255,255,0.04);
+    --bg-card-hover: rgba(255,255,255,0.07);
+    --purple-1: #7c3aed;
+    --purple-2: #a78bfa;
+    --purple-3: #c4b5fd;
+    --purple-glow: rgba(124,58,237,0.15);
+    --red: #f87171;
+    --orange: #fb923c;
+    --green: #4ade80;
+    --gray: #64748b;
+    --text: #f1f5f9;
+    --text-2: #94a3b8;
+    --text-3: #475569;
+    --border: rgba(255,255,255,0.06);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+    font-family: 'Inter', -apple-system, 'Microsoft YaHei UI', sans-serif;
+    background: var(--bg);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 40px 20px;
+    gap: 60px;
+}
+
+/* ========== 主窗体 ========== */
+.app {
+    width: 420px;
+    background: linear-gradient(165deg, #1a1730 0%, #13111f 100%);
+    border-radius: 24px;
+    border: 1px solid rgba(124,58,237,0.12);
+    box-shadow:
+        0 0 0 1px rgba(255,255,255,0.03),
+        0 24px 80px -12px rgba(0,0,0,0.8),
+        0 0 60px -20px rgba(124,58,237,0.2);
+    overflow: hidden;
+    position: relative;
+}
+/* 顶部渐变光晕 */
+.app::before {
+    content: '';
+    position: absolute;
+    top: -60px; left: 50%;
+    transform: translateX(-50%);
+    width: 300px; height: 120px;
+    background: radial-gradient(ellipse, rgba(124,58,237,0.12) 0%, transparent 70%);
+    pointer-events: none;
+}
+
+/* 标题栏 */
+.titlebar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 18px 24px;
+    position: relative;
+    z-index: 1;
+}
+.brand {
+    display: flex; align-items: center; gap: 10px;
+}
+.brand-icon {
+    width: 28px; height: 28px; border-radius: 8px;
+    background: linear-gradient(135deg, #7c3aed, #a78bfa);
+    display: grid; place-items: center;
+    font-size: 14px; color: white;
+    box-shadow: 0 2px 8px rgba(124,58,237,0.4);
+}
+.brand-name {
+    font-size: 15px; font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.3px;
+}
+.controls { display: flex; gap: 6px; }
+.ctrl {
+    width: 28px; height: 28px;
+    border-radius: 8px; border: none;
+    background: transparent;
+    color: var(--text-3);
+    font-size: 11px;
+    cursor: pointer;
+    display: grid; place-items: center;
+    transition: all 0.2s;
+}
+.ctrl:hover { background: rgba(255,255,255,0.06); color: var(--text-2); }
+.ctrl.x:hover { background: rgba(248,113,113,0.15); color: var(--red); }
+
+/* ========== 输入区 ========== */
+.input-section {
+    padding: 0 20px;
+    margin-bottom: 20px;
+    display: flex;
+    gap: 10px;
+}
+.input-box {
+    flex: 1;
+    height: 48px;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 14px;
+    gap: 10px;
+    transition: border-color 0.3s, box-shadow 0.3s;
+}
+.input-box:hover {
+    border-color: rgba(124,58,237,0.2);
+}
+.input-box.focus {
+    border-color: rgba(124,58,237,0.4);
+    box-shadow: 0 0 0 3px rgba(124,58,237,0.08);
+}
+.placeholder {
+    flex: 1;
+    font-size: 13.5px;
+    color: var(--text-3);
+    letter-spacing: -0.1px;
+}
+.dots { display: flex; gap: 5px; align-items: center; }
+.dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+.dot:hover { transform: scale(1.3); }
+.dot.active {
+    width: 12px; height: 12px;
+    box-shadow: 0 0 0 2px rgba(255,255,255,0.8);
+}
+.plus-btn {
+    width: 48px; height: 48px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #7c3aed, #9333ea);
+    border: none;
+    color: white;
+    font-size: 22px; font-weight: 300;
+    cursor: pointer;
+    display: grid; place-items: center;
+    box-shadow: 0 4px 16px rgba(124,58,237,0.35);
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+.plus-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 24px rgba(124,58,237,0.45);
+}
+
+/* ========== 日期行 ========== */
+.meta-row {
+    padding: 0 24px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.meta-date {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--purple-2);
+}
+.meta-stat {
+    font-size: 12px;
+    color: var(--text-3);
+}
+.meta-dot {
+    width: 3px; height: 3px;
+    border-radius: 50%;
+    background: var(--text-3);
+}
+
+/* ========== 任务列表 ========== */
+.tasks {
+    padding: 0 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+/* 核心: 任务卡片 */
+.task {
+    display: flex;
+    align-items: stretch;
+    border-radius: 14px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+}
+.task:hover {
+    background: var(--bg-card-hover);
+    border-color: rgba(255,255,255,0.08);
+    transform: translateX(2px);
+}
+
+/*
+    优先级指示: 不是"外挂的条"
+    而是卡片本身的左边缘就带颜色。
+    通过让卡片左边框变粗+着色实现，
+    视觉上像是卡片左侧自然渗出颜色。
+*/
+.task.p-red    { border-left: 4px solid var(--red); }
+.task.p-orange { border-left: 4px solid var(--orange); }
+.task.p-green  { border-left: 4px solid var(--green); }
+.task.p-gray   { border-left: 4px solid var(--gray); }
+
+.task-body {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    padding: 14px 16px;
+    gap: 12px;
+}
+
+/* 勾选框 */
+.check {
+    width: 20px; height: 20px;
+    border-radius: 6px;
+    border: 1.5px solid rgba(255,255,255,0.15);
+    flex-shrink: 0;
+    display: grid; place-items: center;
+    transition: all 0.2s;
+}
+.check.done {
+    background: linear-gradient(135deg, #7c3aed, #a78bfa);
+    border-color: transparent;
+}
+.check.done::after {
+    content: '✓';
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+}
+.task:hover .check:not(.done) {
+    border-color: rgba(255,255,255,0.25);
+}
+
+.task-text { flex: 1; min-width: 0; }
+.task-title {
+    font-size: 13.5px;
+    font-weight: 500;
+    color: var(--text);
+    letter-spacing: -0.2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.task-title.struck {
+    text-decoration: line-through;
+    color: var(--text-3);
+}
+.task-sub {
+    font-size: 11px;
+    color: var(--text-3);
+    margin-top: 2px;
+}
+
+/* 删除按钮: 悬浮出现 */
+.task-del {
+    display: grid; place-items: center;
+    width: 36px;
+    color: var(--text-3);
+    font-size: 12px;
+    opacity: 0;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+.task:hover .task-del { opacity: 1; }
+.task-del:hover { color: var(--red); }
+
+/* ========== 番茄钟 ========== */
+.pomo {
+    margin: 0 20px 16px;
+    border-radius: 20px;
+    background: linear-gradient(165deg, rgba(124,58,237,0.08) 0%, rgba(124,58,237,0.02) 100%);
+    border: 1px solid rgba(124,58,237,0.1);
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+}
+/* 装饰光斑 */
+.pomo::before {
+    content: '';
+    position: absolute;
+    top: -20px; right: -20px;
+    width: 100px; height: 100px;
+    background: radial-gradient(circle, rgba(124,58,237,0.1) 0%, transparent 70%);
+    pointer-events: none;
+}
+
+.pomo-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+.pomo-tag {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--purple-2);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+.pomo-status {
+    font-size: 11px;
+    color: var(--green);
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.pomo-status::before {
+    content: '';
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: pulse 2s infinite;
+}
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+.timer-block {
+    text-align: center;
+    margin-bottom: 16px;
+}
+.timer-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+}
+.adj {
+    width: 32px; height: 32px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    color: var(--text-2);
+    font-size: 16px;
+    cursor: pointer;
+    display: grid; place-items: center;
+    transition: all 0.2s;
+}
+.adj:hover { background: rgba(255,255,255,0.1); color: white; }
+.digits {
+    font-size: 52px;
+    font-weight: 200;
+    color: white;
+    letter-spacing: 2px;
+    font-variant-numeric: tabular-nums;
+    min-width: 160px;
+    text-align: center;
+    text-shadow: 0 0 30px rgba(124,58,237,0.2);
+}
+
+/* 进度条 */
+.bar-track {
+    height: 3px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 2px;
+    margin-bottom: 20px;
+    overflow: hidden;
+}
+.bar-fill {
+    height: 100%;
+    width: 38%;
+    border-radius: 2px;
+    background: linear-gradient(90deg, #7c3aed, #a78bfa);
+    transition: width 0.3s;
+}
+
+/* 按钮: 2×2 胶囊网格 */
+.pomo-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+.pbtn {
+    height: 38px;
+    border-radius: 12px;
+    border: none;
+    font-size: 12.5px;
+    font-weight: 600;
+    cursor: pointer;
+    letter-spacing: -0.1px;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+.pbtn:active { transform: scale(0.97); }
+.pbtn.go {
+    background: linear-gradient(135deg, #7c3aed, #9333ea);
+    color: white;
+    box-shadow: 0 2px 12px rgba(124,58,237,0.3);
+}
+.pbtn.go:hover { box-shadow: 0 4px 20px rgba(124,58,237,0.45); }
+.pbtn.alt {
+    background: rgba(255,255,255,0.05);
+    color: var(--text-2);
+    border: 1px solid var(--border);
+}
+.pbtn.alt:hover { background: rgba(255,255,255,0.08); color: var(--text); }
+.pbtn.danger {
+    background: rgba(248,113,113,0.1);
+    color: var(--red);
+    border: 1px solid rgba(248,113,113,0.15);
+}
+.pbtn.danger:hover { background: rgba(248,113,113,0.18); }
+
+/* ========== 底栏 ========== */
+.footer {
+    display: flex;
+    padding: 14px 24px;
+    border-top: 1px solid var(--border);
+    gap: 8px;
+}
+.fbtn {
+    flex: 1;
+    height: 36px;
+    border-radius: 10px;
+    border: none;
+    background: rgba(255,255,255,0.03);
+    color: var(--text-3);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+.fbtn:hover { background: rgba(255,255,255,0.06); color: var(--text-2); }
+
+/* ========== 右侧: 确认对话框 ========== */
+.side {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+    align-items: center;
+}
+
+.dialog-card {
+    width: 340px;
+    border-radius: 24px;
+    background: linear-gradient(165deg, #1e1a35, #151225);
+    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow:
+        0 24px 60px -12px rgba(0,0,0,0.7),
+        0 0 40px -10px rgba(124,58,237,0.15);
+    overflow: hidden;
+}
+.dialog-top {
+    padding: 28px 28px 0;
+    text-align: center;
+}
+.dialog-icon {
+    width: 48px; height: 48px;
+    border-radius: 14px;
+    background: rgba(248,113,113,0.1);
+    display: grid; place-items: center;
+    margin: 0 auto 16px;
+    font-size: 22px;
+}
+.dialog-h {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 8px;
+    letter-spacing: -0.3px;
+}
+.dialog-p {
+    font-size: 13.5px;
+    color: var(--text-3);
+    line-height: 1.6;
+}
+.dialog-p strong {
+    color: var(--text-2);
+    font-weight: 500;
+}
+.dialog-actions {
+    padding: 24px 28px 28px;
+    display: flex;
+    gap: 10px;
+}
+.dbtn {
+    flex: 1;
+    height: 44px;
+    border-radius: 12px;
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.dbtn:active { transform: scale(0.97); }
+.dbtn.cancel {
+    background: rgba(255,255,255,0.05);
+    color: var(--text-2);
+    border: 1px solid var(--border);
+}
+.dbtn.cancel:hover { background: rgba(255,255,255,0.08); }
+.dbtn.confirm {
+    background: var(--red);
+    color: white;
+    box-shadow: 0 4px 16px rgba(248,113,113,0.3);
+}
+.dbtn.confirm:hover { box-shadow: 0 6px 24px rgba(248,113,113,0.4); }
+
+/* 说明卡片 */
+.notes {
+    width: 340px;
+    border-radius: 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    padding: 24px;
+}
+.notes h4 {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--purple-2);
+    margin-bottom: 16px;
+    letter-spacing: -0.2px;
+}
+.note-item {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    margin-bottom: 12px;
+    font-size: 12.5px;
+    color: var(--text-3);
+    line-height: 1.5;
+}
+.note-item:last-child { margin-bottom: 0; }
+.note-num {
+    width: 20px; height: 20px;
+    border-radius: 6px;
+    background: rgba(124,58,237,0.1);
+    color: var(--purple-2);
+    font-size: 10px;
+    font-weight: 700;
+    display: grid; place-items: center;
+    flex-shrink: 0;
+}
+.note-item strong { color: var(--text-2); font-weight: 500; }
+</style>
+</head>
+<body>
+
+<!-- ========== 主窗体 ========== -->
+<div class="app">
+    <!-- 标题栏 -->
+    <div class="titlebar">
+        <div class="brand">
+            <div class="brand-icon">✦</div>
+            <div class="brand-name">Taskato</div>
+        </div>
+        <div class="controls">
+            <button class="ctrl">—</button>
+            <button class="ctrl" style="font-size:9px">⬜</button>
+            <button class="ctrl x">✕</button>
+        </div>
+    </div>
+
+    <!-- 输入区 -->
+    <div class="input-section">
+        <div class="input-box">
+            <span class="placeholder">请输入新任务，按 Enter 添加...</span>
+            <div class="dots">
+                <div class="dot" style="background:var(--gray)"></div>
+                <div class="dot active" style="background:var(--green)"></div>
+                <div class="dot" style="background:var(--orange)"></div>
+                <div class="dot" style="background:var(--red)"></div>
+            </div>
+        </div>
+        <button class="plus-btn">+</button>
+    </div>
+
+    <!-- 日期 -->
+    <div class="meta-row">
+        <span style="font-size:12px">📅</span>
+        <span class="meta-date">2026-04-28</span>
+        <span class="meta-dot"></span>
+        <span class="meta-stat">完成 2 / 5</span>
+    </div>
+
+    <!-- 任务列表 -->
+    <div class="tasks">
+        <div class="task p-red">
+            <div class="task-body">
+                <div class="check"></div>
+                <div class="task-text">
+                    <div class="task-title">完成 V2 界面重构</div>
+                    <div class="task-sub">10:30 · 紧急</div>
+                </div>
+            </div>
+            <div class="task-del">✕</div>
+        </div>
+
+        <div class="task p-orange">
+            <div class="task-body">
+                <div class="check"></div>
+                <div class="task-text">
+                    <div class="task-title">优化番茄钟按钮布局</div>
+                    <div class="task-sub">11:20 · 重要</div>
+                </div>
+            </div>
+            <div class="task-del">✕</div>
+        </div>
+
+        <div class="task p-green">
+            <div class="task-body">
+                <div class="check done"></div>
+                <div class="task-text">
+                    <div class="task-title struck">修复滚动条样式</div>
+                    <div class="task-sub">09:00 · 已完成</div>
+                </div>
+            </div>
+            <div class="task-del">✕</div>
+        </div>
+
+        <div class="task p-gray">
+            <div class="task-body">
+                <div class="check"></div>
+                <div class="task-text">
+                    <div class="task-title">阅读 .NET 8 技术文档</div>
+                    <div class="task-sub">08:45</div>
+                </div>
+            </div>
+            <div class="task-del">✕</div>
+        </div>
+    </div>
+
+    <!-- 番茄钟 -->
+    <div class="pomo">
+        <div class="pomo-head">
+            <div class="pomo-tag">🍅 专注模式</div>
+            <div class="pomo-status">进行中</div>
+        </div>
+        <div class="timer-block">
+            <div class="timer-row">
+                <button class="adj">−</button>
+                <div class="digits">24:59</div>
+                <button class="adj">+</button>
+            </div>
+        </div>
+        <div class="bar-track"><div class="bar-fill"></div></div>
+        <div class="pomo-grid">
+            <button class="pbtn go">▶ 开始</button>
+            <button class="pbtn alt">⏸ 暂停</button>
+            <button class="pbtn danger">⏹ 停止</button>
+            <button class="pbtn alt">☕ 提前休息</button>
+        </div>
+    </div>
+
+    <!-- 底栏 -->
+    <div class="footer">
+        <button class="fbtn">📋 历史记录</button>
+        <button class="fbtn">⚙ 设置 / 主题</button>
+    </div>
+</div>
+
+<!-- ========== 右侧 ========== -->
+<div class="side">
+    <!-- 删除确认框 -->
+    <div class="dialog-card">
+        <div class="dialog-top">
+            <div class="dialog-icon">🗑️</div>
+            <div class="dialog-h">确认删除任务？</div>
+            <div class="dialog-p">
+                即将删除 <strong>"完成 V2 界面重构"</strong>，<br>此操作无法撤销。
+            </div>
+        </div>
+        <div class="dialog-actions">
+            <button class="dbtn cancel">取消</button>
+            <button class="dbtn confirm">删除</button>
+        </div>
+    </div>
+
+    <!-- 修改说明 -->
+    <div class="notes">
+        <h4>✏️ 本次优化项</h4>
+        <div class="note-item">
+            <span class="note-num">1</span>
+            <span><strong>确认框</strong> — 统一深色主题，图标 + 居中排版</span>
+        </div>
+        <div class="note-item">
+            <span class="note-num">2</span>
+            <span><strong>输入框</strong> — 增加水印引导文字</span>
+        </div>
+        <div class="note-item">
+            <span class="note-num">3</span>
+            <span><strong>添加按钮</strong> — 恢复紫色 + 号按钮</span>
+        </div>
+        <div class="note-item">
+            <span class="note-num">4</span>
+            <span><strong>优先级</strong> — 改为卡片左边框着色，自然融合圆角</span>
+        </div>
+        <div class="note-item">
+            <span class="note-num">5</span>
+            <span><strong>番茄钟</strong> — 2×2 网格按钮，不再溢出</span>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

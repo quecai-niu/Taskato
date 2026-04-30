@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="任务详情"
-        Width="380" MinHeight="240"
+        Width="460" MinHeight="320"
         SizeToContent="Height"
         WindowStyle="None"
         AllowsTransparency="True"
@@ -23,19 +23,7 @@
         </Storyboard>
     </Window.Resources>
 
-    <Border CornerRadius="16"
-            Background="#E61A1A1A"
-            BorderBrush="#336366F1" BorderThickness="1"
-            RenderTransformOrigin="0.5,0.5">
-        
-        <Border.RenderTransform>
-            <TranslateTransform Y="0"/>
-        </Border.RenderTransform>
-        
-        <Border.Effect>
-            <!-- 窗体泛光阴影 -->
-            <DropShadowEffect Color="#000000" BlurRadius="40" ShadowDepth="15" Opacity="0.5"/>
-        </Border.Effect>
+    <Border Style="{StaticResource SubWindowBorderStyle}">
 
         <Grid>
             <Grid.RowDefinitions>
@@ -45,11 +33,10 @@
             </Grid.RowDefinitions>
 
             <!-- 1. 标题栏 -->
-            <Border Grid.Row="0" Background="#08FFFFFF"
-                    BorderBrush="{StaticResource SeparatorBrush}" BorderThickness="0,0,0,1"
+            <Border Background="Transparent"
                     CornerRadius="16,16,0,0"
                     MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
-                <Grid Margin="16,12">
+                <Grid Margin="20,14">
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <Ellipse Width="8" Height="8" Fill="{DynamicResource ThemePrimaryBrush}" Margin="0,0,8,0">
                             <Ellipse.Effect>
@@ -60,9 +47,15 @@
                                    Foreground="{StaticResource TextSecondaryBrush}"/>
                     </StackPanel>
 
-                    <!-- 关闭按钮 (V2 可爱风格) -->
-                    <Button Content="✕" Style="{StaticResource CuteWinCloseBtn}" 
-                            HorizontalAlignment="Right" Click="CloseButton_Click"/>
+                    <!-- 优化：使用 Q弹果冻胶囊窗口控制 (仅退出) -->
+                    <Border HorizontalAlignment="Right" VerticalAlignment="Center" Style="{StaticResource JellyCapsuleStyle}"
+                            WindowChrome.IsHitTestVisibleInChrome="True">
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="min" Style="{StaticResource JellyWinBtn}" Click="MinimizeButton_Click"/>
+                            <Button Content="max" Style="{StaticResource JellyWinBtn}" Click="MaximizeButton_Click"/>
+                            <Button Content="exit" Style="{StaticResource JellyWinCloseBtn}" Click="CloseButton_Click"/>
+                        </StackPanel>
+                    </Border>
 
                 </Grid>
             </Border>

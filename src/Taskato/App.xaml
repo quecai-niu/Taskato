@@ -433,6 +433,386 @@
                 </Setter>
             </Style>
 
+            <!-- 
+                 【Q弹果冻窗口控制】 JellyWinBtn
+                 方案 4：胶囊型集成化设计。
+            -->
+            <Style x:Key="JellyCapsuleStyle" TargetType="Border">
+                <Setter Property="Background" Value="#0DFFFFFF"/>
+                <Setter Property="CornerRadius" Value="15"/>
+                <Setter Property="Padding" Value="2"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
+                <Setter Property="BorderBrush" Value="#0FFFFFFF"/>
+                <Setter Property="BorderThickness" Value="1"/>
+            </Style>
+
+            <!-- 
+                 【子窗体统一外壳样式】 SubWindowBorderStyle
+                 方案 4：彩色外溢描边 (Color Spill)
+                 用于：设置、历史、详情、对话框等
+            -->
+            <!-- 
+                 【任务输入框容器】 TaskInputCapsuleStyle
+                 方案 1：极简流体胶囊
+            -->
+            <Style x:Key="TaskInputCapsuleStyle" TargetType="Border">
+                <Setter Property="Height" Value="56"/>
+                <Setter Property="CornerRadius" Value="28"/>
+                <Setter Property="Background" Value="#0DFFFFFF"/>
+                <Setter Property="BorderBrush" Value="#1AFFFFFF"/>
+                <Setter Property="BorderThickness" Value="1.2"/>
+                <Setter Property="Margin" Value="20,0,20,24"/>
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Background" Value="#14FFFFFF"/>
+                        <Setter Property="BorderBrush" Value="#33FFFFFF"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
+            <!-- 优先级圆点 ListBox 样式 -->
+            <Style x:Key="PriorityDotListBoxStyle" TargetType="ListBox">
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
+                <Setter Property="Padding" Value="0"/>
+                <Setter Property="ItemsPanel">
+                    <Setter.Value>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal"/>
+                        </ItemsPanelTemplate>
+                    </Setter.Value>
+                </Setter>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ListBox">
+                            <ItemsPresenter/>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style x:Key="PriorityDotItemStyle" TargetType="ListBoxItem">
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ListBoxItem">
+                            <Border x:Name="dot" Width="11" Height="11" CornerRadius="6" Margin="4,0"
+                                    Background="{TemplateBinding Foreground}" Cursor="Hand"
+                                    ToolTip="{TemplateBinding ToolTip}"/>
+                            <ControlTemplate.Triggers>
+                                <!-- 选中状态：放大、加描边、加外溢光 -->
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter TargetName="dot" Property="BorderBrush" Value="White"/>
+                                    <Setter TargetName="dot" Property="BorderThickness" Value="1.5"/>
+                                    <Setter TargetName="dot" Property="Width" Value="14"/>
+                                    <Setter TargetName="dot" Property="Height" Value="14"/>
+                                    <Setter TargetName="dot" Property="CornerRadius" Value="7"/>
+                                    <Setter TargetName="dot" Property="Effect">
+                                        <Setter.Value>
+                                            <DropShadowEffect BlurRadius="10" Color="White" Opacity="0.4" ShadowDepth="0"/>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Trigger>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="dot" Property="Opacity" Value="0.7"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- 圆形霓虹添加按钮 -->
+            <Style x:Key="AddRoundButtonStyle" TargetType="Button">
+                <Setter Property="Width" Value="42"/>
+                <Setter Property="Height" Value="42"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Grid>
+                                <Border x:Name="bg" CornerRadius="21">
+                                    <Border.Background>
+                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                            <GradientStop Color="{DynamicResource ThemePrimaryColor}" Offset="0"/>
+                                            <GradientStop Color="{DynamicResource ThemeSecondaryColor}" Offset="1"/>
+                                        </LinearGradientBrush>
+                                    </Border.Background>
+                                    <Border.Effect>
+                                        <DropShadowEffect Color="{DynamicResource ThemePrimaryColor}" BlurRadius="15" ShadowDepth="2" Opacity="0.5"/>
+                                    </Border.Effect>
+                                </Border>
+                                <TextBlock Text="+" Foreground="White" FontSize="24" FontWeight="Bold"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,2"/>
+                            </Grid>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="bg" Property="Opacity" Value="0.9"/>
+                                    <Trigger.EnterActions>
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetName="bg" Storyboard.TargetProperty="RenderTransform.(ScaleTransform.ScaleX)" To="1.1" Duration="0:0:0.2"/>
+                                                <DoubleAnimation Storyboard.TargetName="bg" Storyboard.TargetProperty="RenderTransform.(ScaleTransform.ScaleY)" To="1.1" Duration="0:0:0.2"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </Trigger.EnterActions>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+                <Setter Property="RenderTransform">
+                    <Setter.Value>
+                        <ScaleTransform ScaleX="1" ScaleY="1"/>
+                    </Setter.Value>
+                </Setter>
+                <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
+            </Style>
+
+            <!-- 
+                 【子窗体统一外壳样式】 SubWindowBorderStyle
+                 方案 4：彩色外溢描边 (Color Spill)
+                 用于：设置、历史、详情、对话框等
+            -->
+            <Style x:Key="SubWindowBorderStyle" TargetType="Border">
+                <Setter Property="CornerRadius" Value="20"/>
+                <Setter Property="Margin" Value="40"/> <!-- 关键：预留边距以显示外发光阴影，防止被窗口边界裁剪 -->
+                <Setter Property="Background">
+                    <Setter.Value>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="#1F1A2E" Offset="0"/>
+                            <GradientStop Color="#11111F" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Setter.Value>
+                </Setter>
+                <Setter Property="BorderThickness" Value="1.5"/>
+                <Setter Property="BorderBrush">
+                    <Setter.Value>
+                        <SolidColorBrush Color="{DynamicResource ThemePrimaryColor}" Opacity="0.4"/>
+                    </Setter.Value>
+                </Setter>
+                <Setter Property="Effect">
+                    <Setter.Value>
+                        <DropShadowEffect Color="{DynamicResource ThemePrimaryColor}" BlurRadius="50" ShadowDepth="0" Opacity="0.5" RenderingBias="Quality"/>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- 
+                 【主窗体外壳样式】 MainWindowBorderStyle
+                 同步子窗体的霓虹光晕效果
+            -->
+            <Style x:Key="MainWindowBorderStyle" TargetType="Border">
+                <Setter Property="CornerRadius" Value="16"/>
+                <Setter Property="Margin" Value="40"/>
+                <Setter Property="Background" Value="{StaticResource WindowBackgroundBrush}"/>
+                <Setter Property="BorderThickness" Value="1.2"/>
+                <Setter Property="BorderBrush">
+                    <Setter.Value>
+                        <SolidColorBrush Color="{DynamicResource ThemePrimaryColor}" Opacity="0.3"/>
+                    </Setter.Value>
+                </Setter>
+                <Setter Property="Effect">
+                    <Setter.Value>
+                        <DropShadowEffect Color="{DynamicResource ThemePrimaryColor}" BlurRadius="60" ShadowDepth="0" Opacity="0.4" RenderingBias="Quality"/>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style x:Key="JellyWinBtn" TargetType="Button">
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                <Setter Property="FontSize" Value="10"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="Padding" Value="12,5"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Grid>
+                                <!-- 底层：普通状态 -->
+                                <Border x:Name="normalBd" Background="{TemplateBinding Background}" CornerRadius="13"/>
+                                <!-- 悬停层：使用动态主题色，通过 Opacity 动画实现平滑过渡 -->
+                                <Border x:Name="hoverBd" Background="{DynamicResource ThemePrimaryBrush}" CornerRadius="13" Opacity="0"/>
+                                
+                                <Border x:Name="contentContainer" Background="Transparent" CornerRadius="13" Padding="{TemplateBinding Padding}" RenderTransformOrigin="0.5,0.5">
+                                    <Border.RenderTransform>
+                                        <ScaleTransform x:Name="scale" ScaleX="1" ScaleY="1"/>
+                                    </Border.RenderTransform>
+                                    <ContentPresenter x:Name="cp" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                            </Grid>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Trigger.EnterActions>
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetName="hoverBd" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.2"/>
+                                                <DoubleAnimation Storyboard.TargetName="scale" Storyboard.TargetProperty="ScaleX" To="1.15" Duration="0:0:0.3">
+                                                    <DoubleAnimation.EasingFunction><BackEase Amplitude="1" EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                                </DoubleAnimation>
+                                                <DoubleAnimation Storyboard.TargetName="scale" Storyboard.TargetProperty="ScaleY" To="1.15" Duration="0:0:0.3">
+                                                    <DoubleAnimation.EasingFunction><BackEase Amplitude="1" EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                                </DoubleAnimation>
+                                                <!-- 文字变白 -->
+                                                <ColorAnimation Storyboard.TargetName="cp" Storyboard.TargetProperty="(TextBlock.Foreground).(SolidColorBrush.Color)" To="White" Duration="0:0:0.2"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </Trigger.EnterActions>
+                                    <Trigger.ExitActions>
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetName="hoverBd" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.2"/>
+                                                <DoubleAnimation Storyboard.TargetName="scale" Storyboard.TargetProperty="ScaleX" To="1" Duration="0:0:0.3"/>
+                                                <DoubleAnimation Storyboard.TargetName="scale" Storyboard.TargetProperty="ScaleY" To="1" Duration="0:0:0.3"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </Trigger.ExitActions>
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter Property="Opacity" Value="0.4"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style x:Key="JellyWinMinBtn" TargetType="Button" BasedOn="{StaticResource JellyWinBtn}">
+                <Setter Property="Content" Value="—"/>
+            </Style>
+
+            <Style x:Key="JellyWinMaxBtn" TargetType="Button" BasedOn="{StaticResource JellyWinBtn}">
+                <Setter Property="Content" Value="▢"/>
+            </Style>
+
+            <!-- 
+                 【番茄钟状态标签】 PomodoroStatusTagStyle
+                 方案 2：霓虹辉光 (Neon Pulse)
+            -->
+            <Style x:Key="PomodoroStatusTagStyle" TargetType="ContentControl">
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="VerticalAlignment" Value="Center"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ContentControl">
+                            <Grid x:Name="container">
+                                <!-- 1. 脉冲扩散层 (水波纹) -->
+                                <Border x:Name="ripple" 
+                                        BorderThickness="1.5" 
+                                        CornerRadius="100"
+                                        Opacity="0"
+                                        RenderTransformOrigin="0.5,0.5">
+                                    <Border.BorderBrush>
+                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                            <GradientStop Color="{DynamicResource ThemePrimaryColor}" Offset="0"/>
+                                            <GradientStop Color="{DynamicResource ThemeSecondaryColor}" Offset="1"/>
+                                        </LinearGradientBrush>
+                                    </Border.BorderBrush>
+                                    <Border.RenderTransform>
+                                        <ScaleTransform x:Name="rippleScale" ScaleX="1" ScaleY="1"/>
+                                    </Border.RenderTransform>
+                                </Border>
+
+                                <!-- 2. 主体背景层 (带霓虹外发光) -->
+                                <Border x:Name="mainBd" 
+                                        Background="#1E1B4B" 
+                                        BorderThickness="1.2"
+                                        CornerRadius="100">
+                                    <Border.BorderBrush>
+                                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                            <GradientStop Color="{DynamicResource ThemePrimaryColor}" Offset="0"/>
+                                            <GradientStop Color="{DynamicResource ThemeSecondaryColor}" Offset="1"/>
+                                        </LinearGradientBrush>
+                                    </Border.BorderBrush>
+                                    <Border.Effect>
+                                        <!-- 使用 Quality 偏好，且不包含文字以避免模糊 -->
+                                        <DropShadowEffect Color="{DynamicResource ThemePrimaryColor}" 
+                                                          BlurRadius="12" ShadowDepth="0" Opacity="0.6"
+                                                          RenderingBias="Quality"/>
+                                    </Border.Effect>
+                                </Border>
+
+                                <!-- 3. 内容层 (增加内边距解决拥挤感) -->
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="16,5"/>
+                            </Grid>
+                            <ControlTemplate.Triggers>
+                                <EventTrigger RoutedEvent="Loaded">
+                                    <BeginStoryboard>
+                                        <Storyboard RepeatBehavior="Forever">
+                                            <!-- 水波扩散动画 -->
+                                            <DoubleAnimation Storyboard.TargetName="rippleScale" Storyboard.TargetProperty="ScaleX" From="1" To="1.6" Duration="0:0:2.5">
+                                                <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                            <DoubleAnimation Storyboard.TargetName="rippleScale" Storyboard.TargetProperty="ScaleY" From="1" To="1.6" Duration="0:0:2.5">
+                                                <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                            <DoubleAnimation Storyboard.TargetName="ripple" Storyboard.TargetProperty="Opacity" From="0.7" To="0" Duration="0:0:2.5">
+                                                <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                            </DoubleAnimation>
+                                            
+                                            <!-- 主体微弱呼吸 -->
+                                            <DoubleAnimation Storyboard.TargetName="mainBd" Storyboard.TargetProperty="(UIElement.Effect).Opacity" 
+                                                             From="0.6" To="0.3" Duration="0:0:1.25" AutoReverse="True"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </EventTrigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style x:Key="JellyWinCloseBtn" TargetType="Button" BasedOn="{StaticResource JellyWinBtn}">
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Grid>
+                                <Border x:Name="normalBd" Background="{TemplateBinding Background}" CornerRadius="13"/>
+                                <!-- 关闭按钮悬停使用固定的红色 -->
+                                <Border x:Name="hoverBd" Background="#EF4444" CornerRadius="13" Opacity="0"/>
+                                
+                                <Border x:Name="contentContainer" Background="Transparent" CornerRadius="13" Padding="{TemplateBinding Padding}" RenderTransformOrigin="0.5,0.5">
+                                    <Border.RenderTransform>
+                                        <ScaleTransform x:Name="scale" ScaleX="1" ScaleY="1"/>
+                                    </Border.RenderTransform>
+                                    <ContentPresenter x:Name="cp" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                            </Grid>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Trigger.EnterActions>
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetName="hoverBd" Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.2"/>
+                                                <DoubleAnimation Storyboard.TargetName="scale" Storyboard.TargetProperty="ScaleX" To="1.15" Duration="0:0:0.3">
+                                                    <DoubleAnimation.EasingFunction><BackEase Amplitude="1" EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                                </DoubleAnimation>
+                                                <DoubleAnimation Storyboard.TargetName="scale" Storyboard.TargetProperty="ScaleY" To="1.15" Duration="0:0:0.3">
+                                                    <DoubleAnimation.EasingFunction><BackEase Amplitude="1" EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                                </DoubleAnimation>
+                                                <ColorAnimation Storyboard.TargetName="cp" Storyboard.TargetProperty="(TextBlock.Foreground).(SolidColorBrush.Color)" To="White" Duration="0:0:0.2"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </Trigger.EnterActions>
+                                    <Trigger.ExitActions>
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetName="hoverBd" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.2"/>
+                                                <DoubleAnimation Storyboard.TargetName="scale" Storyboard.TargetProperty="ScaleX" To="1" Duration="0:0:0.3"/>
+                                                <DoubleAnimation Storyboard.TargetName="scale" Storyboard.TargetProperty="ScaleY" To="1" Duration="0:0:0.3"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </Trigger.ExitActions>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
             <!-- 窗口关闭专用按钮（悬浮变红） -->
             <Style x:Key="CuteWinCloseBtn" TargetType="Button" BasedOn="{StaticResource CuteWinBtn}">
                 <Setter Property="Template">

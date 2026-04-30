@@ -3,23 +3,25 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:converters="clr-namespace:Taskato.Converters"
         Title="历史任务查询"
-        Width="560" Height="550"
+        Width="640" Height="630"
         WindowStyle="None"
         AllowsTransparency="True"
         Background="Transparent"
         WindowStartupLocation="CenterOwner"
-        ResizeMode="CanResizeWithGrip">
+        ResizeMode="CanResize">
+
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="80" 
+                      ResizeBorderThickness="40" 
+                      GlassFrameThickness="0" 
+                      CornerRadius="0"/>
+    </WindowChrome.WindowChrome>
     <!--
         这个窗体会以对话框模式打开（ShowDialog），
         关闭后焦点回到主窗体。
     -->
 
-    <Border CornerRadius="16"
-            Background="{StaticResource WindowBackgroundBrush}"
-            BorderBrush="#266366F1" BorderThickness="1">
-        <Border.Effect>
-            <DropShadowEffect Color="#000000" BlurRadius="30" ShadowDepth="10" Opacity="0.5"/>
-        </Border.Effect>
+    <Border Style="{StaticResource SubWindowBorderStyle}">
 
         <Grid>
             <Grid.RowDefinitions>
@@ -32,8 +34,7 @@
             </Grid.RowDefinitions>
 
             <!-- ========== 标题栏 ========== -->
-            <Border Grid.Row="0" Background="#08FFFFFF"
-                    BorderBrush="{StaticResource SeparatorBrush}" BorderThickness="0,0,0,1"
+            <Border Background="Transparent"
                     CornerRadius="16,16,0,0"
                     MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
                 <Grid Margin="20,14">
@@ -50,12 +51,15 @@
                                    VerticalAlignment="Center" Margin="10,0,0,0"/>
                     </StackPanel>
 
-                    <!-- 右侧：Windows 风格窗口控制按钮面板 (V2) -->
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                        <Button Content="—" Style="{StaticResource CuteWinBtn}" Opacity="0.5" IsEnabled="False"/>
-                        <Button Content="⬜" Style="{StaticResource CuteWinBtn}" Opacity="0.5" IsEnabled="False" FontSize="10"/>
-                        <Button Content="✕" Style="{StaticResource CuteWinCloseBtn}" Click="CloseButton_Click"/>
-                    </StackPanel>
+                    <!-- 右侧：窗口控制（胶囊风格） -->
+                    <Border Style="{StaticResource JellyCapsuleStyle}" HorizontalAlignment="Right"
+                            WindowChrome.IsHitTestVisibleInChrome="True">
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="min" Style="{StaticResource JellyWinBtn}" Click="MinimizeButton_Click"/>
+                            <Button Content="max" Style="{StaticResource JellyWinBtn}" Click="MaximizeButton_Click"/>
+                            <Button Content="exit" Style="{StaticResource JellyWinCloseBtn}" Click="CloseButton_Click"/>
+                        </StackPanel>
+                    </Border>
                 </Grid>
             </Border>
 

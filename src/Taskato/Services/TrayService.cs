@@ -1,5 +1,7 @@
 using System.Drawing;
 using System.Windows;
+using System.Runtime.InteropServices;
+using System.Windows.Interop;
 using WinForms = System.Windows.Forms;
 
 namespace Taskato.Services
@@ -12,6 +14,9 @@ namespace Taskato.Services
     /// </summary>
     public class TrayService : IDisposable
     {
+        [DllImport("user32.dll")]
+        private static extern bool SetForegroundWindow(IntPtr hWnd);
+
         /// <summary>
         /// WinForms 托盘图标组件
         /// </summary>
@@ -78,7 +83,14 @@ namespace Taskato.Services
             {
                 if (e.Button == WinForms.MouseButtons.Right)
                 {
-                    // 确保菜单能够弹出在鼠标位置，并处理焦点丢失自动关闭
+                    // [核心修复] 在显示 WPF ContextMenu 之前，必须先将主程序的一个有效窗口（如 MainWindow）设为前景。
+                    // 这样 ContextMenu 才能正确捕获焦点并在点击外部时自动关闭。
+                    if (Application.Current.MainWindow != null)
+                    {
+                        var handle = new WindowInteropHelper(Application.Current.MainWindow).Handle;
+                        SetForegroundWindow(handle);
+                    }
+
                     contextMenu.IsOpen = true;
                 }
             };

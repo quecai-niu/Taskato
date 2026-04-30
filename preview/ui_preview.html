@@ -1,725 +1,1173 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<title>Taskato V2 · 主页优化设计稿</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-<style>
-:root {
-    --bg: #12101f;
-    --bg-card: rgba(255,255,255,0.04);
-    --bg-card-hover: rgba(255,255,255,0.07);
-    --purple-1: #7c3aed;
-    --purple-2: #a78bfa;
-    --purple-3: #c4b5fd;
-    --purple-glow: rgba(124,58,237,0.15);
-    --red: #f87171;
-    --orange: #fb923c;
-    --green: #4ade80;
-    --gray: #64748b;
-    --text: #f1f5f9;
-    --text-2: #94a3b8;
-    --text-3: #475569;
-    --border: rgba(255,255,255,0.06);
-}
-* { margin:0; padding:0; box-sizing:border-box; }
-body {
-    font-family: 'Inter', -apple-system, 'Microsoft YaHei UI', sans-serif;
-    background: var(--bg);
-    min-height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 40px 20px;
-    gap: 60px;
-}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taskato UI 预览</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* ============================================
+           全局基础样式
+           ============================================ */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-/* ========== 主窗体 ========== */
-.app {
-    width: 420px;
-    background: linear-gradient(165deg, #1a1730 0%, #13111f 100%);
-    border-radius: 24px;
-    border: 1px solid rgba(124,58,237,0.12);
-    box-shadow:
-        0 0 0 1px rgba(255,255,255,0.03),
-        0 24px 80px -12px rgba(0,0,0,0.8),
-        0 0 60px -20px rgba(124,58,237,0.2);
-    overflow: hidden;
-    position: relative;
-}
-/* 顶部渐变光晕 */
-.app::before {
-    content: '';
-    position: absolute;
-    top: -60px; left: 50%;
-    transform: translateX(-50%);
-    width: 300px; height: 120px;
-    background: radial-gradient(ellipse, rgba(124,58,237,0.12) 0%, transparent 70%);
-    pointer-events: none;
-}
+        body {
+            font-family: 'Inter', 'Microsoft YaHei', sans-serif;
+            background: #0a0a0f;
+            color: #e0e0e0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px;
+            gap: 60px;
+        }
 
-/* 标题栏 */
-.titlebar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 18px 24px;
-    position: relative;
-    z-index: 1;
-}
-.brand {
-    display: flex; align-items: center; gap: 10px;
-}
-.brand-icon {
-    width: 28px; height: 28px; border-radius: 8px;
-    background: linear-gradient(135deg, #7c3aed, #a78bfa);
-    display: grid; place-items: center;
-    font-size: 14px; color: white;
-    box-shadow: 0 2px 8px rgba(124,58,237,0.4);
-}
-.brand-name {
-    font-size: 15px; font-weight: 700;
-    color: var(--text);
-    letter-spacing: -0.3px;
-}
-.controls { display: flex; gap: 6px; }
-.ctrl {
-    width: 28px; height: 28px;
-    border-radius: 8px; border: none;
-    background: transparent;
-    color: var(--text-3);
-    font-size: 11px;
-    cursor: pointer;
-    display: grid; place-items: center;
-    transition: all 0.2s;
-}
-.ctrl:hover { background: rgba(255,255,255,0.06); color: var(--text-2); }
-.ctrl.x:hover { background: rgba(248,113,113,0.15); color: var(--red); }
+        /* ============================================
+           页面标题
+           ============================================ */
+        .page-title {
+            text-align: center;
+            margin-bottom: 20px;
+        }
 
-/* ========== 输入区 ========== */
-.input-section {
-    padding: 0 20px;
-    margin-bottom: 20px;
-    display: flex;
-    gap: 10px;
-}
-.input-box {
-    flex: 1;
-    height: 48px;
-    border-radius: 14px;
-    background: rgba(255,255,255,0.04);
-    border: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    padding: 0 14px;
-    gap: 10px;
-    transition: border-color 0.3s, box-shadow 0.3s;
-}
-.input-box:hover {
-    border-color: rgba(124,58,237,0.2);
-}
-.input-box.focus {
-    border-color: rgba(124,58,237,0.4);
-    box-shadow: 0 0 0 3px rgba(124,58,237,0.08);
-}
-.placeholder {
-    flex: 1;
-    font-size: 13.5px;
-    color: var(--text-3);
-    letter-spacing: -0.1px;
-}
-.dots { display: flex; gap: 5px; align-items: center; }
-.dot {
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    transition: all 0.2s;
-    cursor: pointer;
-}
-.dot:hover { transform: scale(1.3); }
-.dot.active {
-    width: 12px; height: 12px;
-    box-shadow: 0 0 0 2px rgba(255,255,255,0.8);
-}
-.plus-btn {
-    width: 48px; height: 48px;
-    border-radius: 14px;
-    background: linear-gradient(135deg, #7c3aed, #9333ea);
-    border: none;
-    color: white;
-    font-size: 22px; font-weight: 300;
-    cursor: pointer;
-    display: grid; place-items: center;
-    box-shadow: 0 4px 16px rgba(124,58,237,0.35);
-    transition: all 0.2s;
-    flex-shrink: 0;
-}
-.plus-btn:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 6px 24px rgba(124,58,237,0.45);
-}
+        .page-title h1 {
+            font-size: 28px;
+            font-weight: 700;
+            background: linear-gradient(135deg, #6366f1, #a855f7, #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+        }
 
-/* ========== 日期行 ========== */
-.meta-row {
-    padding: 0 24px;
-    margin-bottom: 12px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-.meta-date {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--purple-2);
-}
-.meta-stat {
-    font-size: 12px;
-    color: var(--text-3);
-}
-.meta-dot {
-    width: 3px; height: 3px;
-    border-radius: 50%;
-    background: var(--text-3);
-}
+        .page-title p {
+            color: #888;
+            font-size: 14px;
+        }
 
-/* ========== 任务列表 ========== */
-.tasks {
-    padding: 0 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    margin-bottom: 16px;
-}
+        /* ============================================
+           预览区域容器
+           ============================================ */
+        .preview-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+        }
 
-/* 核心: 任务卡片 */
-.task {
-    display: flex;
-    align-items: stretch;
-    border-radius: 14px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    overflow: hidden;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    position: relative;
-}
-.task:hover {
-    background: var(--bg-card-hover);
-    border-color: rgba(255,255,255,0.08);
-    transform: translateX(2px);
-}
+        .preview-label {
+            font-size: 13px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: 600;
+        }
 
-/*
-    优先级指示: 不是"外挂的条"
-    而是卡片本身的左边缘就带颜色。
-    通过让卡片左边框变粗+着色实现，
-    视觉上像是卡片左侧自然渗出颜色。
-*/
-.task.p-red    { border-left: 4px solid var(--red); }
-.task.p-orange { border-left: 4px solid var(--orange); }
-.task.p-green  { border-left: 4px solid var(--green); }
-.task.p-gray   { border-left: 4px solid var(--gray); }
+        /* ============================================
+           主窗体样式
+           ============================================ */
+        .main-window {
+            width: 480px;
+            background: linear-gradient(145deg, #1a1a2e, #16162a);
+            border-radius: 16px;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+            box-shadow: 
+                0 20px 60px rgba(0, 0, 0, 0.5),
+                0 0 40px rgba(99, 102, 241, 0.08);
+            overflow: hidden;
+        }
 
-.task-body {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    padding: 14px 16px;
-    gap: 12px;
-}
+        /* --- 窗口标题栏 --- */
+        .window-titlebar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 20px;
+            background: rgba(255, 255, 255, 0.03);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
 
-/* 勾选框 */
-.check {
-    width: 20px; height: 20px;
-    border-radius: 6px;
-    border: 1.5px solid rgba(255,255,255,0.15);
-    flex-shrink: 0;
-    display: grid; place-items: center;
-    transition: all 0.2s;
-}
-.check.done {
-    background: linear-gradient(135deg, #7c3aed, #a78bfa);
-    border-color: transparent;
-}
-.check.done::after {
-    content: '✓';
-    color: white;
-    font-size: 11px;
-    font-weight: 700;
-}
-.task:hover .check:not(.done) {
-    border-color: rgba(255,255,255,0.25);
-}
+        .titlebar-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
 
-.task-text { flex: 1; min-width: 0; }
-.task-title {
-    font-size: 13.5px;
-    font-weight: 500;
-    color: var(--text);
-    letter-spacing: -0.2px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-.task-title.struck {
-    text-decoration: line-through;
-    color: var(--text-3);
-}
-.task-sub {
-    font-size: 11px;
-    color: var(--text-3);
-    margin-top: 2px;
-}
+        .app-icon {
+            width: 24px;
+            height: 24px;
+            background: linear-gradient(135deg, #6366f1, #a855f7);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
 
-/* 删除按钮: 悬浮出现 */
-.task-del {
-    display: grid; place-items: center;
-    width: 36px;
-    color: var(--text-3);
-    font-size: 12px;
-    opacity: 0;
-    transition: all 0.2s;
-    cursor: pointer;
-}
-.task:hover .task-del { opacity: 1; }
-.task-del:hover { color: var(--red); }
+        .app-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #e0e0e0;
+        }
 
-/* ========== 番茄钟 ========== */
-.pomo {
-    margin: 0 20px 16px;
-    border-radius: 20px;
-    background: linear-gradient(165deg, rgba(124,58,237,0.08) 0%, rgba(124,58,237,0.02) 100%);
-    border: 1px solid rgba(124,58,237,0.1);
-    padding: 24px;
-    position: relative;
-    overflow: hidden;
-}
-/* 装饰光斑 */
-.pomo::before {
-    content: '';
-    position: absolute;
-    top: -20px; right: -20px;
-    width: 100px; height: 100px;
-    background: radial-gradient(circle, rgba(124,58,237,0.1) 0%, transparent 70%);
-    pointer-events: none;
-}
+        .window-controls {
+            display: flex;
+            gap: 8px;
+        }
 
-.pomo-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 16px;
-}
-.pomo-tag {
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--purple-2);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-.pomo-status {
-    font-size: 11px;
-    color: var(--green);
-    font-weight: 500;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
-.pomo-status::before {
-    content: '';
-    width: 6px; height: 6px;
-    border-radius: 50%;
-    background: var(--green);
-    animation: pulse 2s infinite;
-}
-@keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.4; }
-}
+        .win-btn {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
 
-.timer-block {
-    text-align: center;
-    margin-bottom: 16px;
-}
-.timer-row {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 16px;
-}
-.adj {
-    width: 32px; height: 32px;
-    border-radius: 10px;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid rgba(255,255,255,0.08);
-    color: var(--text-2);
-    font-size: 16px;
-    cursor: pointer;
-    display: grid; place-items: center;
-    transition: all 0.2s;
-}
-.adj:hover { background: rgba(255,255,255,0.1); color: white; }
-.digits {
-    font-size: 52px;
-    font-weight: 200;
-    color: white;
-    letter-spacing: 2px;
-    font-variant-numeric: tabular-nums;
-    min-width: 160px;
-    text-align: center;
-    text-shadow: 0 0 30px rgba(124,58,237,0.2);
-}
+        .win-btn:hover { opacity: 0.8; }
+        .win-btn.minimize { background: #f59e0b; }
+        .win-btn.maximize { background: #22c55e; }
+        .win-btn.close { background: #ef4444; }
 
-/* 进度条 */
-.bar-track {
-    height: 3px;
-    background: rgba(255,255,255,0.06);
-    border-radius: 2px;
-    margin-bottom: 20px;
-    overflow: hidden;
-}
-.bar-fill {
-    height: 100%;
-    width: 38%;
-    border-radius: 2px;
-    background: linear-gradient(90deg, #7c3aed, #a78bfa);
-    transition: width 0.3s;
-}
+        /* --- 输入区域 --- */
+        .input-area {
+            padding: 20px;
+            display: flex;
+            gap: 10px;
+        }
 
-/* 按钮: 2×2 胶囊网格 */
-.pomo-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-}
-.pbtn {
-    height: 38px;
-    border-radius: 12px;
-    border: none;
-    font-size: 12.5px;
-    font-weight: 600;
-    cursor: pointer;
-    letter-spacing: -0.1px;
-    transition: all 0.15s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-}
-.pbtn:active { transform: scale(0.97); }
-.pbtn.go {
-    background: linear-gradient(135deg, #7c3aed, #9333ea);
-    color: white;
-    box-shadow: 0 2px 12px rgba(124,58,237,0.3);
-}
-.pbtn.go:hover { box-shadow: 0 4px 20px rgba(124,58,237,0.45); }
-.pbtn.alt {
-    background: rgba(255,255,255,0.05);
-    color: var(--text-2);
-    border: 1px solid var(--border);
-}
-.pbtn.alt:hover { background: rgba(255,255,255,0.08); color: var(--text); }
-.pbtn.danger {
-    background: rgba(248,113,113,0.1);
-    color: var(--red);
-    border: 1px solid rgba(248,113,113,0.15);
-}
-.pbtn.danger:hover { background: rgba(248,113,113,0.18); }
+        .task-input {
+            flex: 1;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            color: #e0e0e0;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
 
-/* ========== 底栏 ========== */
-.footer {
-    display: flex;
-    padding: 14px 24px;
-    border-top: 1px solid var(--border);
-    gap: 8px;
-}
-.fbtn {
-    flex: 1;
-    height: 36px;
-    border-radius: 10px;
-    border: none;
-    background: rgba(255,255,255,0.03);
-    color: var(--text-3);
-    font-size: 12px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-}
-.fbtn:hover { background: rgba(255,255,255,0.06); color: var(--text-2); }
+        .task-input:focus {
+            border-color: rgba(99, 102, 241, 0.5);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+        }
 
-/* ========== 右侧: 确认对话框 ========== */
-.side {
-    display: flex;
-    flex-direction: column;
-    gap: 32px;
-    align-items: center;
-}
+        .task-input::placeholder {
+            color: #555;
+        }
 
-.dialog-card {
-    width: 340px;
-    border-radius: 24px;
-    background: linear-gradient(165deg, #1e1a35, #151225);
-    border: 1px solid rgba(255,255,255,0.08);
-    box-shadow:
-        0 24px 60px -12px rgba(0,0,0,0.7),
-        0 0 40px -10px rgba(124,58,237,0.15);
-    overflow: hidden;
-}
-.dialog-top {
-    padding: 28px 28px 0;
-    text-align: center;
-}
-.dialog-icon {
-    width: 48px; height: 48px;
-    border-radius: 14px;
-    background: rgba(248,113,113,0.1);
-    display: grid; place-items: center;
-    margin: 0 auto 16px;
-    font-size: 22px;
-}
-.dialog-h {
-    font-size: 17px;
-    font-weight: 700;
-    color: var(--text);
-    margin-bottom: 8px;
-    letter-spacing: -0.3px;
-}
-.dialog-p {
-    font-size: 13.5px;
-    color: var(--text-3);
-    line-height: 1.6;
-}
-.dialog-p strong {
-    color: var(--text-2);
-    font-weight: 500;
-}
-.dialog-actions {
-    padding: 24px 28px 28px;
-    display: flex;
-    gap: 10px;
-}
-.dbtn {
-    flex: 1;
-    height: 44px;
-    border-radius: 12px;
-    border: none;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.15s;
-}
-.dbtn:active { transform: scale(0.97); }
-.dbtn.cancel {
-    background: rgba(255,255,255,0.05);
-    color: var(--text-2);
-    border: 1px solid var(--border);
-}
-.dbtn.cancel:hover { background: rgba(255,255,255,0.08); }
-.dbtn.confirm {
-    background: var(--red);
-    color: white;
-    box-shadow: 0 4px 16px rgba(248,113,113,0.3);
-}
-.dbtn.confirm:hover { box-shadow: 0 6px 24px rgba(248,113,113,0.4); }
+        .add-btn {
+            padding: 12px 20px;
+            background: linear-gradient(135deg, #6366f1, #7c3aed);
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.3s;
+            white-space: nowrap;
+        }
 
-/* 说明卡片 */
-.notes {
-    width: 340px;
-    border-radius: 16px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    padding: 24px;
-}
-.notes h4 {
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--purple-2);
-    margin-bottom: 16px;
-    letter-spacing: -0.2px;
-}
-.note-item {
-    display: flex;
-    gap: 10px;
-    align-items: flex-start;
-    margin-bottom: 12px;
-    font-size: 12.5px;
-    color: var(--text-3);
-    line-height: 1.5;
-}
-.note-item:last-child { margin-bottom: 0; }
-.note-num {
-    width: 20px; height: 20px;
-    border-radius: 6px;
-    background: rgba(124,58,237,0.1);
-    color: var(--purple-2);
-    font-size: 10px;
-    font-weight: 700;
-    display: grid; place-items: center;
-    flex-shrink: 0;
-}
-.note-item strong { color: var(--text-2); font-weight: 500; }
-</style>
+        .add-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+        }
+
+        /* --- 日期标签 --- */
+        .date-header {
+            padding: 0 20px;
+            margin-bottom: 8px;
+        }
+
+        .date-tag {
+            font-size: 12px;
+            color: #6366f1;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        /* --- 任务列表 --- */
+        .task-list {
+            padding: 0 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            max-height: 280px;
+            overflow-y: auto;
+        }
+
+        .task-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            transition: background 0.2s, border-color 0.2s;
+            cursor: pointer;
+        }
+
+        .task-item:hover {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(255, 255, 255, 0.08);
+        }
+
+        .task-checkbox {
+            width: 20px;
+            height: 20px;
+            border-radius: 6px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: all 0.3s;
+        }
+
+        .task-item.completed .task-checkbox {
+            background: linear-gradient(135deg, #6366f1, #a855f7);
+            border-color: transparent;
+        }
+
+        .task-checkbox-icon {
+            color: white;
+            font-size: 12px;
+            font-weight: 700;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .task-item.completed .task-checkbox-icon {
+            opacity: 1;
+        }
+
+        .task-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .task-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: #e0e0e0;
+            transition: all 0.3s;
+        }
+
+        .task-item.completed .task-title {
+            text-decoration: line-through;
+            color: #555;
+        }
+
+        .task-time {
+            font-size: 11px;
+            color: #555;
+        }
+
+        .task-delete {
+            opacity: 0;
+            color: #ef4444;
+            cursor: pointer;
+            font-size: 16px;
+            transition: opacity 0.2s;
+            padding: 4px;
+        }
+
+        .task-item:hover .task-delete {
+            opacity: 0.6;
+        }
+
+        .task-delete:hover {
+            opacity: 1 !important;
+        }
+
+        /* --- 番茄钟区域 --- */
+        .pomodoro-section {
+            margin: 16px 20px;
+            padding: 20px;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(168, 85, 247, 0.06));
+            border-radius: 14px;
+            border: 1px solid rgba(99, 102, 241, 0.12);
+        }
+
+        .pomodoro-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .pomodoro-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: #a78bfa;
+            font-weight: 600;
+        }
+
+        .pomodoro-status {
+            font-size: 11px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            background: rgba(99, 102, 241, 0.15);
+            color: #a78bfa;
+            font-weight: 500;
+        }
+
+        .pomodoro-timer {
+            text-align: center;
+            margin-bottom: 16px;
+        }
+
+        .timer-display {
+            font-size: 48px;
+            font-weight: 700;
+            color: #e0e0e0;
+            letter-spacing: 4px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .timer-progress {
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 4px;
+            margin-top: 12px;
+            overflow: hidden;
+        }
+
+        .timer-progress-bar {
+            width: 65%;
+            height: 100%;
+            background: linear-gradient(90deg, #6366f1, #a855f7);
+            border-radius: 4px;
+            transition: width 0.5s;
+        }
+
+        .pomodoro-controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .pomo-btn {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .pomo-btn.start {
+            background: linear-gradient(135deg, #6366f1, #7c3aed);
+            color: white;
+        }
+
+        .pomo-btn.start:hover {
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+            transform: translateY(-1px);
+        }
+
+        .pomo-btn.pause {
+            background: rgba(255, 255, 255, 0.08);
+            color: #ccc;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .pomo-btn.pause:hover {
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        .pomo-btn.stop {
+            background: rgba(239, 68, 68, 0.12);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.15);
+        }
+
+        .pomo-btn.stop:hover {
+            background: rgba(239, 68, 68, 0.2);
+        }
+
+        /* --- 底部功能栏 --- */
+        .bottom-bar {
+            display: flex;
+            justify-content: space-between;
+            padding: 16px 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .bottom-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            color: #999;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .bottom-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #ccc;
+        }
+
+        /* ============================================
+           历史查询窗体样式
+           ============================================ */
+        .history-window {
+            width: 560px;
+            background: linear-gradient(145deg, #1a1a2e, #16162a);
+            border-radius: 16px;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+            box-shadow: 
+                0 20px 60px rgba(0, 0, 0, 0.5),
+                0 0 40px rgba(99, 102, 241, 0.08);
+            overflow: hidden;
+        }
+
+        .search-area {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .search-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .search-label {
+            font-size: 13px;
+            color: #888;
+            width: 70px;
+            flex-shrink: 0;
+        }
+
+        .date-input, .keyword-input {
+            flex: 1;
+            padding: 10px 14px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            color: #e0e0e0;
+            font-size: 13px;
+            outline: none;
+        }
+
+        .search-btn {
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #6366f1, #7c3aed);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .search-btn:hover {
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+        }
+
+        .export-btn {
+            padding: 10px 16px;
+            background: rgba(34, 197, 94, 0.12);
+            border: 1px solid rgba(34, 197, 94, 0.2);
+            border-radius: 8px;
+            color: #4ade80;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .export-btn:hover {
+            background: rgba(34, 197, 94, 0.2);
+        }
+
+        .history-list {
+            padding: 16px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .history-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .history-status {
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        .history-status.done {
+            background: rgba(34, 197, 94, 0.15);
+            color: #4ade80;
+        }
+
+        .history-status.pending {
+            background: rgba(245, 158, 11, 0.15);
+            color: #fbbf24;
+        }
+
+        .history-info {
+            flex: 1;
+        }
+
+        .history-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: #e0e0e0;
+        }
+
+        .history-date {
+            font-size: 11px;
+            color: #555;
+            margin-top: 3px;
+        }
+
+        /* ============================================
+           番茄钟弹窗样式
+           ============================================ */
+        .toast-container {
+            position: relative;
+        }
+
+        .toast-window {
+            width: 320px;
+            background: linear-gradient(145deg, rgba(26, 26, 46, 0.95), rgba(22, 22, 42, 0.98));
+            backdrop-filter: blur(20px);
+            border-radius: 16px;
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            box-shadow: 
+                0 20px 60px rgba(0, 0, 0, 0.6),
+                0 0 40px rgba(99, 102, 241, 0.15);
+            padding: 28px;
+            text-align: center;
+            animation: slideIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px) scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .toast-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            animation: bounce 1s ease-in-out infinite alternate;
+        }
+
+        @keyframes bounce {
+            from { transform: translateY(0); }
+            to { transform: translateY(-6px); }
+        }
+
+        .toast-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: #e0e0e0;
+            margin-bottom: 8px;
+        }
+
+        .toast-subtitle {
+            font-size: 14px;
+            color: #888;
+            margin-bottom: 24px;
+        }
+
+        .toast-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .toast-btn {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .toast-btn.rest {
+            background: linear-gradient(135deg, #6366f1, #7c3aed);
+            color: white;
+        }
+
+        .toast-btn.rest:hover {
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+        }
+
+        .toast-btn.continue {
+            background: rgba(255, 255, 255, 0.08);
+            color: #ccc;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .toast-btn.continue:hover {
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        .toast-screen-hint {
+            position: absolute;
+            bottom: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 11px;
+            color: #555;
+            white-space: nowrap;
+        }
+
+        /* ============================================
+           设置/主题切换窗体样式
+           ============================================ */
+        .settings-window {
+            width: 400px;
+            background: linear-gradient(145deg, #1a1a2e, #16162a);
+            border-radius: 16px;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+            box-shadow: 
+                0 20px 60px rgba(0, 0, 0, 0.5),
+                0 0 40px rgba(99, 102, 241, 0.08);
+            overflow: hidden;
+        }
+
+        .settings-header {
+            padding: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .settings-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #e0e0e0;
+        }
+
+        .settings-body {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .setting-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .setting-group-label {
+            font-size: 12px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            font-weight: 600;
+        }
+
+        .color-palette {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .color-option {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            cursor: pointer;
+            border: 3px solid transparent;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .color-option:hover {
+            transform: scale(1.1);
+        }
+
+        .color-option.active {
+            border-color: white;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+        }
+
+        .color-option.active::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-weight: 700;
+            font-size: 16px;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+        }
+
+        .time-setting {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 10px;
+        }
+
+        .time-setting-label {
+            font-size: 14px;
+            color: #ccc;
+        }
+
+        .time-setting-value {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .time-adjust-btn {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            background: rgba(255, 255, 255, 0.06);
+            color: #ccc;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .time-adjust-btn:hover {
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        .time-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: #e0e0e0;
+            min-width: 45px;
+            text-align: center;
+        }
+
+        /* ============================================
+           托盘模拟样式
+           ============================================ */
+        .tray-demo {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .tray-bar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 16px;
+            background: linear-gradient(145deg, #2d2d3f, #252538);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .tray-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tray-icon:hover {
+            transform: scale(1.2);
+        }
+
+        .tray-icon.taskato {
+            background: linear-gradient(135deg, #6366f1, #a855f7);
+        }
+
+        .tray-icon.other {
+            background: rgba(255, 255, 255, 0.1);
+            color: #888;
+        }
+
+        .tray-menu {
+            background: linear-gradient(145deg, #1a1a2e, #16162a);
+            border-radius: 10px;
+            border: 1px solid rgba(99, 102, 241, 0.15);
+            padding: 6px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .tray-menu-item {
+            padding: 10px 20px;
+            font-size: 13px;
+            color: #ccc;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s;
+            white-space: nowrap;
+        }
+
+        .tray-menu-item:hover {
+            background: rgba(99, 102, 241, 0.15);
+            color: #e0e0e0;
+        }
+
+        .tray-menu-item.danger {
+            color: #f87171;
+        }
+
+        .tray-menu-item.danger:hover {
+            background: rgba(239, 68, 68, 0.15);
+        }
+
+        .tray-separator {
+            height: 1px;
+            background: rgba(255, 255, 255, 0.06);
+            margin: 4px 8px;
+        }
+
+        .tray-arrow {
+            color: #555;
+            font-size: 20px;
+        }
+
+        /* ============================================
+           分隔线
+           ============================================ */
+        .section-divider {
+            width: 60px;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.5), transparent);
+            margin: 10px 0;
+        }
+
+        /* ============================================
+           各模块的展示排列
+           ============================================ */
+        .preview-grid {
+            display: flex;
+            gap: 40px;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        /* 滚动条美化 */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(99, 102, 241, 0.3);
+            border-radius: 4px;
+        }
+    </style>
 </head>
 <body>
 
-<!-- ========== 主窗体 ========== -->
-<div class="app">
-    <!-- 标题栏 -->
-    <div class="titlebar">
-        <div class="brand">
-            <div class="brand-icon">✦</div>
-            <div class="brand-name">Taskato</div>
-        </div>
-        <div class="controls">
-            <button class="ctrl">—</button>
-            <button class="ctrl" style="font-size:9px">⬜</button>
-            <button class="ctrl x">✕</button>
-        </div>
+    <!-- ========== 页面标题 ========== -->
+    <div class="page-title">
+        <h1>Taskato UI 设计预览</h1>
+        <p>以下为各个窗体的视觉效果预览 · 最终 WPF 版本将还原此设计</p>
     </div>
 
-    <!-- 输入区 -->
-    <div class="input-section">
-        <div class="input-box">
-            <span class="placeholder">请输入新任务，按 Enter 添加...</span>
-            <div class="dots">
-                <div class="dot" style="background:var(--gray)"></div>
-                <div class="dot active" style="background:var(--green)"></div>
-                <div class="dot" style="background:var(--orange)"></div>
-                <div class="dot" style="background:var(--red)"></div>
-            </div>
-        </div>
-        <button class="plus-btn">+</button>
-    </div>
-
-    <!-- 日期 -->
-    <div class="meta-row">
-        <span style="font-size:12px">📅</span>
-        <span class="meta-date">2026-04-28</span>
-        <span class="meta-dot"></span>
-        <span class="meta-stat">完成 2 / 5</span>
-    </div>
-
-    <!-- 任务列表 -->
-    <div class="tasks">
-        <div class="task p-red">
-            <div class="task-body">
-                <div class="check"></div>
-                <div class="task-text">
-                    <div class="task-title">完成 V2 界面重构</div>
-                    <div class="task-sub">10:30 · 紧急</div>
+    <!-- ========== 主窗体预览 ========== -->
+    <div class="preview-section">
+        <div class="preview-label">📱 主窗体 — Main Window</div>
+        <div class="main-window">
+            <!-- 标题栏 -->
+            <div class="window-titlebar">
+                <div class="titlebar-left">
+                    <div class="app-icon">✦</div>
+                    <span class="app-name">Taskato</span>
+                </div>
+                <div class="window-controls">
+                    <button class="win-btn minimize"></button>
+                    <button class="win-btn maximize"></button>
+                    <button class="win-btn close"></button>
                 </div>
             </div>
-            <div class="task-del">✕</div>
-        </div>
 
-        <div class="task p-orange">
-            <div class="task-body">
-                <div class="check"></div>
-                <div class="task-text">
-                    <div class="task-title">优化番茄钟按钮布局</div>
-                    <div class="task-sub">11:20 · 重要</div>
+            <!-- 输入区域 -->
+            <div class="input-area">
+                <input type="text" class="task-input" placeholder="输入新任务，按 Enter 添加..." />
+                <button class="add-btn">+ 添加</button>
+            </div>
+
+            <!-- 日期标签 -->
+            <div class="date-header">
+                <span class="date-tag">📅 今日 · 2026年4月27日</span>
+            </div>
+
+            <!-- 任务列表 -->
+            <div class="task-list">
+                <div class="task-item">
+                    <div class="task-checkbox"><span class="task-checkbox-icon">✓</span></div>
+                    <div class="task-content">
+                        <div class="task-title">完成产品需求文档评审</div>
+                        <div class="task-time">14:30 创建</div>
+                    </div>
+                    <span class="task-delete">✕</span>
+                </div>
+                <div class="task-item completed">
+                    <div class="task-checkbox"><span class="task-checkbox-icon">✓</span></div>
+                    <div class="task-content">
+                        <div class="task-title">修复登录页面 Bug #2847</div>
+                        <div class="task-time">10:15 创建 · 11:42 完成</div>
+                    </div>
+                    <span class="task-delete">✕</span>
+                </div>
+                <div class="task-item">
+                    <div class="task-checkbox"><span class="task-checkbox-icon">✓</span></div>
+                    <div class="task-content">
+                        <div class="task-title">准备周五团队会议 PPT</div>
+                        <div class="task-time">09:00 创建</div>
+                    </div>
+                    <span class="task-delete">✕</span>
+                </div>
+                <div class="task-item completed">
+                    <div class="task-checkbox"><span class="task-checkbox-icon">✓</span></div>
+                    <div class="task-content">
+                        <div class="task-title">回复客户邮件</div>
+                        <div class="task-time">08:30 创建 · 09:15 完成</div>
+                    </div>
+                    <span class="task-delete">✕</span>
+                </div>
+                <div class="task-item">
+                    <div class="task-checkbox"><span class="task-checkbox-icon">✓</span></div>
+                    <div class="task-content">
+                        <div class="task-title">优化数据库查询性能</div>
+                        <div class="task-time">08:00 创建</div>
+                    </div>
+                    <span class="task-delete">✕</span>
                 </div>
             </div>
-            <div class="task-del">✕</div>
-        </div>
 
-        <div class="task p-green">
-            <div class="task-body">
-                <div class="check done"></div>
-                <div class="task-text">
-                    <div class="task-title struck">修复滚动条样式</div>
-                    <div class="task-sub">09:00 · 已完成</div>
+            <!-- 番茄钟区域 -->
+            <div class="pomodoro-section">
+                <div class="pomodoro-header">
+                    <div class="pomodoro-label">🍅 番茄钟</div>
+                    <span class="pomodoro-status">专注中</span>
+                </div>
+                <div class="pomodoro-timer">
+                    <div class="timer-display">16:23</div>
+                    <div class="timer-progress">
+                        <div class="timer-progress-bar"></div>
+                    </div>
+                </div>
+                <div class="pomodoro-controls">
+                    <button class="pomo-btn start">▶ 开始</button>
+                    <button class="pomo-btn pause">⏸ 暂停</button>
+                    <button class="pomo-btn stop">⏹ 停止</button>
                 </div>
             </div>
-            <div class="task-del">✕</div>
-        </div>
 
-        <div class="task p-gray">
-            <div class="task-body">
-                <div class="check"></div>
-                <div class="task-text">
-                    <div class="task-title">阅读 .NET 8 技术文档</div>
-                    <div class="task-sub">08:45</div>
+            <!-- 底部功能栏 -->
+            <div class="bottom-bar">
+                <button class="bottom-btn">📋 历史记录</button>
+                <button class="bottom-btn">⚙ 设置 / 主题</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== 第二行：历史查询 + 番茄弹窗 ========== -->
+    <div class="preview-grid">
+
+        <!-- 历史查询窗体 -->
+        <div class="preview-section">
+            <div class="preview-label">📋 历史查询 — History Window</div>
+            <div class="history-window">
+                <div class="window-titlebar">
+                    <div class="titlebar-left">
+                        <div class="app-icon">📋</div>
+                        <span class="app-name">历史任务查询</span>
+                    </div>
+                    <div class="window-controls">
+                        <button class="win-btn minimize"></button>
+                        <button class="win-btn maximize"></button>
+                        <button class="win-btn close"></button>
+                    </div>
+                </div>
+                <div class="search-area">
+                    <div class="search-row">
+                        <span class="search-label">开始日期</span>
+                        <input type="text" class="date-input" value="2026-04-01" />
+                        <span class="search-label" style="width: auto;">至</span>
+                        <input type="text" class="date-input" value="2026-04-27" />
+                    </div>
+                    <div class="search-row">
+                        <span class="search-label">关键词</span>
+                        <input type="text" class="keyword-input" placeholder="输入关键词搜索..." value="Bug" />
+                        <button class="search-btn">🔍 搜索</button>
+                        <button class="export-btn">📥 导出</button>
+                    </div>
+                </div>
+                <div class="history-list">
+                    <div class="history-item">
+                        <span class="history-status done">已完成</span>
+                        <div class="history-info">
+                            <div class="history-title">修复登录页面 Bug #2847</div>
+                            <div class="history-date">2026-04-27 · 10:15 创建 → 11:42 完成</div>
+                        </div>
+                    </div>
+                    <div class="history-item">
+                        <span class="history-status done">已完成</span>
+                        <div class="history-info">
+                            <div class="history-title">修复导航栏 Bug #2801</div>
+                            <div class="history-date">2026-04-25 · 14:00 创建 → 16:30 完成</div>
+                        </div>
+                    </div>
+                    <div class="history-item">
+                        <span class="history-status pending">未完成</span>
+                        <div class="history-info">
+                            <div class="history-title">排查内存泄漏 Bug #2756</div>
+                            <div class="history-date">2026-04-23 · 09:00 创建</div>
+                        </div>
+                    </div>
+                    <div class="history-item">
+                        <span class="history-status done">已完成</span>
+                        <div class="history-info">
+                            <div class="history-title">修复数据同步 Bug #2712</div>
+                            <div class="history-date">2026-04-20 · 11:30 创建 → 15:00 完成</div>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div class="task-del">✕</div>
         </div>
-    </div>
 
-    <!-- 番茄钟 -->
-    <div class="pomo">
-        <div class="pomo-head">
-            <div class="pomo-tag">🍅 专注模式</div>
-            <div class="pomo-status">进行中</div>
-        </div>
-        <div class="timer-block">
-            <div class="timer-row">
-                <button class="adj">−</button>
-                <div class="digits">24:59</div>
-                <button class="adj">+</button>
+        <!-- 右侧列：弹窗 + 设置 + 托盘 -->
+        <div style="display: flex; flex-direction: column; gap: 50px; align-items: center;">
+
+            <!-- 番茄钟弹窗 -->
+            <div class="preview-section">
+                <div class="preview-label">🔔 置顶弹窗 — Toast Notification</div>
+                <div class="toast-container">
+                    <div class="toast-window">
+                        <div class="toast-icon">🍅</div>
+                        <div class="toast-title">番茄钟时间到！</div>
+                        <div class="toast-subtitle">你已完成 25 分钟专注工作</div>
+                        <div class="toast-actions">
+                            <button class="toast-btn rest">☕ 休息一下</button>
+                            <button class="toast-btn continue">💪 继续工作</button>
+                        </div>
+                    </div>
+                    <div class="toast-screen-hint">↑ 此窗口将在屏幕右下角弹出，始终置顶显示</div>
+                </div>
             </div>
-        </div>
-        <div class="bar-track"><div class="bar-fill"></div></div>
-        <div class="pomo-grid">
-            <button class="pbtn go">▶ 开始</button>
-            <button class="pbtn alt">⏸ 暂停</button>
-            <button class="pbtn danger">⏹ 停止</button>
-            <button class="pbtn alt">☕ 提前休息</button>
-        </div>
-    </div>
 
-    <!-- 底栏 -->
-    <div class="footer">
-        <button class="fbtn">📋 历史记录</button>
-        <button class="fbtn">⚙ 设置 / 主题</button>
-    </div>
-</div>
-
-<!-- ========== 右侧 ========== -->
-<div class="side">
-    <!-- 删除确认框 -->
-    <div class="dialog-card">
-        <div class="dialog-top">
-            <div class="dialog-icon">🗑️</div>
-            <div class="dialog-h">确认删除任务？</div>
-            <div class="dialog-p">
-                即将删除 <strong>"完成 V2 界面重构"</strong>，<br>此操作无法撤销。
+            <!-- 设置/主题窗体 -->
+            <div class="preview-section">
+                <div class="preview-label">⚙ 设置 / 主题 — Settings</div>
+                <div class="settings-window">
+                    <div class="settings-header">
+                        <div class="settings-title">⚙ 设置</div>
+                    </div>
+                    <div class="settings-body">
+                        <!-- 主题颜色 -->
+                        <div class="setting-group">
+                            <div class="setting-group-label">🎨 主题颜色</div>
+                            <div class="color-palette">
+                                <div class="color-option active" style="background: linear-gradient(135deg, #6366f1, #a855f7);"></div>
+                                <div class="color-option" style="background: linear-gradient(135deg, #ec4899, #f43f5e);"></div>
+                                <div class="color-option" style="background: linear-gradient(135deg, #14b8a6, #06b6d4);"></div>
+                                <div class="color-option" style="background: linear-gradient(135deg, #f59e0b, #f97316);"></div>
+                                <div class="color-option" style="background: linear-gradient(135deg, #22c55e, #10b981);"></div>
+                                <div class="color-option" style="background: linear-gradient(135deg, #3b82f6, #2563eb);"></div>
+                            </div>
+                        </div>
+                        <!-- 番茄钟时长 -->
+                        <div class="setting-group">
+                            <div class="setting-group-label">⏱ 番茄钟时长</div>
+                            <div class="time-setting">
+                                <span class="time-setting-label">工作时长</span>
+                                <div class="time-setting-value">
+                                    <button class="time-adjust-btn">−</button>
+                                    <span class="time-value">25 min</span>
+                                    <button class="time-adjust-btn">+</button>
+                                </div>
+                            </div>
+                            <div class="time-setting">
+                                <span class="time-setting-label">休息时长</span>
+                                <div class="time-setting-value">
+                                    <button class="time-adjust-btn">−</button>
+                                    <span class="time-value">5 min</span>
+                                    <button class="time-adjust-btn">+</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-        </div>
-        <div class="dialog-actions">
-            <button class="dbtn cancel">取消</button>
-            <button class="dbtn confirm">删除</button>
-        </div>
-    </div>
 
-    <!-- 修改说明 -->
-    <div class="notes">
-        <h4>✏️ 本次优化项</h4>
-        <div class="note-item">
-            <span class="note-num">1</span>
-            <span><strong>确认框</strong> — 统一深色主题，图标 + 居中排版</span>
-        </div>
-        <div class="note-item">
-            <span class="note-num">2</span>
-            <span><strong>输入框</strong> — 增加水印引导文字</span>
-        </div>
-        <div class="note-item">
-            <span class="note-num">3</span>
-            <span><strong>添加按钮</strong> — 恢复紫色 + 号按钮</span>
-        </div>
-        <div class="note-item">
-            <span class="note-num">4</span>
-            <span><strong>优先级</strong> — 改为卡片左边框着色，自然融合圆角</span>
-        </div>
-        <div class="note-item">
-            <span class="note-num">5</span>
-            <span><strong>番茄钟</strong> — 2×2 网格按钮，不再溢出</span>
+            <!-- 托盘模拟 -->
+            <div class="preview-section">
+                <div class="preview-label">🖥 系统托盘 — System Tray</div>
+                <div class="tray-demo">
+                    <div class="tray-bar">
+                        <div class="tray-icon other">🔊</div>
+                        <div class="tray-icon other">🌐</div>
+                        <div class="tray-icon other">中</div>
+                        <div class="tray-icon taskato">✦</div>
+                    </div>
+                    <span class="tray-arrow">→</span>
+                    <div class="tray-menu">
+                        <div class="tray-menu-item">📱 显示主窗口</div>
+                        <div class="tray-menu-item">🍅 番茄钟: 16:23</div>
+                        <div class="tray-separator"></div>
+                        <div class="tray-menu-item danger">✕ 退出 Taskato</div>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
-</div>
 
 </body>
 </html>

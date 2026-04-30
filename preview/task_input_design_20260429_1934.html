@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>任务输入模块设计提案 - Taskato</title>
+    <style>
+        :root {
+            --bg: #1a1a2e;
+            --primary: #6366f1;
+            --secondary: #a855f7;
+            --glass: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            background-color: #0b0b1a;
+            color: white;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px;
+            margin: 0;
+        }
+
+        .container {
+            width: 480px;
+            display: flex;
+            flex-direction: column;
+            gap: 40px;
+        }
+
+        .design-section {
+            background: rgba(255, 255, 255, 0.02);
+            padding: 30px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .design-title {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #94a3b8;
+            margin-bottom: 20px;
+        }
+
+        /* --- 方案 1: 极简胶囊 (Minimal Capsule) --- */
+        .capsule-input {
+            height: 56px;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 100px;
+            display: flex;
+            align-items: center;
+            padding: 0 8px 0 20px;
+            transition: all 0.3s;
+        }
+
+        .capsule-input:focus-within {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: var(--primary);
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.2);
+        }
+
+        .input-field {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: white;
+            font-size: 15px;
+            outline: none;
+        }
+
+        .input-field::placeholder { color: rgba(255, 255, 255, 0.3); }
+
+        .priority-dots {
+            display: flex;
+            gap: 8px;
+            margin-right: 15px;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            cursor: pointer;
+        }
+
+        .dot.active { background: #10b981; box-shadow: 0 0 8px #10b981; }
+
+        .add-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+            transition: transform 0.2s;
+        }
+
+        .add-btn:hover { transform: scale(1.1); }
+
+        /* --- 方案 2: 深邃霓虹槽 (Neon Groove) --- */
+        .groove-input {
+            background: #0d0d18;
+            border-radius: 16px;
+            padding: 16px;
+            border-left: 4px solid var(--primary);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);
+        }
+
+        .groove-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .priority-tag {
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--primary);
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        /* --- 方案 3: 灵动极光 (Aurora Glass) --- */
+        .aurora-input {
+            position: relative;
+            background: linear-gradient(90deg, rgba(99, 102, 241, 0.05), rgba(168, 85, 247, 0.05));
+            border-radius: 12px;
+            padding: 2px; /* For gradient border effect */
+        }
+
+        .aurora-inner {
+            background: #1a1a2e;
+            border-radius: 10px;
+            display: flex;
+            padding: 12px 16px;
+            align-items: center;
+        }
+
+        .aurora-input::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 12px;
+            background: linear-gradient(90deg, #6366f1, #a855f7);
+            opacity: 0.3;
+            z-index: -1;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>任务输入模块设计方案</h1>
+
+        <div class="design-section">
+            <div class="design-title">方案 01: 极简流体胶囊 (Minimal Capsule)</div>
+            <div class="capsule-input">
+                <input type="text" class="input-field" placeholder="想要完成什么？">
+                <div class="priority-dots">
+                    <div class="dot active"></div>
+                    <div class="dot"></div>
+                    <div class="dot"></div>
+                </div>
+                <div class="add-btn">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                </div>
+            </div>
+            <p style="font-size: 13px; color: #64748b; margin-top: 15px;">
+                特点：全圆角设计，输入框居中，优先级以极简圆点呈现。右侧带渐变色的圆形添加按钮是视觉焦点。
+            </p>
+        </div>
+
+        <div class="design-section">
+            <div class="design-title">方案 02: 现代专业长槽 (Pro Groove)</div>
+            <div class="groove-input">
+                <input type="text" class="input-field" placeholder="添加新任务...">
+                <div class="groove-bottom">
+                    <div class="priority-tag">普通优先级</div>
+                    <div style="font-size: 12px; opacity: 0.4;">按回车保存</div>
+                </div>
+            </div>
+            <p style="font-size: 13px; color: #64748b; margin-top: 15px;">
+                特点：更有“重量感”的设计，强调输入状态。左侧有一条暗示主题色的垂直条，显得专业且克制。
+            </p>
+        </div>
+
+        <div class="design-section">
+            <div class="design-title">方案 03: 悬浮霓虹卡片 (Aurora Glass)</div>
+            <div class="aurora-input">
+                <div class="aurora-inner">
+                    <span style="margin-right: 12px; opacity: 0.5;">⚡</span>
+                    <input type="text" class="input-field" placeholder="快速捕捉任务...">
+                    <div style="color: var(--secondary); font-weight: bold; font-size: 13px; cursor: pointer;">添加</div>
+                </div>
+            </div>
+            <p style="font-size: 13px; color: #64748b; margin-top: 15px;">
+                特点：带有微妙的霓虹外溢效果，背景使用轻微渐变，适合追求极高颜值的科技风格。
+            </p>
+        </div>
+    </div>
+</body>
+</html>

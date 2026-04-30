@@ -251,6 +251,16 @@ namespace Taskato.Views
             DragMove();
         }
 
+        private void MinimizeButton_Click(object sender, RoutedEventArgs e)
+        {
+            WindowState = WindowState.Minimized;
+        }
+
+        private void MaximizeButton_Click(object sender, RoutedEventArgs e)
+        {
+            WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+        }
+
         /// <summary>
         /// 关闭按钮 (RoutedEventArgs 版本)
         /// </summary>
