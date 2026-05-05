@@ -91,6 +91,7 @@ namespace Taskato
             // 托盘菜单"退出" → 真正关闭应用
             _trayService.ExitRequested += () =>
             {
+                mainWindow.IsAppShuttingDown = true; // 标记应用正在退出，允许窗口销毁
                 _trayService.Dispose();  // 清理托盘图标
                 Shutdown();              // 退出应用
             };

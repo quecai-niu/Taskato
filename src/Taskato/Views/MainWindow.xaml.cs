@@ -13,6 +13,12 @@ namespace Taskato.Views
     /// </summary>
     public partial class MainWindow : Window
     {
+        /// <summary>
+        /// 是否正在退出整个应用程序。
+        /// 如果为 true，则允许窗口真正关闭；否则只允许隐藏。
+        /// </summary>
+        public bool IsAppShuttingDown { get; set; } = false;
+
         public MainWindow()
         {
             InitializeComponent();
@@ -72,29 +78,26 @@ namespace Taskato.Views
         }
 
         /// <summary>
-        /// 最小化按钮（黄色圆点） → 隐藏到托盘
+        /// 最小化按钮 → 隐藏到任务栏
         /// </summary>
-        private void MinimizeButton_Click(object sender, MouseButtonEventArgs e)
+        private void MinimizeButton_Click(object sender, RoutedEventArgs e)
         {
-            e.Handled = true;
             WindowState = WindowState.Minimized;
         }
 
         /// <summary>
-        /// 最大化/还原按钮（绿色圆点）
+        /// 最大化/还原按钮
         /// </summary>
-        private void MaximizeButton_Click(object sender, MouseButtonEventArgs e)
+        private void MaximizeButton_Click(object sender, RoutedEventArgs e)
         {
-            e.Handled = true;
             ToggleMaximize();
         }
 
         /// <summary>
-        /// 关闭按钮（红色圆点） → 隐藏到托盘而非真正退出
+        /// 关闭按钮 → 隐藏到托盘而非真正退出
         /// </summary>
-        private void CloseButton_Click(object sender, MouseButtonEventArgs e)
+        private void CloseButton_Click(object sender, RoutedEventArgs e)
         {
-            e.Handled = true;
             Hide(); // 只是隐藏，应用继续在后台运行
         }
 
@@ -106,6 +109,25 @@ namespace Taskato.Views
             WindowState = WindowState == WindowState.Maximized
                 ? WindowState.Normal
                 : WindowState.Maximized;
+        }
+
+        /// <summary>
+        /// 关键：拦截窗口关闭事件
+        /// 当用户通过 Alt+F4、任务栏右键或其他系统方式关闭窗口时，
+        /// 拦截该行为并改为“隐藏”，以防止窗口对象被销毁导致无法再次通过托盘唤起。
+        /// </summary>
+        protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+        {
+            if (IsAppShuttingDown)
+            {
+                // 如果是应用正在退出，允许窗口正常关闭
+                return;
+            }
+
+            // 拦截手动关闭操作
+            e.Cancel = true;
+            // 改为隐藏
+            this.Hide();
         }
 
         // ==================== 任务列表操作 ====================
@@ -136,26 +158,22 @@ namespace Taskato.Views
         }
 
         /// <summary>
-        /// 点击删除按钮 → 删除任务
+        /// 点击删除按钮 → 弹出确认对话框并执行删除
         /// </summary>
         private void DeleteButton_Click(object sender, MouseButtonEventArgs e)
         {
             if (sender is FrameworkElement element && DataContext is MainViewModel vm)
             {
-                vm.DeleteTaskCommand.Execute(element.Tag);
+                if (ConfirmDialog.Show(this, "确定要删除这个任务吗？此操作无法撤销。"))
+                {
+                    vm.DeleteTaskCommand.Execute(element.Tag);
+                }
             }
             e.Handled = true;
         }
 
-        // ==================== 滑动删除手势相关状态 ====================
-
-        private System.Windows.Point _swipeStartPoint;
-        private bool _isSwiping = false;
-        private System.Windows.Controls.Border? _currentSwipingCard = null;
-        private System.Windows.Media.TranslateTransform? _currentTransform = null;
-
         /// <summary>
-        /// 任务卡片按下 → 双击详情或准备滑动
+        /// 任务卡片按下 → 处理双击详情页编辑
         /// </summary>
         private async void TaskCard_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
@@ -164,10 +182,10 @@ namespace Taskato.Views
                 var detailWindow = new TaskDetailWindow(task) { Owner = this };
                 detailWindow.ShowDialog();
                 
-                // 弹窗关闭后，判断用户是否点击了保存
+                // 详情页关闭后，判断用户是否点击了保存
                 if (detailWindow.IsSaved)
                 {
-                    // 如果用户点击了保存，将替身的数据覆盖回本体
+                    // 数据覆盖逻辑：在 V2 中我们使用替身编辑，保存时同步本体
                     task.Title = detailWindow.EditingTask.Title;
                     task.Priority = detailWindow.EditingTask.Priority;
                     
@@ -178,84 +196,6 @@ namespace Taskato.Views
                 }
 
                 e.Handled = true;
-                return;
-            }
-
-            if (sender is System.Windows.Controls.Border card)
-            {
-                var transform = card.RenderTransform as System.Windows.Media.TranslateTransform;
-                
-                // 如果没有变换器，或者对象被 WPF 冻结（只读），需要克隆或新建一个解冻的实例
-                if (transform == null || transform.IsFrozen)
-                {
-                    transform = new System.Windows.Media.TranslateTransform(transform?.X ?? 0, 0);
-                    card.RenderTransform = transform;
-                }
-
-                // 重点：必须清除之前可能遗留的回弹/固定动画锁定，否则后面改值依旧报错
-                transform.BeginAnimation(System.Windows.Media.TranslateTransform.XProperty, null);
-
-                _swipeStartPoint = e.GetPosition(this);
-                _isSwiping = true;
-                _currentSwipingCard = card;
-                _currentTransform = transform;
-                card.CaptureMouse();
-            }
-        }
-
-        private void TaskCard_MouseMove(object sender, System.Windows.Input.MouseEventArgs e)
-        {
-            if (_isSwiping && _currentSwipingCard != null && _currentTransform != null)
-            {
-                var currentPoint = e.GetPosition(this);
-                var deltaX = currentPoint.X - _swipeStartPoint.X;
-
-                // 仅允许向左滑动（负值），最大拖拽距离设置点阻尼（不要超过太多）
-                if (deltaX < 0 && deltaX > -100)
-                {
-                    _currentTransform.X = deltaX;
-                }
-                else if (deltaX >= 0)
-                {
-                    _currentTransform.X = 0;
-                }
-            }
-        }
-
-        private void TaskCard_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
-        {
-            ReleaseSwipe();
-        }
-
-        private void TaskCard_MouseLeave(object sender, System.Windows.Input.MouseEventArgs e)
-        {
-            // 防止拖拽异常遗留
-            if (_isSwiping && e.LeftButton == MouseButtonState.Released)
-            {
-                ReleaseSwipe();
-            }
-        }
-
-        private void ReleaseSwipe()
-        {
-            if (_isSwiping && _currentSwipingCard != null && _currentTransform != null)
-            {
-                // 如果左滑距离超过 35 像素，则磁吸固定在打开状态 (-70)；否则弹回 (0)
-                var finalTargetX = _currentTransform.X < -35 ? -70 : 0;
-                
-                var anim = new System.Windows.Media.Animation.DoubleAnimation(
-                    finalTargetX, new TimeSpan(0, 0, 0, 0, 250))
-                {
-                    EasingFunction = new System.Windows.Media.Animation.CubicEase { EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut }
-                };
-                
-                // 停止之前的硬编码转换（如果有的话），开始动画恢复
-                _currentTransform.BeginAnimation(System.Windows.Media.TranslateTransform.XProperty, anim);
-
-                _currentSwipingCard.ReleaseMouseCapture();
-                _isSwiping = false;
-                _currentSwipingCard = null;
-                _currentTransform = null;
             }
         }
     }

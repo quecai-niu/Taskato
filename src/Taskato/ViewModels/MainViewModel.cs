@@ -117,7 +117,36 @@ namespace Taskato.ViewModels
             set => SetProperty(ref _isTimerRunning, value);
         }
 
+        /// <summary>
+        /// 番茄钟是否处于暂停状态
+        /// </summary>
+        private bool _isPaused;
+        public bool IsPaused
+        {
+            get => _isPaused;
+            set => SetProperty(ref _isPaused, value);
+        }
+
+        /// <summary>
+        /// 番茄钟是否处于工作阶段
+        /// </summary>
+        public bool IsWorkingState => _pomodoroService.CurrentState == PomodoroService.PomodoroState.Working;
+
+        /// <summary>
+        /// 番茄钟是否处于休息阶段
+        /// </summary>
+        public bool IsRestingState => _pomodoroService.CurrentState == PomodoroService.PomodoroState.Resting;
+
         // ==================== 命令绑定 ====================
+
+        /// <summary>增加专注时间 (每次 5 分钟)</summary>
+        public ICommand IncreaseTimeCommand { get; }
+
+        /// <summary>减少专注时间 (每次 5 分钟)</summary>
+        public ICommand DecreaseTimeCommand { get; }
+
+        /// <summary>提前结束工作进入休息</summary>
+        public ICommand EarlyRestCommand { get; }
 
         /// <summary>添加新任务的命令</summary>
         public ICommand AddTaskCommand { get; }
@@ -203,6 +232,32 @@ namespace Taskato.ViewModels
             StopPomodoroCommand = new RelayCommand(_ => _pomodoroService.Stop(),
                 _ => IsTimerRunning);
 
+            // 动态调整时间逻辑 (仅在空闲/未运行状态可调)
+            IncreaseTimeCommand = new RelayCommand(_ =>
+            {
+                if (_pomodoroService.WorkMinutes < 120)
+                {
+                    _pomodoroService.WorkMinutes += 5;
+                    TimerDisplay = $"{_pomodoroService.WorkMinutes:D2}:00";
+                }
+            }, _ => !IsTimerRunning);
+
+            DecreaseTimeCommand = new RelayCommand(_ =>
+            {
+                if (_pomodoroService.WorkMinutes > 5)
+                {
+                    _pomodoroService.WorkMinutes -= 5;
+                    TimerDisplay = $"{_pomodoroService.WorkMinutes:D2}:00";
+                }
+            }, _ => !IsTimerRunning);
+
+            // 提前休息逻辑 (仅在工作中可触发)
+            EarlyRestCommand = new RelayCommand(_ =>
+            {
+                _pomodoroService.Stop();
+                StartRest();
+            }, _ => IsWorkingState);
+
             // 打开子窗体命令（具体的窗体创建逻辑在 View 层处理）
             OpenHistoryCommand = new RelayCommand(_ => OpenHistoryWindow());
             OpenSettingsCommand = new RelayCommand(_ => OpenSettingsWindow());
@@ -228,6 +283,11 @@ namespace Taskato.ViewModels
                 };
 
                 IsTimerRunning = state != PomodoroService.PomodoroState.Idle;
+                IsPaused = state == PomodoroService.PomodoroState.Paused;
+                
+                // 通知状态变更，触发 UI 按钮显隐和文字切换
+                OnPropertyChanged(nameof(IsWorkingState));
+                OnPropertyChanged(nameof(IsRestingState));
             };
 
             // 工作完成 → 通知 View 弹出提醒窗口

@@ -64,7 +64,20 @@ namespace Taskato.Views
             Close();
         }
 
-        private void CloseButton_Click(object sender, MouseButtonEventArgs e)
+        private void MinimizeButton_Click(object sender, RoutedEventArgs e)
+        {
+            WindowState = WindowState.Minimized;
+        }
+
+        private void MaximizeButton_Click(object sender, RoutedEventArgs e)
+        {
+            WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+        }
+
+        /// <summary>
+        /// 关闭按钮 (RoutedEventArgs 版本)
+        /// </summary>
+        private void CloseButton_Click(object sender, RoutedEventArgs e)
         {
             // 点击右上角 X 默认视为取消
             IsSaved = false;
