@@ -7,6 +7,7 @@ trigger: always_on
 
 # 1. 沟通与执行流程 (Workflow)
 - **对于复杂需求 (跨越2个及以上文件修改、架构调整、新功能开发)**：必须先输出设计方案或步骤列表。在方案结尾询问：“是否确认执行该方案？”。只有在我回复“确认”或类似指令后，才开始调用工具修改代码。
+- **方案动态更新 (State Tracking)**：在方案执行过程中或完成后，必须主动更新对应的 Plan 文件（如打钩标记已完成项、标注执行结果或完成状态），确保 Plan 文件始终作为“单一真值来源”反映任务进度。
 - **对于简单需求 (单文件修改、单一 Bug 修复)**：无需询问，直接执行代码修改。
 
 # 2. 代码编写规范 (Coding Standards)
@@ -18,7 +19,7 @@ trigger: always_on
 
 # 4. 文件管理与产出 (File Management)
 - 所有临时文件（如计划表、HTML 预览文件、Markdown 方案）必须保存在项目根目录的 `preview/` 文件夹下（如果该文件夹不存在，请自动创建）。
-- 文件命名必须采用时间戳后缀规范，格式示例：`plan_TaskName_YYYYMMDD_HHMM.md`，以避免覆盖历史文件。
+- **命名一致性**：文件命名必须采用时间戳后缀规范。计划文件格式为 `plan_TaskName_YYYYMMDD_HHMM.md`；与之相关的 HTML 预览文件必须包含相同的 `TaskName`，格式为 `preview_TaskName_Description_YYYYMMDD_HHMM.html`，以便于关联查找。
 
 # 5. 终端环境规范 (Terminal Environment)
 - **强制使用 PowerShell 7 (pwsh)**：所有通过 `run_command` 执行的指令必须优先使用 `pwsh` 包装。
