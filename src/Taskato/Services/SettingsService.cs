@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 
@@ -24,11 +25,17 @@ namespace Taskato.Services
         /// <summary>是否开启多组番茄钟功能</summary>
         public bool EnableMultiplePomodoros { get; set; } = false;
 
+        /// <summary>保存的附加番茄钟各自的工作时长</summary>
+        public List<int> AdditionalTimersWorkMinutes { get; set; } = new List<int>();
+
         /// <summary>
         /// 提示音方案选择：
-        /// 0 = 无声, 1 = Windows Notify, 2 = Windows Ding, 3 = Windows Background, 4 = chimes
+        /// 0 = 无声, 1 = Windows Notify, 2 = Windows Ding, 3 = Windows Background, 4 = chimes, 5 = 自定义音效
         /// </summary>
         public int NotificationSoundChoice { get; set; } = 3;
+
+        /// <summary>自定义音效文件路径</summary>
+        public string CustomSoundPath { get; set; } = string.Empty;
     }
 
     /// <summary>

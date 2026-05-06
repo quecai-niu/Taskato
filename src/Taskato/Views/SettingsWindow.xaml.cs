@@ -282,6 +282,12 @@ namespace Taskato.Views
             {
                 _settingsService.Config.NotificationSoundChoice = choice;
                 _settingsService.Save();
+
+                if (SelectCustomSoundBtn != null && CustomSoundPathText != null)
+                {
+                    SelectCustomSoundBtn.Visibility = choice == 5 ? Visibility.Visible : Visibility.Collapsed;
+                    CustomSoundPathText.Visibility = choice == 5 ? Visibility.Visible : Visibility.Collapsed;
+                }
             }
         }
 
@@ -290,16 +296,29 @@ namespace Taskato.Views
         /// </summary>
         private void InitSoundRadio(int index)
         {
-            var radios = new[] { Sound0, Sound1, Sound2, Sound3, Sound4 };
+            var radios = new[] { Sound0, Sound1, Sound2, Sound3, Sound4, Sound5 };
             int safeIndex = Math.Clamp(index, 0, radios.Length - 1);
             // 暫时解除事件避免初始化时触发保存
             foreach (var r in radios) r.Checked -= SoundRadio_Checked;
             radios[safeIndex].IsChecked = true;
+            
+            // 更新自定义音效路径显示
+            if (!string.IsNullOrEmpty(_settingsService.Config.CustomSoundPath))
+            {
+                CustomSoundPathText.Text = System.IO.Path.GetFileName(_settingsService.Config.CustomSoundPath);
+            }
+            
+            // 初始设置按钮可见性
+            SelectCustomSoundBtn.Visibility = safeIndex == 5 ? Visibility.Visible : Visibility.Collapsed;
+            CustomSoundPathText.Visibility = safeIndex == 5 ? Visibility.Visible : Visibility.Collapsed;
+
             foreach (var r in radios) r.Checked += SoundRadio_Checked;
         }
 
+        private System.Windows.Media.MediaPlayer? _mediaPlayer;
+
         /// <summary>
-        /// 试听按钮 — 在独立线程播放当前选中的音效
+        /// 试听按钮 — 使用 MediaPlayer 异步播放以避免卡顿
         /// </summary>
         private void PreviewSoundBtn_Click(object sender, RoutedEventArgs e)
         {
@@ -309,6 +328,7 @@ namespace Taskato.Views
                 { 2, @"C:\Windows\Media\Windows Ding.wav" },
                 { 3, @"C:\Windows\Media\Windows Background.wav" },
                 { 4, @"C:\Windows\Media\chimes.wav" },
+                { 5, _settingsService.Config.CustomSoundPath }
             };
 
             int choice = _settingsService.Config.NotificationSoundChoice;
@@ -316,13 +336,28 @@ namespace Taskato.Views
 
             if (soundMap.TryGetValue(choice, out string? path) && System.IO.File.Exists(path))
             {
-                var t = new System.Threading.Thread(() =>
+                if (_mediaPlayer == null)
                 {
-                    var player = new System.Media.SoundPlayer(path);
-                    player.PlaySync();
-                });
-                t.IsBackground = true;
-                t.Start();
+                    _mediaPlayer = new System.Windows.Media.MediaPlayer();
+                }
+                _mediaPlayer.Open(new Uri(path, UriKind.Absolute));
+                _mediaPlayer.Play();
+            }
+        }
+
+        private void SelectCustomSoundBtn_Click(object sender, RoutedEventArgs e)
+        {
+            var dialog = new Microsoft.Win32.OpenFileDialog
+            {
+                Filter = "音频文件|*.wav;*.mp3;*.wma|所有文件|*.*",
+                Title = "选择自定义音效"
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                _settingsService.Config.CustomSoundPath = dialog.FileName;
+                _settingsService.Save();
+                CustomSoundPathText.Text = System.IO.Path.GetFileName(dialog.FileName);
             }
         }
 

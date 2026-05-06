@@ -37,6 +37,9 @@ namespace Taskato.ViewModels
         /// <summary>提示音方案，透传给 ToastWindow 使用</summary>
         public int NotificationSoundChoice => _settingsService.Config.NotificationSoundChoice;
 
+        /// <summary>自定义提示音路径，透传给 ToastWindow 使用</summary>
+        public string CustomSoundPath => _settingsService.Config.CustomSoundPath;
+
         // ==================== 任务相关属性 ====================
 
         /// <summary>
@@ -144,6 +147,23 @@ namespace Taskato.ViewModels
             AllTimers.Add(mainTimer);
             CurrentActiveTimer = mainTimer;
 
+            // 根据配置加载历史保存的附加组
+            foreach (int workMinutes in _settingsService.Config.AdditionalTimersWorkMinutes)
+            {
+                var service = new PomodoroService(workMinutes, _settingsService.Config.RestMinutes);
+                PomodoroTimerViewModel? timerVM = null;
+                timerVM = new PomodoroTimerViewModel(service, $"附加组 {AllTimers.Count}", newWorkMinutes => 
+                {
+                    int index = AllTimers.IndexOf(timerVM!) - 1;
+                    if (index >= 0 && index < _settingsService.Config.AdditionalTimersWorkMinutes.Count)
+                    {
+                        _settingsService.Config.AdditionalTimersWorkMinutes[index] = newWorkMinutes;
+                        _settingsService.Save();
+                    }
+                });
+                AllTimers.Add(timerVM);
+            }
+
             // ---------- 初始化命令 ----------
 
             // 添加任务：输入框非空时可执行
@@ -172,10 +192,19 @@ namespace Taskato.ViewModels
             {
                 if (param is PomodoroTimerViewModel timer)
                 {
+                    int index = AllTimers.IndexOf(timer) - 1;
+
                     AllTimers.Remove(timer);
                     if (CurrentActiveTimer == timer)
                     {
                         CurrentActiveTimer = AllTimers.FirstOrDefault();
+                    }
+
+                    // 更新配置并保存
+                    if (index >= 0 && index < _settingsService.Config.AdditionalTimersWorkMinutes.Count)
+                    {
+                        _settingsService.Config.AdditionalTimersWorkMinutes.RemoveAt(index);
+                        _settingsService.Save();
                     }
                 }
             });
@@ -315,9 +344,23 @@ namespace Taskato.ViewModels
         {
             // 使用与设置页面一致的工作/休息时长，而非写死的默认值
             var service = new PomodoroService(_settingsService.Config.WorkMinutes, _settingsService.Config.RestMinutes);
-            var timerVM = new PomodoroTimerViewModel(service, $"附加组 {AllTimers.Count}");
+            
+            PomodoroTimerViewModel? timerVM = null;
+            timerVM = new PomodoroTimerViewModel(service, $"附加组 {AllTimers.Count}", newWorkMinutes => 
+            {
+                int index = AllTimers.IndexOf(timerVM!) - 1;
+                if (index >= 0 && index < _settingsService.Config.AdditionalTimersWorkMinutes.Count)
+                {
+                    _settingsService.Config.AdditionalTimersWorkMinutes[index] = newWorkMinutes;
+                    _settingsService.Save();
+                }
+            });
             AllTimers.Add(timerVM);
             
+            // 更新配置并保存
+            _settingsService.Config.AdditionalTimersWorkMinutes.Add(_settingsService.Config.WorkMinutes);
+            _settingsService.Save();
+
             // 自动选中新添加的计时器
             CurrentActiveTimer = timerVM;
         }

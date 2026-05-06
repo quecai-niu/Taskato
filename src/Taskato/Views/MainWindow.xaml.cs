@@ -44,9 +44,10 @@ namespace Taskato.Views
                                     $"{capturedSubVm.TimerName} 时间到！",
                                     "要休息一下吗？",
                                     onRest: () => capturedSubVm.StartRest(),
-                                    onContinue: null,
+                                    onContinue: () => capturedSubVm.StartWork(),
                                     showTimer: vm.EnableToastTimer,
-                                    soundChoice: vm.NotificationSoundChoice
+                                    soundChoice: vm.NotificationSoundChoice,
+                                    customSoundPath: vm.CustomSoundPath
                                 );
                                 toast.Show();
                             };
@@ -60,7 +61,8 @@ namespace Taskato.Views
                                     onContinue: () => capturedSubVm.StartWork(),
                                     showTimer: vm.EnableToastTimer,
                                     isRestComplete: true,
-                                    soundChoice: vm.NotificationSoundChoice
+                                    soundChoice: vm.NotificationSoundChoice,
+                                    customSoundPath: vm.CustomSoundPath
                                 );
                                 toast.Show();
                             };
@@ -77,9 +79,10 @@ namespace Taskato.Views
                                 $"{capturedSubVm.TimerName} 时间到！",
                                 "你已完成专注工作，要休息一下吗？",
                                 onRest: () => capturedSubVm.StartRest(),
-                                onContinue: null,
+                                onContinue: () => capturedSubVm.StartWork(),
                                 showTimer: vm.EnableToastTimer,
-                                soundChoice: vm.NotificationSoundChoice
+                                soundChoice: vm.NotificationSoundChoice,
+                                customSoundPath: vm.CustomSoundPath
                             );
                             toast.Show();
                         };
@@ -93,7 +96,8 @@ namespace Taskato.Views
                                 onContinue: () => capturedSubVm.StartWork(),
                                 showTimer: vm.EnableToastTimer,
                                 isRestComplete: true,
-                                soundChoice: vm.NotificationSoundChoice
+                                soundChoice: vm.NotificationSoundChoice,
+                                customSoundPath: vm.CustomSoundPath
                             );
                             toast.Show();
                         };
