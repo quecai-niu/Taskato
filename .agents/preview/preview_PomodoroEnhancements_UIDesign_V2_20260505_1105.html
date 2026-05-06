@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taskato Aesthetic Evolution v2 - Elite Design</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&family=Plus+Jakarta+Sans:wght@200;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --canvas-bg: #030712;
+            --surface: rgba(17, 24, 39, 0.6);
+            --accent-primary: #6366f1;
+            --accent-secondary: #c084fc;
+            --accent-danger: #f43f5e;
+            --accent-success: #10b981;
+            --text-vibrant: #ffffff;
+            --text-muted: #9ca3af;
+            --border-glass: rgba(255, 255, 255, 0.08);
+            --glow-primary: rgba(99, 102, 241, 0.4);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            background-color: var(--canvas-bg);
+            background-image: 
+                radial-gradient(circle at 0% 0%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 100% 100%, rgba(192, 132, 252, 0.1) 0%, transparent 50%);
+            color: var(--text-vibrant);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 6rem 2rem;
+            overflow-x: hidden;
+        }
+
+        /* --- Custom Background Effect --- */
+        .bg-mesh {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1;
+            opacity: 0.4;
+            filter: blur(80px);
+            pointer-events: none;
+        }
+        .mesh-blob {
+            position: absolute;
+            width: 40vw; height: 40vw;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            animation: float 20s infinite alternate ease-in-out;
+        }
+
+        @keyframes float {
+            0% { transform: translate(-10%, -10%) scale(1); }
+            100% { transform: translate(20%, 20%) scale(1.2); }
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 6rem;
+            max-width: 800px;
+        }
+
+        h1 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 4rem;
+            font-weight: 700;
+            letter-spacing: -0.04em;
+            margin-bottom: 1rem;
+            background: linear-gradient(to bottom right, #fff 30%, rgba(255,255,255,0.4));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .tagline {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            font-weight: 300;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1000px;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .section-header h2 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 500;
+            color: var(--text-vibrant);
+        }
+
+        .line {
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(to right, var(--border-glass), transparent);
+        }
+
+        /* --- SECTION 1: STATUS TAGS --- */
+        .design-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2.5rem;
+            margin-bottom: 8rem;
+        }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border-glass);
+            border-radius: 32px;
+            padding: 3rem 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            backdrop-filter: blur(20px);
+            transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card:hover {
+            transform: translateY(-12px);
+            background: rgba(31, 41, 55, 0.8);
+            border-color: rgba(255,255,255,0.2);
+            box-shadow: 0 30px 60px -12px rgba(0,0,0,0.5);
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(255,255,255,0.05) 0%, transparent 50%);
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+
+        .card:hover::before {
+            opacity: 1;
+        }
+
+        .tag-wrapper {
+            height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 2rem;
+        }
+
+        .label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        /* --- Option 1: Liquid Neon --- */
+        .status-pill-1 {
+            background: rgba(99, 102, 241, 0.1);
+            border: 1.5px solid var(--accent-primary);
+            color: #fff;
+            padding: 8px 20px;
+            border-radius: 10px; /* Rounded Rectangle */
+            font-weight: 700;
+            font-size: 0.85rem;
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.3), inset 0 0 10px rgba(99, 102, 241, 0.2);
+            animation: neon-pulse 2s infinite ease-in-out;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-pill-1::before {
+            content: '';
+            width: 6px; height: 6px;
+            background: #fff;
+            border-radius: 1px;
+            box-shadow: 0 0 10px #fff;
+        }
+
+        @keyframes neon-pulse {
+            0%, 100% { transform: scale(1); filter: brightness(1); }
+            50% { transform: scale(1.02); filter: brightness(1.2); box-shadow: 0 0 30px rgba(99, 102, 241, 0.5); }
+        }
+
+        /* --- Option 2: Glass Morphism Elite --- */
+        .status-pill-2 {
+            background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05));
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #fff;
+            padding: 10px 24px;
+            border-radius: 14px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+        }
+
+        .status-pill-2 span {
+            background: linear-gradient(to right, #fff, var(--text-muted));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* --- Option 3: Cyber Strike --- */
+        .status-pill-3 {
+            background: #000;
+            border-left: 4px solid var(--accent-secondary);
+            border-right: 1px solid rgba(255,255,255,0.1);
+            border-top: 1px solid rgba(255,255,255,0.1);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            color: var(--accent-secondary);
+            padding: 8px 22px;
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 800;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            box-shadow: -10px 0 20px rgba(192, 132, 252, 0.1);
+        }
+
+        /* --- SECTION 2: TASK ITEMS --- */
+        .task-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .task-item {
+            background: linear-gradient(90deg, rgba(31, 41, 55, 0.4), rgba(17, 24, 39, 0.4));
+            border: 1px solid var(--border-glass);
+            border-radius: 20px; /* Elite Rounded Rectangle */
+            padding: 1.5rem 2rem;
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .task-item:hover {
+            transform: translateX(10px);
+            background: rgba(55, 65, 81, 0.4);
+            border-color: var(--accent-primary);
+        }
+
+        .task-item::after {
+            content: '';
+            position: absolute;
+            left: 0; top: 0; width: 6px; height: 100%;
+            background: var(--accent-color, var(--accent-primary));
+            opacity: 0.8;
+        }
+
+        .check-box {
+            width: 26px; height: 26px;
+            border: 2px solid var(--border-glass);
+            border-radius: 8px;
+            transition: all 0.3s;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .task-item:hover .check-box {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.3);
+        }
+
+        .task-content h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: #f3f4f6;
+        }
+
+        .task-tags {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .badge {
+            background: rgba(255,255,255,0.05);
+            color: var(--text-muted);
+            padding: 4px 12px;
+            border-radius: 8px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .priority-dot {
+            width: 8px; height: 8px;
+            border-radius: 2px;
+            background: var(--accent-color);
+            box-shadow: 0 0 10px var(--accent-color);
+        }
+
+        /* --- Footer --- */
+        footer {
+            margin-top: 10rem;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            padding-bottom: 4rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="bg-mesh">
+        <div class="mesh-blob"></div>
+    </div>
+
+    <header>
+        <div class="tagline">Premium UI Refinement</div>
+        <h1>Taskato <span style="font-weight: 300;">Evolution</span></h1>
+    </header>
+
+    <div class="container">
+        
+        <section class="section">
+            <div class="section-header">
+                <h2>状态标签重塑 (Rounded Rect)</h2>
+                <div class="line"></div>
+            </div>
+            
+            <div class="design-grid">
+                <!-- Variant 1 -->
+                <div class="card">
+                    <div class="tag-wrapper">
+                        <div class="status-pill-1">FOCUSING</div>
+                    </div>
+                    <div class="label">Liquid Neon</div>
+                    <p style="font-size: 0.8rem; color: #6b7280; margin-top: 1rem; text-align: center;">深邃电光感，适合强调专注状态的紧迫与仪式感。</p>
+                </div>
+
+                <!-- Variant 2 -->
+                <div class="card">
+                    <div class="tag-wrapper">
+                        <div class="status-pill-2"><span>BREAK TIME</span></div>
+                    </div>
+                    <div class="label">Ethereal Glass</div>
+                    <p style="font-size: 0.8rem; color: #6b7280; margin-top: 1rem; text-align: center;">磨砂玻璃质感，柔和且通透，提供更高级的呼吸感。</p>
+                </div>
+
+                <!-- Variant 3 -->
+                <div class="card">
+                    <div class="tag-wrapper">
+                        <div class="status-pill-3">IDLE_SYSTEM</div>
+                    </div>
+                    <div class="label">Cyber Monolith</div>
+                    <p style="font-size: 0.8rem; color: #6b7280; margin-top: 1rem; text-align: center;">硬核工业风，侧边条装饰增加结构美感。</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="section">
+            <div class="section-header">
+                <h2>任务卡片审美 (Elite Rounded)</h2>
+                <div class="line"></div>
+            </div>
+
+            <div class="task-stack">
+                <div class="task-item" style="--accent-color: #f43f5e;">
+                    <div class="check-box"></div>
+                    <div class="task-content">
+                        <h3>重构 Taskato 核心渲染引擎</h3>
+                        <div class="task-tags">
+                            <div class="priority-dot"></div>
+                            <div class="badge">Critical</div>
+                            <div class="badge">Architecture</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="task-item" style="--accent-color: #6366f1;">
+                    <div class="check-box"></div>
+                    <div class="task-content">
+                        <h3>审美规范 V2 细节同步</h3>
+                        <div class="task-tags">
+                            <div class="priority-dot"></div>
+                            <div class="badge">Design</div>
+                            <div class="badge">UI/UX</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="task-item" style="--accent-color: #10b981;">
+                    <div class="check-box"></div>
+                    <div class="task-content">
+                        <h3>全系统时间同步 Bug 修复</h3>
+                        <div class="task-tags">
+                            <div class="priority-dot"></div>
+                            <div class="badge">Bugfix</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <footer>
+        &copy; 2026 TASKATO ELITE DESIGN SYSTEM. PROPRIETARY AND CONFIDENTIAL.
+    </footer>
+
+    <script>
+        // Interactive mouse effect for cards
+        document.querySelectorAll('.card').forEach(card => {
+            card.addEventListener('mousemove', e => {
+                const rect = card.getBoundingClientRect();
+                const x = ((e.clientX - rect.left) / card.clientWidth) * 100;
+                const y = ((e.clientY - rect.top) / card.clientHeight) * 100;
+                card.style.setProperty('--mouse-x', `${x}%`);
+                card.style.setProperty('--mouse-y', `${y}%`);
+            });
+        });
+    </script>
+</body>
+</html>

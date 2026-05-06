@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taskato Ultra-Modern UI Revision</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bento:wght@400;700&family=Inter:wght@300;500;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #050505;
+            --card-surface: rgba(20, 20, 20, 0.8);
+            --primary-glow: #6366f1;
+            --secondary-glow: #a855f7;
+            --text-vibrant: #ffffff;
+            --text-dim: rgba(255, 255, 255, 0.5);
+            --border-subtle: rgba(255, 255, 255, 0.06);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text-vibrant);
+            font-family: 'Inter', -apple-system, sans-serif;
+            min-height: 100vh;
+            padding: 5rem 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-x: hidden;
+        }
+
+        /* Subtle Background Atmosphere */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: 
+                radial-gradient(circle at 20% 30%, rgba(99, 102, 241, 0.08) 0%, transparent 40%),
+                radial-gradient(circle at 80% 70%, rgba(168, 85, 247, 0.05) 0%, transparent 40%);
+            z-index: -1;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+        }
+
+        h2 {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.3em;
+            color: var(--text-dim);
+            margin-bottom: 3rem;
+            text-align: center;
+        }
+
+        /* --- TASK CARD: THE CORE REFINEMENT --- */
+        .task-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+            margin-bottom: 8rem;
+        }
+
+        .task-card {
+            background: var(--card-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: 20px; /* Main Curvature */
+            padding: 1.5rem 2.5rem;
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+            position: relative;
+            backdrop-filter: blur(40px);
+            transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+            cursor: pointer;
+        }
+
+        .task-card:hover {
+            transform: translateY(-4px) scale(1.02);
+            border-color: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 40px 80px rgba(0, 0, 0, 0.6);
+        }
+
+        /* The Curvature-Consistent Color Strip (Modern Implementation) */
+        .color-accent {
+            position: absolute;
+            left: 12px; /* Inset for floating effect */
+            top: 12px;
+            bottom: 12px;
+            width: 6px;
+            background: linear-gradient(to bottom, var(--accent-start), var(--accent-end));
+            border-radius: 100px; /* Max rounding for pill shape */
+            box-shadow: 0 0 20px var(--accent-glow);
+            transition: all 0.4s ease;
+        }
+
+        .task-card:hover .color-accent {
+            width: 8px;
+            left: 10px;
+            box-shadow: 0 0 30px var(--accent-glow);
+        }
+
+        .checkbox {
+            width: 24px;
+            height: 24px;
+            border: 1.5px solid var(--border-subtle);
+            border-radius: 8px;
+            margin-left: 1rem;
+            transition: all 0.3s;
+        }
+
+        .task-content h3 {
+            font-size: 1.1rem;
+            font-weight: 500;
+            letter-spacing: -0.01em;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .task-meta {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            margin-top: 0.4rem;
+            display: flex;
+            gap: 1rem;
+        }
+
+        /* --- STATUS TAG: RETAINING EFFECTS, NEW FORM --- */
+        .status-showcase {
+            display: flex;
+            justify-content: center;
+            gap: 4rem;
+            padding: 4rem;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 32px;
+            border: 1px dashed var(--border-subtle);
+        }
+
+        .status-tag {
+            position: relative;
+            padding: 8px 20px;
+            background: #111;
+            border: 1px solid var(--primary-glow);
+            border-radius: 10px; /* Rounded Rect as requested */
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #fff;
+            letter-spacing: 0.05em;
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.4);
+            animation: tag-breathe 2s infinite alternate ease-in-out;
+        }
+
+        /* The original Ripple effect adapted to Rounded Rect */
+        .tag-ripple {
+            position: absolute;
+            inset: -1px;
+            border: 1px solid var(--primary-glow);
+            border-radius: 10px;
+            animation: tag-pulse 2.5s infinite cubic-bezier(0.23, 1, 0.32, 1);
+        }
+
+        @keyframes tag-breathe {
+            0% { box-shadow: 0 0 10px rgba(99, 102, 241, 0.2); }
+            100% { box-shadow: 0 0 25px rgba(99, 102, 241, 0.6); }
+        }
+
+        @keyframes tag-pulse {
+            0% { transform: scale(1); opacity: 0.8; }
+            100% { transform: scale(1.5, 1.8); opacity: 0; } /* Asymmetric scaling for rect */
+        }
+
+        .variant-label {
+            position: absolute;
+            bottom: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 10px;
+            color: var(--text-dim);
+            white-space: nowrap;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        
+        <h2>Task Cards with Curvature-Consistent Accents</h2>
+        
+        <div class="task-stack">
+            <!-- Task 1: High Priority -->
+            <div class="task-card" style="--accent-start: #f43f5e; --accent-end: #fb7185; --accent-glow: rgba(244, 63, 94, 0.3);">
+                <div class="color-accent"></div>
+                <div class="checkbox"></div>
+                <div class="task-content">
+                    <h3>Implement Multi-Timer Architecture</h3>
+                    <div class="task-meta">
+                        <span>High Priority</span>
+                        <span>•</span>
+                        <span>09:30 AM</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Task 2: Standard -->
+            <div class="task-card" style="--accent-start: #6366f1; --accent-end: #818cf8; --accent-glow: rgba(99, 102, 241, 0.3);">
+                <div class="color-accent"></div>
+                <div class="checkbox"></div>
+                <div class="task-content">
+                    <h3>Refine UI Aesthetics to Elite Standards</h3>
+                    <div class="task-meta">
+                        <span>Design</span>
+                        <span>•</span>
+                        <span>11:00 AM</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <h2>Rounded Rectangle Status Tags (Original FX)</h2>
+        
+        <div class="status-showcase">
+            <div class="status-tag">
+                <div class="tag-ripple"></div>
+                FOCUSING
+                <div class="variant-label">Modern Rect Form</div>
+            </div>
+
+            <div class="status-tag" style="border-color: #a855f7; box-shadow: 0 0 15px rgba(168, 85, 247, 0.4);">
+                <div class="tag-ripple" style="border-color: #a855f7;"></div>
+                BREAKING
+                <div class="variant-label">Color Synced</div>
+            </div>
+        </div>
+
+    </div>
+
+</body>
+</html>

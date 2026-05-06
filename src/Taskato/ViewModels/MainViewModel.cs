@@ -28,6 +28,12 @@ namespace Taskato.ViewModels
         /// <summary>用户设置服务 — 负责持久化用户配置</summary>
         private readonly SettingsService _settingsService;
 
+        /// <summary>是否开启弹窗计时器（透传配置）</summary>
+        public bool EnableToastTimer => _settingsService.Config.EnableToastTimer;
+
+        /// <summary>是否开启多组番茄钟模式</summary>
+        public bool IsMultiMode => _settingsService.Config.EnableMultiplePomodoros;
+
         // ==================== 任务相关属性 ====================
 
         /// <summary>
@@ -137,6 +143,11 @@ namespace Taskato.ViewModels
         /// </summary>
         public bool IsRestingState => _pomodoroService.CurrentState == PomodoroService.PomodoroState.Resting;
 
+        /// <summary>
+        /// 附加计时器列表（多组模式开启时显示）
+        /// </summary>
+        public ObservableCollection<PomodoroTimerViewModel> AdditionalTimers { get; } = new();
+
         // ==================== 命令绑定 ====================
 
         /// <summary>增加专注时间 (每次 5 分钟)</summary>
@@ -169,8 +180,14 @@ namespace Taskato.ViewModels
         /// <summary>打开历史查询窗体的命令</summary>
         public ICommand OpenHistoryCommand { get; }
 
-        /// <summary>打开设置窗体的命令</summary>
+        /// <summary>显示设置窗体命令</summary>
         public ICommand OpenSettingsCommand { get; }
+
+        /// <summary>添加附加番茄钟命令</summary>
+        public ICommand AddAdditionalTimerCommand { get; }
+
+        /// <summary>移除附加番茄钟命令</summary>
+        public ICommand RemoveAdditionalTimerCommand { get; }
 
         // ==================== 弹窗事件 ====================
 
@@ -232,21 +249,21 @@ namespace Taskato.ViewModels
             StopPomodoroCommand = new RelayCommand(_ => _pomodoroService.Stop(),
                 _ => IsTimerRunning);
 
-            // 动态调整时间逻辑 (仅在空闲/未运行状态可调)
+            // 动态调整时间逻辑 (步进改为 5 分钟以提升效率)
             IncreaseTimeCommand = new RelayCommand(_ =>
             {
-                if (_pomodoroService.WorkMinutes < 120)
+                if (_pomodoroService.WorkMinutes < 240)
                 {
-                    _pomodoroService.WorkMinutes += 5;
+                    _pomodoroService.WorkMinutes = Math.Min(240, _pomodoroService.WorkMinutes + 5);
                     TimerDisplay = $"{_pomodoroService.WorkMinutes:D2}:00";
                 }
             }, _ => !IsTimerRunning);
 
             DecreaseTimeCommand = new RelayCommand(_ =>
             {
-                if (_pomodoroService.WorkMinutes > 5)
+                if (_pomodoroService.WorkMinutes > 1)
                 {
-                    _pomodoroService.WorkMinutes -= 5;
+                    _pomodoroService.WorkMinutes = Math.Max(1, _pomodoroService.WorkMinutes - 5);
                     TimerDisplay = $"{_pomodoroService.WorkMinutes:D2}:00";
                 }
             }, _ => !IsTimerRunning);
@@ -257,6 +274,14 @@ namespace Taskato.ViewModels
                 _pomodoroService.Stop();
                 StartRest();
             }, _ => IsWorkingState);
+
+            // 附加计时器管理
+            AddAdditionalTimerCommand = new RelayCommand(_ => AddAdditionalTimer());
+            RemoveAdditionalTimerCommand = new RelayCommand(param => 
+            {
+                if (param is PomodoroTimerViewModel timer)
+                    AdditionalTimers.Remove(timer);
+            });
 
             // 打开子窗体命令（具体的窗体创建逻辑在 View 层处理）
             OpenHistoryCommand = new RelayCommand(_ => OpenHistoryWindow());
@@ -444,12 +469,30 @@ namespace Taskato.ViewModels
             };
             settingsWindow.ShowDialog();
 
-            // 如果退回主界面且为待机状态，同步最新的配置展示
             if (_pomodoroService.CurrentState == PomodoroService.PomodoroState.Idle)
             {
                 TimerDisplay = $"{_pomodoroService.WorkMinutes:D2}:00";
                 TimerProgress = 1.0;
             }
+
+            // 同步多组模式的状态
+            OnPropertyChanged(nameof(IsMultiMode));
+        }
+
+        private void AddAdditionalTimer()
+        {
+            var service = new PomodoroService(20, 5); // 默认 20/5
+            var timerVM = new PomodoroTimerViewModel(service, $"附加计时器 {AdditionalTimers.Count + 1}");
+            
+            timerVM.WorkCompleted += () =>
+            {
+                // 转发事件到 View 层处理弹窗
+                OnWorkCompleted?.Invoke(); 
+                // 注意：由于 ToastWindow 目前绑定到主 VM 的 StartRest/ContinueWork，
+                // 这里的处理逻辑可能需要适配。
+            };
+            
+            AdditionalTimers.Add(timerVM);
         }
     }
 }

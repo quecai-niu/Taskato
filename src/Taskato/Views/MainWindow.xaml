@@ -109,7 +109,8 @@
                                 </Style>
                             </TextBlock.Style>
                         </TextBlock>
-                        <TextBox Text="{Binding NewTaskTitle, UpdateSourceTrigger=PropertyChanged}"
+                        <TextBox x:Name="TaskInput"
+                                 Text="{Binding NewTaskTitle, UpdateSourceTrigger=PropertyChanged}"
                                  Background="Transparent" BorderThickness="0"
                                  Foreground="White" CaretBrush="White"
                                  FontSize="15" VerticalContentAlignment="Center"
@@ -177,7 +178,12 @@
                                          由于外层 Border 有 ClipToBounds=True 和 CornerRadius=14，
                                          这个色条的左上角和左下角会被自动裁切成圆角，
                                          右侧则直接与卡片内容相邻，实现"只有左侧有颜色"的效果。 -->
-                                    <Border Width="4" HorizontalAlignment="Left" VerticalAlignment="Stretch">
+                                     <Border Width="4" CornerRadius="100" Margin="14,12,0,12" 
+                                             HorizontalAlignment="Left" VerticalAlignment="Stretch">
+                                        <Border.Effect>
+                                            <DropShadowEffect BlurRadius="15" ShadowDepth="0" Opacity="0.4"
+                                                              Color="{Binding Path=Background.Color, RelativeSource={RelativeSource AncestorType=Border}}"/>
+                                        </Border.Effect>
                                         <Border.Style>
                                             <Style TargetType="Border">
                                                 <Setter Property="Background" Value="{StaticResource Pri0Brush}"/>
@@ -196,8 +202,8 @@
                                         </Border.Style>
                                     </Border>
 
-                                    <!-- 内容区：左边距14px（色条4px+文字间距10px） -->
-                                    <Grid Margin="14,14,14,14" Background="Transparent">
+                                    <!-- 内容区：左边距26px（色条间距） -->
+                                    <Grid Margin="26,14,14,14" Background="Transparent">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="*"/>
@@ -410,15 +416,10 @@
                         </ProgressBar.Style>
                     </ProgressBar>
 
-                    <!-- 控制按钮组：横排三个按钮。
-                         第三个按钮在空闲/暂停时显示"⏹ 停止"（红色），用 DangerButton 样式；
-                         工作倒计时中（IsWorkingState=True）时，通过 DataTrigger 自动切换
-                         Content 为"☕ 提前休息"、Command 为 EarlyRestCommand，
-                         点击即直接跳入休息倒计时，无需额外显隐第四个按钮。 -->
+                    <!-- 控制按钮组 -->
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                        <!-- 开始按钮：倒计时开始后变为“🚀 运行中”并呈半透明禁用态 -->
-                        <Button Margin="0,0,8,0" Padding="20,9"
-                                Command="{Binding StartPomodoroCommand}">
+                        <!-- 开始按钮 -->
+                        <Button Margin="0,0,8,0" Padding="20,9" Command="{Binding StartPomodoroCommand}">
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
                                     <Setter Property="Content" Value="▶ 开始"/>
@@ -431,43 +432,36 @@
                                 </Style>
                             </Button.Style>
                         </Button>
-
-                        <!-- 暂停/继续按钮：暂停时变为“▶ 继续”并切换为高亮的主要按钮样式 -->
-                        <Button Margin="0,0,8,0" Padding="20,9"
-                                Command="{Binding PausePomodoroCommand}">
+                        <!-- 暂停/继续按钮 -->
+                        <Button Margin="0,0,8,0" Padding="20,9" Command="{Binding PausePomodoroCommand}">
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource SecondaryButton}">
                                     <Setter Property="Content" Value="⏸ 暂停"/>
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding IsPaused}" Value="True">
-                                            <!-- 暂停时切换为 PrimaryButton 的渐变底纹和文字内容 -->
                                             <Setter Property="Content" Value="▶ 继续"/>
                                             <Setter Property="Background" Value="{DynamicResource ThemeGradientBrush}"/>
                                             <Setter Property="Foreground" Value="White"/>
                                             <Setter Property="BorderThickness" Value="0"/>
                                         </DataTrigger>
                                         <DataTrigger Binding="{Binding IsTimerRunning}" Value="False">
-                                            <!-- 未运行状态下禁用暂停按钮 -->
                                             <Setter Property="IsEnabled" Value="False"/>
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
                             </Button.Style>
                         </Button>
-                        <!-- 停止/提前休息 二合一按钮 -->
+                        <!-- 停止/提前休息按钮 -->
                         <Button Padding="20,9">
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource DangerButton}">
-                                    <!-- 默认状态：停止，执行 StopPomodoroCommand -->
                                     <Setter Property="Content" Value="⏹ 停止"/>
                                     <Setter Property="Command" Value="{Binding StopPomodoroCommand}"/>
                                     <Style.Triggers>
-                                        <!-- 工作倒计时中：切换为提前休息，执行 EarlyRestCommand -->
                                         <DataTrigger Binding="{Binding IsWorkingState}" Value="True">
                                             <Setter Property="Content" Value="☕ 提前休息"/>
                                             <Setter Property="Command" Value="{Binding EarlyRestCommand}"/>
                                         </DataTrigger>
-                                        <!-- 休息倒计时中：切换为结束休息 -->
                                         <DataTrigger Binding="{Binding IsRestingState}" Value="True">
                                             <Setter Property="Content" Value="⏹ 结束休息"/>
                                         </DataTrigger>
@@ -476,8 +470,51 @@
                             </Button.Style>
                         </Button>
                     </StackPanel>
+
+                    <!-- 附加计时器列表 (多组模式) -->
+                    <ItemsControl ItemsSource="{Binding AdditionalTimers}" 
+                                  Visibility="{Binding IsMultiMode, Converter={StaticResource BoolToVisibilityConverter}}"
+                                  Margin="0,16,0,0">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="#12FFFFFF" CornerRadius="12" Margin="0,4" Padding="12,8" BorderBrush="#1AFFFFFF" BorderThickness="1">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding TimerName}" FontSize="10" Foreground="#888888" Margin="0,0,0,2"/>
+                                            <TextBlock Text="{Binding TimerDisplay}" FontSize="18" FontWeight="Bold" Foreground="White"/>
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0">
+                                            <Button Style="{StaticResource JellyIconBtn}" Content="▶" Command="{Binding StartWorkCommand}" Margin="0,0,4,0" FontSize="12"/>
+                                            <Button Style="{StaticResource JellyIconBtn}" Content="⏸" Command="{Binding PauseCommand}" Margin="0,0,4,0" FontSize="12"/>
+                                            <Button Style="{StaticResource JellyIconBtn}" Content="⏹" Command="{Binding StopCommand}" FontSize="12"/>
+                                        </StackPanel>
+
+                                        <Button Grid.Column="2" Style="{StaticResource JellyWinCloseBtn}" Content="×" 
+                                                Command="{Binding DataContext.RemoveAdditionalTimerCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                CommandParameter="{Binding}"
+                                                VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <!-- 添加附加计时器按钮 -->
+                    <Button Content="＋ 添加附加组" 
+                            Style="{StaticResource SecondaryButton}" 
+                            Command="{Binding AddAdditionalTimerCommand}"
+                            Visibility="{Binding IsMultiMode, Converter={StaticResource BoolToVisibilityConverter}}"
+                            Margin="0,12,0,0" Padding="12,6" FontSize="11" HorizontalAlignment="Center"/>
                 </StackPanel>
             </Border>
+
 
             <!-- ========== Row 5: 底部功能栏 ========== -->
             <Border Grid.Row="5" BorderBrush="{StaticResource SeparatorBrush}" BorderThickness="0,1,0,0"

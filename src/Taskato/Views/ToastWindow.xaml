@@ -60,7 +60,12 @@
             <!-- 副标题文字 -->
             <TextBlock x:Name="SubtitleText" FontSize="14"
                        Foreground="#888888" HorizontalAlignment="Center"
-                       Margin="0,0,0,24" TextWrapping="Wrap" TextAlignment="Center"/>
+                       Margin="0,0,0,8" TextWrapping="Wrap" TextAlignment="Center"/>
+
+            <!-- 计时器显示 (弹窗已出现时长) -->
+            <TextBlock x:Name="ElapsedTimerText" FontSize="12"
+                       Foreground="#555555" HorizontalAlignment="Center"
+                       Margin="0,0,0,16" Visibility="Collapsed"/>
 
             <!-- 操作按钮组 -->
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">

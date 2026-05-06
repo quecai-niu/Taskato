@@ -38,7 +38,8 @@ namespace Taskato.Views
                             "番茄钟时间到！",
                             "你已完成专注工作，要休息一下吗？",
                             onRest: () => vm.StartRest(),
-                            onContinue: () => vm.ContinueWork()
+                            onContinue: () => vm.ContinueWork(),
+                            showTimer: vm.EnableToastTimer
                         );
                         toast.Show();
                     };
@@ -51,6 +52,7 @@ namespace Taskato.Views
                             "精力充沛了吗？开始新一轮专注吧！",
                             onRest: null,
                             onContinue: () => vm.ContinueWork(),
+                            showTimer: vm.EnableToastTimer,
                             isRestComplete: true
                         );
                         toast.Show();
@@ -170,6 +172,22 @@ namespace Taskato.Views
                 }
             }
             e.Handled = true;
+        }
+
+        /// <summary>
+        /// 全局按键拦截 — 当用户直接敲击字母/数字键时，自动聚焦到输入框并开始录入
+        /// </summary>
+        protected override void OnPreviewKeyDown(System.Windows.Input.KeyEventArgs e)
+        {
+            // 排除系统组合键、功能键以及输入框已获得焦点的情况
+            if (!TaskInput.IsFocused && 
+                ((e.Key >= Key.A && e.Key <= Key.Z) || (e.Key >= Key.D0 && e.Key <= Key.D9) || (e.Key >= Key.NumPad0 && e.Key <= Key.NumPad9)))
+            {
+                TaskInput.Focus();
+                // 强制将光标移至末尾
+                TaskInput.SelectionStart = TaskInput.Text.Length;
+            }
+            base.OnPreviewKeyDown(e);
         }
 
         /// <summary>

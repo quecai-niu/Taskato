@@ -17,6 +17,12 @@ namespace Taskato.Services
         
         /// <summary>点击继续工作时，是否自动开始下一个番茄钟倒计时</summary>
         public bool AutoStartNextPomodoro { get; set; } = false;
+
+        /// <summary>是否在弹窗中显示计时器（记录弹窗出现了多久）</summary>
+        public bool EnableToastTimer { get; set; } = false;
+
+        /// <summary>是否开启多组番茄钟功能</summary>
+        public bool EnableMultiplePomodoros { get; set; } = false;
     }
 
     /// <summary>

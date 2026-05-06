@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taskato UI 审美进化预览 - 2026</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Noto+Sans+SC:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --primary: #6366f1;
+            --secondary: #a855f7;
+            --accent: #f43f5e;
+            --text-main: #f8fafc;
+            --text-dim: #94a3b8;
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--bg-dark);
+            color: var(--text-main);
+            font-family: 'Outfit', 'Noto Sans SC', sans-serif;
+            min-height: 100vh;
+            padding: 4rem 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-x: hidden;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.02em;
+        }
+
+        p.subtitle {
+            color: var(--text-dim);
+            margin-bottom: 4rem;
+            font-size: 1.1rem;
+        }
+
+        .section {
+            width: 100%;
+            max-width: 900px;
+            margin-bottom: 6rem;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .section-title::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--glass-border);
+        }
+
+        /* --- 1. 番茄钟状态标签预览 --- */
+        .tag-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 2rem;
+        }
+
+        .variant-card {
+            background: var(--card-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+            backdrop-filter: blur(12px);
+        }
+
+        .variant-card:hover {
+            transform: translateY(-8px);
+            border-color: var(--primary);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        .variant-name {
+            font-size: 0.9rem;
+            color: var(--text-dim);
+            margin-top: 1.5rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* 统一标签容器 */
+        .tag-container {
+            position: relative;
+            padding: 20px;
+        }
+
+        /* 样式 A: 霓虹极光 (Neon Aura) */
+        .status-tag-a {
+            background: #1e1b4b;
+            color: white;
+            padding: 6px 16px;
+            border-radius: 8px; /* 圆角矩形 */
+            font-weight: 700;
+            font-size: 0.75rem;
+            border: 1.5px solid var(--primary);
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.6);
+            position: relative;
+            z-index: 2;
+            animation: breathe-a 3s infinite ease-in-out;
+        }
+
+        .pulse-a {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            border: 1.5px solid var(--primary);
+            border-radius: 8px;
+            animation: pulse-ring-a 3s infinite cubic-bezier(0.215, 0.61, 0.355, 1);
+        }
+
+        @keyframes breathe-a {
+            0%, 100% { box-shadow: 0 0 10px rgba(99, 102, 241, 0.4); }
+            50% { box-shadow: 0 0 20px rgba(99, 102, 241, 0.8); }
+        }
+
+        @keyframes pulse-ring-a {
+            0% { transform: scale(0.95); opacity: 0.7; }
+            70%, 100% { transform: scale(1.6); opacity: 0; }
+        }
+
+        /* 样式 B: 玻璃拟态 (Frosted Glass) */
+        .status-tag-b {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(8px);
+            color: white;
+            padding: 6px 18px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 0.75rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            transition: all 0.3s;
+        }
+
+        .status-tag-b::before {
+            content: '';
+            position: absolute;
+            left: -4px; top: 50%;
+            width: 4px; height: 4px;
+            background: var(--secondary);
+            border-radius: 50%;
+            transform: translateY(-50%);
+            box-shadow: 0 0 8px var(--secondary);
+            animation: blink 2s infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        /* 样式 C: 渐变边框 (Gradient Stroke) */
+        .status-tag-c {
+            position: relative;
+            padding: 7px 18px;
+            font-weight: 700;
+            font-size: 0.75rem;
+            color: white;
+            background: #0f172a;
+            border-radius: 6px;
+            display: inline-block;
+        }
+
+        .status-tag-c::after {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            background: linear-gradient(45deg, var(--primary), var(--secondary), var(--accent));
+            border-radius: 8px;
+            z-index: -1;
+            animation: flow 4s linear infinite;
+            background-size: 200% 200%;
+        }
+
+        @keyframes flow {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* --- 2. 任务列表项预览 --- */
+        .task-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .task-card {
+            background: var(--card-bg);
+            border-radius: 16px; /* 用户要求的圆角矩形 */
+            padding: 1.25rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1.25rem;
+            border: 1px solid var(--glass-border);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .task-card:hover {
+            background: rgba(45, 55, 75, 0.8);
+            border-color: rgba(99, 102, 241, 0.3);
+            transform: scale(1.01);
+        }
+
+        .task-card::before {
+            content: '';
+            position: absolute;
+            left: 0; top: 0; bottom: 0;
+            width: 4px;
+            background: var(--primary);
+        }
+
+        .checkbox {
+            width: 22px;
+            height: 22px;
+            border: 2px solid rgba(255,255,255,0.2);
+            border-radius: 7px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .task-card:hover .checkbox {
+            border-color: var(--primary);
+        }
+
+        .task-info {
+            flex: 1;
+        }
+
+        .task-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .task-meta {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            display: flex;
+            gap: 1rem;
+        }
+
+        .tag {
+            background: rgba(99, 102, 241, 0.1);
+            color: #818cf8;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 700;
+        }
+
+        /* 悬浮指示 */
+        .hover-hint {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: rgba(0,0,0,0.8);
+            padding: 1rem 1.5rem;
+            border-radius: 100px;
+            font-size: 0.9rem;
+            border: 1px solid var(--glass-border);
+            color: var(--text-dim);
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Taskato 审美重塑方案</h1>
+    <p class="subtitle">极致细节 · 现代交互 · 优雅圆角</p>
+
+    <div class="section">
+        <div class="section-title">番茄钟状态标签 (圆角矩形方案)</div>
+        <div class="tag-grid">
+            <!-- 方案 A -->
+            <div class="variant-card">
+                <div class="tag-container">
+                    <div class="pulse-a"></div>
+                    <div class="status-tag-a">专注中</div>
+                </div>
+                <div class="variant-name">Neon Aura (霓虹极光)</div>
+            </div>
+            <!-- 方案 B -->
+            <div class="variant-card">
+                <div class="tag-container">
+                    <div class="status-tag-b">休息中</div>
+                </div>
+                <div class="variant-name">Frosted Glass (拟物玻璃)</div>
+            </div>
+            <!-- 方案 C -->
+            <div class="variant-card">
+                <div class="tag-container">
+                    <div class="status-tag-c">空闲</div>
+                </div>
+                <div class="variant-name">Gradient Flow (流光漫步)</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">任务列表条 (极致圆角矩形)</div>
+        <div class="task-list">
+            <div class="task-card" style="--primary: #f43f5e;">
+                <div class="checkbox"></div>
+                <div class="task-info">
+                    <div class="task-title">完成 Taskato UI 重构方案设计</div>
+                    <div class="task-meta">
+                        <span>🕒 09:30</span>
+                        <span class="tag">#重要</span>
+                        <span class="tag">#设计</span>
+                    </div>
+                </div>
+            </div>
+            <div class="task-card" style="--primary: #6366f1;">
+                <div class="checkbox"></div>
+                <div class="task-info">
+                    <div class="task-title">修复番茄钟时间同步逻辑 Bug</div>
+                    <div class="task-meta">
+                        <span>🕒 11:00</span>
+                        <span class="tag">#开发</span>
+                    </div>
+                </div>
+            </div>
+            <div class="task-card" style="--primary: #22c55e;">
+                <div class="checkbox"></div>
+                <div class="task-info">
+                    <div class="task-title">撰写技术周报并提交审核</div>
+                    <div class="task-meta">
+                        <span>🕒 14:00</span>
+                        <span class="tag">#行政</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="hover-hint">
+        鼠标悬停在卡片上查看交互反馈
+    </div>
+
+</body>
+</html>

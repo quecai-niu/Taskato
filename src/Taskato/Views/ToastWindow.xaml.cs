@@ -17,6 +17,10 @@ namespace Taskato.Views
         /// <summary>"继续工作"按钮的回调委托</summary>
         private readonly Action? _onContinue;
 
+        /// <summary>弹窗计时器</summary>
+        private System.Windows.Threading.DispatcherTimer? _elapsedTimer;
+        private int _secondsElapsed = 0;
+
         /// <summary>
         /// 构造函数
         /// </summary>
@@ -24,9 +28,10 @@ namespace Taskato.Views
         /// <param name="subtitle">副标题（如"你已完成 25 分钟专注工作"）</param>
         /// <param name="onRest">点击"休息"的回调</param>
         /// <param name="onContinue">点击"继续"的回调</param>
+        /// <param name="showTimer">是否显示弹窗已持续时长的计时器</param>
         /// <param name="isRestComplete">是否为"休息结束"场景</param>
         public ToastWindow(string title, string subtitle,
-            Action? onRest, Action? onContinue, bool isRestComplete = false)
+            Action? onRest, Action? onContinue, bool showTimer = false, bool isRestComplete = false)
         {
             InitializeComponent();
 
@@ -36,6 +41,24 @@ namespace Taskato.Views
 
             _onRest = onRest;
             _onContinue = onContinue;
+
+            // 如果启用了计时器，则初始化并启动
+            if (showTimer)
+            {
+                ElapsedTimerText.Visibility = Visibility.Visible;
+                ElapsedTimerText.Text = "已显示 00:00";
+                
+                _elapsedTimer = new System.Windows.Threading.DispatcherTimer
+                {
+                    Interval = TimeSpan.FromSeconds(1)
+                };
+                _elapsedTimer.Tick += (s, e) =>
+                {
+                    _secondsElapsed++;
+                    ElapsedTimerText.Text = $"已显示 {TimeSpan.FromSeconds(_secondsElapsed):mm\\:ss}";
+                };
+                _elapsedTimer.Start();
+            }
 
             // 休息结束场景：隐藏"休息"按钮，"继续"按钮改为主按钮样式
             if (isRestComplete)
@@ -73,8 +96,27 @@ namespace Taskato.Views
         /// </summary>
         private void ContinueButton_Click(object sender, RoutedEventArgs e)
         {
+            StopTimer();
             _onContinue?.Invoke();
             Close();
+        }
+
+        private void StopTimer()
+        {
+            if (_elapsedTimer != null)
+            {
+                _elapsedTimer.Stop();
+                _elapsedTimer = null;
+            }
+        }
+
+        /// <summary>
+        /// 确保关闭窗口时停止计时器
+        /// </summary>
+        protected override void OnClosed(EventArgs e)
+        {
+            StopTimer();
+            base.OnClosed(e);
         }
     }
 }

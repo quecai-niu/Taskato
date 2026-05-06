@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Taskato UI 精准细节确认</title>
+    <style>
+        body {
+            background: #0f172a;
+            color: white;
+            font-family: system-ui, -apple-system, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 50px;
+        }
+        .container {
+            width: 400px;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+        }
+        .label {
+            font-size: 14px;
+            color: #94a3b8;
+            margin-bottom: 10px;
+        }
+        
+        /* 1. 状态标签：圆角矩形 + 保留原有特效 */
+        .status-tag {
+            position: relative;
+            background: #1E1B4B;
+            border: 1.2px solid #6366F1;
+            border-radius: 8px;
+            padding: 6px 16px;
+            font-size: 12px;
+            font-weight: bold;
+            display: inline-block;
+            box-shadow: 0 0 12px rgba(99, 102, 241, 0.6);
+            animation: breathe 1.25s infinite alternate;
+        }
+        .ripple {
+            position: absolute;
+            inset: 0;
+            border: 1.5px solid #6366F1;
+            border-radius: 8px;
+            animation: ripple-pulse 2.5s infinite;
+        }
+        @keyframes breathe {
+            from { opacity: 0.6; } to { opacity: 0.3; }
+        }
+        @keyframes ripple-pulse {
+            0% { transform: scale(1); opacity: 0.7; }
+            100% { transform: scale(1.6); opacity: 0; }
+        }
+
+        /* 2. 任务卡片：左侧圆角色条 */
+        .task-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 14px;
+            padding: 14px;
+            display: flex;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .color-strip {
+            position: absolute;
+            left: 6px;
+            top: 10px;
+            bottom: 10px;
+            width: 4px;
+            background: #6366F1;
+            border-radius: 14px; /* 圆角胶囊 */
+        }
+        .task-content {
+            margin-left: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div>
+            <div class="label">1. 状态标签 (保留呼吸/水波纹特效 + 圆角矩形)</div>
+            <div style="padding: 20px;">
+                <div class="status-tag">
+                    <div class="ripple"></div>
+                    专注中
+                </div>
+            </div>
+        </div>
+
+        <div>
+            <div class="label">2. 任务条左侧色条 (弧度一致 + 胶囊形状)</div>
+            <div class="task-card">
+                <div class="color-strip"></div>
+                <div class="task-content">
+                    <div style="font-size: 14px; font-weight: 500;">重构 UI 细节</div>
+                    <div style="font-size: 11px; color: #64748b; margin-top: 4px;">2026-05-05 19:10</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

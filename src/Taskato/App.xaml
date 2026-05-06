@@ -702,7 +702,7 @@
                                 <!-- 1. 脉冲扩散层 (水波纹) -->
                                 <Border x:Name="ripple" 
                                         BorderThickness="1.5" 
-                                        CornerRadius="100"
+                                        CornerRadius="10"
                                         Opacity="0"
                                         RenderTransformOrigin="0.5,0.5">
                                     <Border.BorderBrush>
@@ -720,7 +720,7 @@
                                 <Border x:Name="mainBd" 
                                         Background="#1E1B4B" 
                                         BorderThickness="1.2"
-                                        CornerRadius="100">
+                                        CornerRadius="10">
                                     <Border.BorderBrush>
                                         <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
                                             <GradientStop Color="{DynamicResource ThemePrimaryColor}" Offset="0"/>
@@ -885,6 +885,20 @@
                                 </Trigger>
                                 <Trigger Property="Content" Value="－">
                                     <Setter TargetName="symbolPath" Property="Data" Value="M 0,5 H 10"/>
+                                </Trigger>
+                                <Trigger Property="Content" Value="▶">
+                                    <Setter TargetName="symbolPath" Property="Data" Value="M 0,0 L 8,5 L 0,10 Z"/>
+                                    <Setter TargetName="symbolPath" Property="Fill" Value="{DynamicResource ThemePrimaryBrush}"/>
+                                    <Setter TargetName="symbolPath" Property="Stroke" Value="Transparent"/>
+                                </Trigger>
+                                <Trigger Property="Content" Value="⏸">
+                                    <Setter TargetName="symbolPath" Property="Data" Value="M 0,0 V 10 M 4,0 V 10"/>
+                                    <Setter TargetName="symbolPath" Property="StrokeThickness" Value="3"/>
+                                </Trigger>
+                                <Trigger Property="Content" Value="⏹">
+                                    <Setter TargetName="symbolPath" Property="Data" Value="M 0,0 H 8 V 8 H 0 Z"/>
+                                    <Setter TargetName="symbolPath" Property="Fill" Value="{DynamicResource ThemePrimaryBrush}"/>
+                                    <Setter TargetName="symbolPath" Property="Stroke" Value="Transparent"/>
                                 </Trigger>
 
                                 <!-- 鼠标进入：执行进入动画 (HoverOn) -->

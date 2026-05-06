@@ -67,9 +67,11 @@ namespace Taskato.Views
             WorkTimeText.Text = $"{_pomodoroService.WorkMinutes} min";
             RestTimeText.Text = $"{_pomodoroService.RestMinutes} min";
 
-            // 读取开机自启状态与连续专注状态
+            // 读取开关状态
             AutoStartCheckBox.IsChecked = AutoStartService.IsAutoStartEnabled();
             AutoStartNextCheckBox.IsChecked = _settingsService.Config.AutoStartNextPomodoro;
+            ToastTimerCheckBox.IsChecked = _settingsService.Config.EnableToastTimer;
+            MultiPomodoroCheckBox.IsChecked = _settingsService.Config.EnableMultiplePomodoros;
 
             // 构建颜色选择面板
             BuildColorPalette();
@@ -161,16 +163,12 @@ namespace Taskato.Views
 
         // ==================== 番茄钟时长调节 ====================
 
-        /// <summary>工作时长 -5分钟（最少 1 分钟测试档）</summary>
+        /// <summary>工作时长 -1分钟</summary>
         private void DecWorkTime_Click(object sender, RoutedEventArgs e)
         {
-            if (_pomodoroService.WorkMinutes > 5)
+            if (_pomodoroService.WorkMinutes > 1)
             {
-                _pomodoroService.WorkMinutes -= 5;
-            }
-            else if (_pomodoroService.WorkMinutes == 5)
-            {
-                _pomodoroService.WorkMinutes = 1;
+                _pomodoroService.WorkMinutes -= 1;
             }
             WorkTimeText.Text = $"{_pomodoroService.WorkMinutes} min";
             
@@ -178,16 +176,12 @@ namespace Taskato.Views
             _settingsService.Save();
         }
 
-        /// <summary>工作时长 +5分钟（最多 60 分钟）</summary>
+        /// <summary>工作时长 +1分钟</summary>
         private void IncWorkTime_Click(object sender, RoutedEventArgs e)
         {
-            if (_pomodoroService.WorkMinutes == 1)
+            if (_pomodoroService.WorkMinutes < 240)
             {
-                _pomodoroService.WorkMinutes = 5;
-            }
-            else if (_pomodoroService.WorkMinutes < 60)
-            {
-                _pomodoroService.WorkMinutes += 5;
+                _pomodoroService.WorkMinutes += 1;
             }
             WorkTimeText.Text = $"{_pomodoroService.WorkMinutes} min";
             
@@ -240,6 +234,29 @@ namespace Taskato.Views
             if (_settingsService != null) // 避免初始化时触发
             {
                 _settingsService.Config.AutoStartNextPomodoro = AutoStartNextCheckBox.IsChecked == true;
+                _settingsService.Save();
+            }
+        }
+        /// <summary>
+        /// 弹窗计时器开关变更
+        /// </summary>
+        private void ToastTimerCheckBox_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_settingsService != null)
+            {
+                _settingsService.Config.EnableToastTimer = ToastTimerCheckBox.IsChecked == true;
+                _settingsService.Save();
+            }
+        }
+
+        /// <summary>
+        /// 多组番茄钟模式开关变更
+        /// </summary>
+        private void MultiPomodoroCheckBox_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_settingsService != null)
+            {
+                _settingsService.Config.EnableMultiplePomodoros = MultiPomodoroCheckBox.IsChecked == true;
                 _settingsService.Save();
             }
         }
