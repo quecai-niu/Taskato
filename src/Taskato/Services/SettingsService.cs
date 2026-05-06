@@ -23,6 +23,12 @@ namespace Taskato.Services
 
         /// <summary>是否开启多组番茄钟功能</summary>
         public bool EnableMultiplePomodoros { get; set; } = false;
+
+        /// <summary>
+        /// 提示音方案选择：
+        /// 0 = 无声, 1 = Windows Notify, 2 = Windows Ding, 3 = Windows Background, 4 = chimes
+        /// </summary>
+        public int NotificationSoundChoice { get; set; } = 3;
     }
 
     /// <summary>

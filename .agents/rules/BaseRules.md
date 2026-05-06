@@ -15,8 +15,8 @@ trigger: always_on
 - **UI 审美把控**：在修改 XAML 或 UI 代码时，严格检查控件的 Margin、Padding 和对齐方式，绝对避免控件重叠、遮挡或间距不协调，保持整体视觉美观。
 
 # 3. HTML 预览生成规范 (HTML Previews)
-- 当要求生成 HTML/CSS 预览时，**必须触发并严格遵循 `frontend-design` 技能**中的高级审美规范，必须彻底脱离当前项目的 WPF/框架限制，追求极致的现代 Web UI 设计。
-- **严禁产出敷衍、低质量的预览文件**。预览必须包含现代配色方案、细腻的光影质感（如 Glassmorphism/Neumorphism）以及平滑的动效，追求极致的视觉冲击力。
+- 当要求生成 HTML/CSS 预览时，保持界面简洁直观即可。禁止过度设计、禁止使用 frontend-design 技能。
+- 保证 HTML 代码轻量，不要添加花哨的不必要特效，满足说明功能和排版清晰的要求即可。
 
 # 4. 文件管理与产出 (File Management)
 - 所有临时文件（如计划表、HTML 预览文件、Markdown 方案）必须保存在项目根目录下的 `.agents/preview/` 文件夹下。（如果该文件夹不存在，请自动创建）。

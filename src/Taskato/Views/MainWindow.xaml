@@ -316,7 +316,9 @@
                 </Border.Background>
 
                 <StackPanel>
-                    <!-- 标题行: 番茄钟图标(果冻底座) + 状态标签 -->
+                    <Border DataContext="{Binding CurrentActiveTimer}">
+                        <StackPanel>
+                            <!-- 标题行: 番茄钟图标(果冻底座) + 状态标签 -->
                     <Grid Margin="0,0,0,8">
                         <StackPanel Orientation="Horizontal">
                             <Border Width="26" Height="26" CornerRadius="8"
@@ -332,7 +334,7 @@
 
                         <!-- 状态标签：方案 2 霓虹辉光 (ContentControl 实现) -->
                         <ContentControl HorizontalAlignment="Right" Style="{StaticResource PomodoroStatusTagStyle}">
-                            <TextBlock Text="{Binding PomodoroStatusText}"
+                            <TextBlock Text="{Binding StatusText}"
                                        FontSize="11.5" FontWeight="Bold" Foreground="White"
                                        VerticalAlignment="Center" HorizontalAlignment="Center"
                                        TextOptions.TextRenderingMode="ClearType"
@@ -346,7 +348,7 @@
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource JellyIconBtn}">
                                     <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsTimerRunning}" Value="True">
+                                        <DataTrigger Binding="{Binding IsStarted}" Value="True">
                                             <Setter Property="Visibility" Value="Collapsed"/>
                                         </DataTrigger>
                                     </Style.Triggers>
@@ -358,7 +360,7 @@
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource JellyIconBtn}">
                                     <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsTimerRunning}" Value="True">
+                                        <DataTrigger Binding="{Binding IsStarted}" Value="True">
                                             <Setter Property="Visibility" Value="Collapsed"/>
                                         </DataTrigger>
                                     </Style.Triggers>
@@ -370,7 +372,7 @@
                     <!-- 进度条 -->
                     <ProgressBar Height="4" Margin="0,0,0,10"
                                  Minimum="0" Maximum="1"
-                                 Value="{Binding TimerProgress, Mode=OneWay}"
+                                 Value="{Binding Progress, Mode=OneWay}"
                                  BorderThickness="0">
                         <ProgressBar.Style>
                             <Style TargetType="ProgressBar">
@@ -406,12 +408,12 @@
 
                     <!-- 控制按钮组 -->
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                        <Button Margin="0,0,8,0" Padding="20,9" Command="{Binding StartPomodoroCommand}">
+                        <Button Margin="0,0,8,0" Padding="20,9" Command="{Binding StartWorkCommand}">
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
                                     <Setter Property="Content" Value="▶ 开始"/>
                                     <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsTimerRunning}" Value="True">
+                                        <DataTrigger Binding="{Binding IsStarted}" Value="True">
                                             <Setter Property="Content" Value="🚀 运行中"/>
                                             <Setter Property="Opacity" Value="0.6"/>
                                         </DataTrigger>
@@ -419,7 +421,7 @@
                                 </Style>
                             </Button.Style>
                         </Button>
-                        <Button Margin="0,0,8,0" Padding="20,9" Command="{Binding PausePomodoroCommand}">
+                        <Button Margin="0,0,8,0" Padding="20,9" Command="{Binding PauseCommand}">
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource SecondaryButton}">
                                     <Setter Property="Content" Value="⏸ 暂停"/>
@@ -430,7 +432,7 @@
                                             <Setter Property="Foreground" Value="White"/>
                                             <Setter Property="BorderThickness" Value="0"/>
                                         </DataTrigger>
-                                        <DataTrigger Binding="{Binding IsTimerRunning}" Value="False">
+                                        <DataTrigger Binding="{Binding IsStarted}" Value="False">
                                             <Setter Property="IsEnabled" Value="False"/>
                                         </DataTrigger>
                                     </Style.Triggers>
@@ -441,7 +443,7 @@
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource DangerButton}">
                                     <Setter Property="Content" Value="⏹ 停止"/>
-                                    <Setter Property="Command" Value="{Binding StopPomodoroCommand}"/>
+                                    <Setter Property="Command" Value="{Binding StopCommand}"/>
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding IsWorkingState}" Value="True">
                                             <Setter Property="Content" Value="☕ 提前休息"/>
@@ -455,64 +457,94 @@
                             </Button.Style>
                         </Button>
                     </StackPanel>
+                        </StackPanel>
+                    </Border>
 
-                    <!-- 附加计时器列表 (多组模式) -->
-                    <ItemsControl ItemsSource="{Binding AdditionalTimers}" 
-                                  Visibility="{Binding IsMultiMode, Converter={StaticResource BoolToVisibilityConverter}}"
-                                  Margin="0,16,0,0">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Border Background="#12FFFFFF" CornerRadius="12" Margin="0,4" Padding="12,8" BorderBrush="#1AFFFFFF" BorderThickness="1">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        
-                                        <StackPanel VerticalAlignment="Center">
-                                            <TextBlock Text="{Binding TimerName}" FontSize="10" Foreground="#888888" Margin="0,0,0,2"/>
-                                            <!-- 时间显示与微调 -->
-                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                                <Button Content="－" Command="{Binding DecreaseTimeCommand}" FontSize="8" Width="18" Height="18" Style="{StaticResource JellyIconBtn}">
-                                                    <Button.Visibility>
-                                                        <Binding Path="IsStarted" Converter="{StaticResource InverseBooleanToVisibilityConverter}"/>
-                                                    </Button.Visibility>
-                                                </Button>
-                                                <TextBlock Text="{Binding TimerDisplay}" Foreground="White" FontSize="14" FontWeight="Bold" Width="45" TextAlignment="Center" VerticalAlignment="Center"/>
-                                                <Button Content="＋" Command="{Binding IncreaseTimeCommand}" FontSize="8" Width="18" Height="18" Style="{StaticResource JellyIconBtn}">
-                                                    <Button.Visibility>
-                                                        <Binding Path="IsStarted" Converter="{StaticResource InverseBooleanToVisibilityConverter}"/>
-                                                    </Button.Visibility>
-                                                </Button>
-                                            </StackPanel>
-                                        </StackPanel>
+                    <!-- 附加计时器区域 (多组模式) -->
+                    <Border Visibility="{Binding IsMultiMode, Converter={StaticResource BoolToVisibilityConverter}}"
+                            Margin="0,24,0,0">
+                        <StackPanel>
+                            <!-- 选项卡与添加按钮 -->
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                
+                                <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled" Padding="0,0,8,0">
+                                    <ListBox ItemsSource="{Binding AllTimers}" 
+                                             SelectedItem="{Binding CurrentActiveTimer}"
+                                             Background="Transparent" BorderThickness="0"
+                                             ScrollViewer.HorizontalScrollBarVisibility="Hidden">
+                                        <ListBox.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <StackPanel Orientation="Horizontal"/>
+                                            </ItemsPanelTemplate>
+                                        </ListBox.ItemsPanel>
+                                        <ListBox.ItemContainerStyle>
+                                            <Style TargetType="ListBoxItem">
+                                                <Setter Property="Background" Value="Transparent"/>
+                                                <Setter Property="Padding" Value="0"/>
+                                                <Setter Property="Margin" Value="0,0,8,0"/>
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="ListBoxItem">
+                                                            <Border x:Name="Bd" 
+                                                                    Background="#0CFFFFFF"
+                                                                    BorderBrush="#19FFFFFF"
+                                                                    BorderThickness="1"
+                                                                    CornerRadius="16"
+                                                                    Padding="12,6"
+                                                                    Cursor="Hand">
+                                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                                    <!-- 正在运行提示点 -->
+                                                                    <Ellipse x:Name="RunningDot" Width="6" Height="6" Fill="#6366F1" Margin="0,0,6,0" Visibility="Collapsed">
+                                                                        <Ellipse.Triggers>
+                                                                            <EventTrigger RoutedEvent="Loaded">
+                                                                                <BeginStoryboard>
+                                                                                    <Storyboard RepeatBehavior="Forever">
+                                                                                        <DoubleAnimation Storyboard.TargetProperty="Opacity" From="1.0" To="0.3" Duration="0:0:1" AutoReverse="True"/>
+                                                                                    </Storyboard>
+                                                                                </BeginStoryboard>
+                                                                            </EventTrigger>
+                                                                        </Ellipse.Triggers>
+                                                                    </Ellipse>
+                                                                    <TextBlock x:Name="TxtName" Text="{Binding TimerName}" FontSize="12" Foreground="#9CA3AF"/>
+                                                                </StackPanel>
+                                                            </Border>
+                                                            <ControlTemplate.Triggers>
+                                                                <DataTrigger Binding="{Binding IsStarted}" Value="True">
+                                                                    <Setter TargetName="RunningDot" Property="Visibility" Value="Visible"/>
+                                                                </DataTrigger>
+                                                                <Trigger Property="IsSelected" Value="True">
+                                                                    <Setter TargetName="Bd" Property="Background" Value="#266366F1"/>
+                                                                    <Setter TargetName="Bd" Property="BorderBrush" Value="#6366F1"/>
+                                                                    <Setter TargetName="TxtName" Property="Foreground" Value="White"/>
+                                                                    <Setter TargetName="TxtName" Property="FontWeight" Value="SemiBold"/>
+                                                                </Trigger>
+                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                    <Setter TargetName="Bd" Property="Background" Value="#19FFFFFF"/>
+                                                                </Trigger>
+                                                            </ControlTemplate.Triggers>
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </Style>
+                                        </ListBox.ItemContainerStyle>
+                                    </ListBox>
+                                </ScrollViewer>
 
-                                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0">
-                                            <Button Style="{StaticResource JellyIconBtn}" Content="▶" Command="{Binding StartWorkCommand}" Margin="0,0,4,0" FontSize="12"/>
-                                            <Button Style="{StaticResource JellyIconBtn}" Content="⏸" Command="{Binding PauseCommand}" Margin="0,0,4,0" FontSize="12"/>
-                                            <Button Style="{StaticResource JellyIconBtn}" Content="⏹" Command="{Binding StopCommand}" FontSize="12"/>
-                                        </StackPanel>
+                                <Button Grid.Column="1" Content="＋" 
+                                        Style="{StaticResource SecondaryButton}" 
+                                        Command="{Binding AddAdditionalTimerCommand}"
+                                        Width="32" Height="32" Padding="0" FontSize="16"
+                                        ToolTip="添加附加番茄钟" VerticalAlignment="Center"/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
 
-                                        <Button Grid.Column="2" Style="{StaticResource JellyWinCloseBtn}" Content="×" 
-                                                Command="{Binding DataContext.RemoveAdditionalTimerCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                CommandParameter="{Binding}"
-                                                VerticalAlignment="Center"/>
-                                    </Grid>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-
-                    <!-- 添加附加计时器按钮 -->
-                    <Button Content="＋ 添加附加组" 
-                            Style="{StaticResource SecondaryButton}" 
-                            Command="{Binding AddAdditionalTimerCommand}"
-                            Visibility="{Binding IsMultiMode, Converter={StaticResource BoolToVisibilityConverter}}"
-                            Margin="0,12,0,0" Padding="12,6" FontSize="11" HorizontalAlignment="Center"/>
                 </StackPanel>
             </Border>
-
 
             <!-- ========== Row 5: 底部功能栏 ========== -->
             <Border Grid.Row="5" BorderBrush="{StaticResource SeparatorBrush}" BorderThickness="0,1,0,0"

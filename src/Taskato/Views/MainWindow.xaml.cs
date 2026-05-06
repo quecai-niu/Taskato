@@ -31,32 +31,73 @@ namespace Taskato.Views
             {
                 if (DataContext is MainViewModel vm)
                 {
-                    // 工作完成 → 弹出"番茄钟时间到"提醒
-                    vm.OnWorkCompleted += () =>
+                    // 监听所有计时器集合变化，为每个新加入的计时器注册独立的弹窗回调
+                    vm.AllTimers.CollectionChanged += (_, args) =>
                     {
-                        var toast = new ToastWindow(
-                            "番茄钟时间到！",
-                            "你已完成专注工作，要休息一下吗？",
-                            onRest: () => vm.StartRest(),
-                            onContinue: () => vm.ContinueWork(),
-                            showTimer: vm.EnableToastTimer
-                        );
-                        toast.Show();
-                    };
+                        if (args.NewItems == null) return;
+                        foreach (PomodoroTimerViewModel subVm in args.NewItems)
+                        {
+                            var capturedSubVm = subVm; // 闭包捕获，避免变量引用问题
+                            capturedSubVm.WorkCompleted += () =>
+                            {
+                                var toast = new ToastWindow(
+                                    $"{capturedSubVm.TimerName} 时间到！",
+                                    "要休息一下吗？",
+                                    onRest: () => capturedSubVm.StartRest(),
+                                    onContinue: null,
+                                    showTimer: vm.EnableToastTimer,
+                                    soundChoice: vm.NotificationSoundChoice
+                                );
+                                toast.Show();
+                            };
 
-                    // 休息完成 → 弹出"休息结束"提醒
-                    vm.OnRestCompleted += () =>
-                    {
-                        var toast = new ToastWindow(
-                            "休息时间结束！",
-                            "精力充沛了吗？开始新一轮专注吧！",
-                            onRest: null,
-                            onContinue: () => vm.ContinueWork(),
-                            showTimer: vm.EnableToastTimer,
-                            isRestComplete: true
-                        );
-                        toast.Show();
+                            capturedSubVm.RestCompleted += () =>
+                            {
+                                var toast = new ToastWindow(
+                                    $"{capturedSubVm.TimerName} 休息结束！",
+                                    "精力充沛了吗？开始新一轮专注吧！",
+                                    onRest: null,
+                                    onContinue: () => capturedSubVm.StartWork(),
+                                    showTimer: vm.EnableToastTimer,
+                                    isRestComplete: true,
+                                    soundChoice: vm.NotificationSoundChoice
+                                );
+                                toast.Show();
+                            };
+                        }
                     };
+                    
+                    // 手动为初始就在集合中的计时器（如主番茄钟）触发一次注册
+                    foreach (var subVm in vm.AllTimers)
+                    {
+                        var capturedSubVm = subVm;
+                        capturedSubVm.WorkCompleted += () =>
+                        {
+                            var toast = new ToastWindow(
+                                $"{capturedSubVm.TimerName} 时间到！",
+                                "你已完成专注工作，要休息一下吗？",
+                                onRest: () => capturedSubVm.StartRest(),
+                                onContinue: null,
+                                showTimer: vm.EnableToastTimer,
+                                soundChoice: vm.NotificationSoundChoice
+                            );
+                            toast.Show();
+                        };
+
+                        capturedSubVm.RestCompleted += () =>
+                        {
+                            var toast = new ToastWindow(
+                                $"{capturedSubVm.TimerName} 休息结束！",
+                                "精力充沛了吗？开始新一轮专注吧！",
+                                onRest: null,
+                                onContinue: () => capturedSubVm.StartWork(),
+                                showTimer: vm.EnableToastTimer,
+                                isRestComplete: true,
+                                soundChoice: vm.NotificationSoundChoice
+                            );
+                            toast.Show();
+                        };
+                    }
                 }
             };
         }

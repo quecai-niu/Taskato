@@ -21,6 +21,9 @@ namespace Taskato.Views
         private System.Windows.Threading.DispatcherTimer? _elapsedTimer;
         private int _secondsElapsed = 0;
 
+        /// <summary>提示音方案(0=无声,1=Notify,2=Ding,3=Background,4=Chimes)</summary>
+        private readonly int _soundChoice;
+
         /// <summary>
         /// 构造函数
         /// </summary>
@@ -30,8 +33,9 @@ namespace Taskato.Views
         /// <param name="onContinue">点击"继续"的回调</param>
         /// <param name="showTimer">是否显示弹窗已持续时长的计时器</param>
         /// <param name="isRestComplete">是否为"休息结束"场景</param>
+        /// <param name="soundChoice">提示音方案(0=无声,1=Notify,2=Ding,3=Background,4=Chimes)</param>
         public ToastWindow(string title, string subtitle,
-            Action? onRest, Action? onContinue, bool showTimer = false, bool isRestComplete = false)
+            Action? onRest, Action? onContinue, bool showTimer = false, bool isRestComplete = false, int soundChoice = 3)
         {
             InitializeComponent();
 
@@ -41,6 +45,7 @@ namespace Taskato.Views
 
             _onRest = onRest;
             _onContinue = onContinue;
+            _soundChoice = soundChoice; // 记录音效方案，供 PlayNotificationSound 使用
 
             // 如果启用了计时器，则初始化并启动
             if (showTimer)
@@ -76,21 +81,36 @@ namespace Taskato.Views
         {
             try
             {
-                // 使用用户选定的 Background 音效（低沉厚重，沉浸感强）
-                string soundPath = @"C:\Windows\Media\Alarm01.wav";
-                if (System.IO.File.Exists(soundPath))
+                // 根据 soundChoice 字段选择对应音效文件
+                var soundMap = new Dictionary<int, string>
                 {
-                    var player = new System.Media.SoundPlayer(soundPath);
-                    player.Play();
-                }
-                else
+                    { 1, @"C:\Windows\Media\Windows Notify.wav" },
+                    { 2, @"C:\Windows\Media\Windows Ding.wav" },
+                    { 3, @"C:\Windows\Media\Windows Background.wav" },
+                    { 4, @"C:\Windows\Media\chimes.wav" },
+                };
+
+                if (_soundChoice == 0) return; // 无声模式
+                if (!soundMap.TryGetValue(_soundChoice, out string? soundPath) || !System.IO.File.Exists(soundPath))
                 {
                     System.Media.SystemSounds.Exclamation.Play();
+                    return;
                 }
+
+                // 在独立后台线程中调用 PlaySync()：
+                // 1. PlaySync 阻塞线程直到播放完毕，对象不会被 GC 提前回收
+                // 2. 独立线程避免阻塞 UI 主线程
+                var soundThread = new System.Threading.Thread(() =>
+                {
+                    var player = new System.Media.SoundPlayer(soundPath);
+                    player.PlaySync();
+                });
+                soundThread.IsBackground = true; // 后台线程，主程序退出时自动结束
+                soundThread.Start();
             }
             catch
             {
-                // 忽略播放错误
+                // 忽略播放错误，不影响核心逻辑
             }
         }
 

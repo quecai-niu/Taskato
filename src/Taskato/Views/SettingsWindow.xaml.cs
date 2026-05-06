@@ -73,6 +73,9 @@ namespace Taskato.Views
             ToastTimerCheckBox.IsChecked = _settingsService.Config.EnableToastTimer;
             MultiPomodoroCheckBox.IsChecked = _settingsService.Config.EnableMultiplePomodoros;
 
+            // 初始化提示音选择 — 按配置值勾选对应 RadioButton
+            InitSoundRadio(_settingsService.Config.NotificationSoundChoice);
+
             // 构建颜色选择面板
             BuildColorPalette();
         }
@@ -258,6 +261,68 @@ namespace Taskato.Views
             {
                 _settingsService.Config.EnableMultiplePomodoros = MultiPomodoroCheckBox.IsChecked == true;
                 _settingsService.Save();
+            }
+        }
+
+        /// <summary>
+        /// 提示音选择变更 — 保存并同步配置
+        /// </summary>
+        private void SoundChoiceComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            // 备用，实际不再使用（ComboBox 已改为 RadioButton）
+        }
+
+        /// <summary>
+        /// RadioButton 选中事件 — 保存声音方案并更新配置
+        /// </summary>
+        private void SoundRadio_Checked(object sender, RoutedEventArgs e)
+        {
+            if (_settingsService == null) return;
+            if (sender is System.Windows.Controls.RadioButton rb && int.TryParse(rb.Tag?.ToString(), out int choice))
+            {
+                _settingsService.Config.NotificationSoundChoice = choice;
+                _settingsService.Save();
+            }
+        }
+
+        /// <summary>
+        /// 根据索引勾选对应的 RadioButton
+        /// </summary>
+        private void InitSoundRadio(int index)
+        {
+            var radios = new[] { Sound0, Sound1, Sound2, Sound3, Sound4 };
+            int safeIndex = Math.Clamp(index, 0, radios.Length - 1);
+            // 暫时解除事件避免初始化时触发保存
+            foreach (var r in radios) r.Checked -= SoundRadio_Checked;
+            radios[safeIndex].IsChecked = true;
+            foreach (var r in radios) r.Checked += SoundRadio_Checked;
+        }
+
+        /// <summary>
+        /// 试听按钮 — 在独立线程播放当前选中的音效
+        /// </summary>
+        private void PreviewSoundBtn_Click(object sender, RoutedEventArgs e)
+        {
+            var soundMap = new System.Collections.Generic.Dictionary<int, string>
+            {
+                { 1, @"C:\Windows\Media\Windows Notify.wav" },
+                { 2, @"C:\Windows\Media\Windows Ding.wav" },
+                { 3, @"C:\Windows\Media\Windows Background.wav" },
+                { 4, @"C:\Windows\Media\chimes.wav" },
+            };
+
+            int choice = _settingsService.Config.NotificationSoundChoice;
+            if (choice == 0) return; // 无声
+
+            if (soundMap.TryGetValue(choice, out string? path) && System.IO.File.Exists(path))
+            {
+                var t = new System.Threading.Thread(() =>
+                {
+                    var player = new System.Media.SoundPlayer(path);
+                    player.PlaySync();
+                });
+                t.IsBackground = true;
+                t.Start();
             }
         }
 

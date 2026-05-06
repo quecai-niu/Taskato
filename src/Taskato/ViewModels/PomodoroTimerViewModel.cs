@@ -50,6 +50,10 @@ namespace Taskato.ViewModels
             set => SetProperty(ref _isStarted, value);
         }
 
+        public bool IsWorkingState => _pomodoroService.CurrentState == PomodoroService.PomodoroState.Working;
+        public bool IsRestingState => _pomodoroService.CurrentState == PomodoroService.PomodoroState.Resting;
+        public bool IsPaused => _pomodoroService.CurrentState == PomodoroService.PomodoroState.Paused;
+
         public int WorkMinutes
         {
             get => _pomodoroService.WorkMinutes;
@@ -81,10 +85,11 @@ namespace Taskato.ViewModels
         public ICommand StartWorkCommand { get; }
         public ICommand PauseCommand { get; }
         public ICommand StopCommand { get; }
+        public ICommand EarlyRestCommand { get; }
         public ICommand IncreaseTimeCommand { get; }
         public ICommand DecreaseTimeCommand { get; }
 
-        public PomodoroTimerViewModel(PomodoroService pomodoroService, string name = "番茄钟")
+        public PomodoroTimerViewModel(PomodoroService pomodoroService, string name = "番茄钟", Action<int>? onTimeAdjusted = null)
         {
             _pomodoroService = pomodoroService;
             _timerName = name;
@@ -109,6 +114,9 @@ namespace Taskato.ViewModels
                 };
                 IsStarted = state != PomodoroService.PomodoroState.Idle;
                 OnPropertyChanged(nameof(CurrentState));
+                OnPropertyChanged(nameof(IsWorkingState));
+                OnPropertyChanged(nameof(IsRestingState));
+                OnPropertyChanged(nameof(IsPaused));
             };
 
             _pomodoroService.WorkCompleted += () => WorkCompleted?.Invoke();
@@ -117,6 +125,7 @@ namespace Taskato.ViewModels
             StartWorkCommand = new RelayCommand(_ => _pomodoroService.StartWork(), _ => CurrentState == PomodoroService.PomodoroState.Idle || CurrentState == PomodoroService.PomodoroState.Paused);
             PauseCommand = new RelayCommand(_ => _pomodoroService.TogglePause(), _ => IsStarted);
             StopCommand = new RelayCommand(_ => _pomodoroService.Stop(), _ => IsStarted);
+            EarlyRestCommand = new RelayCommand(_ => _pomodoroService.StartRest(), _ => IsWorkingState);
 
             IncreaseTimeCommand = new RelayCommand(_ =>
             {
@@ -124,6 +133,7 @@ namespace Taskato.ViewModels
                 {
                     _pomodoroService.WorkMinutes = Math.Min(240, _pomodoroService.WorkMinutes + 5);
                     TimerDisplay = $"{_pomodoroService.WorkMinutes:D2}:00";
+                    onTimeAdjusted?.Invoke(_pomodoroService.WorkMinutes);
                 }
             }, _ => CurrentState == PomodoroService.PomodoroState.Idle);
 
@@ -133,10 +143,12 @@ namespace Taskato.ViewModels
                 {
                     _pomodoroService.WorkMinutes = Math.Max(1, _pomodoroService.WorkMinutes - 5);
                     TimerDisplay = $"{_pomodoroService.WorkMinutes:D2}:00";
+                    onTimeAdjusted?.Invoke(_pomodoroService.WorkMinutes);
                 }
             }, _ => CurrentState == PomodoroService.PomodoroState.Idle);
         }
 
         public void StartRest() => _pomodoroService.StartRest();
+        public void StartWork() => _pomodoroService.StartWork();
     }
 }

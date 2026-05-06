@@ -204,7 +204,7 @@
                 </Border>
 
                 <!-- 多组番茄钟开关 -->
-                <Border Background="#0AFFFFFF" CornerRadius="10" Padding="16,12" Margin="0,0,0,24">
+                <Border Background="#0AFFFFFF" CornerRadius="10" Padding="16,12" Margin="0,0,0,8">
                     <Grid>
                         <TextBlock Text="开启多组番茄钟模式 (Alpha)" FontSize="14"
                                    Foreground="#CCCCCC" VerticalAlignment="Center"/>
@@ -213,6 +213,40 @@
                                   Checked="MultiPomodoroCheckBox_Changed"
                                   Unchecked="MultiPomodoroCheckBox_Changed"/>
                     </Grid>
+                </Border>
+
+                <!-- 提示音选择 -->
+                <TextBlock Text="🔔 提示音" FontSize="12" FontWeight="SemiBold"
+                           Foreground="{StaticResource TextSecondaryBrush}"
+                           Margin="0,8,0,12"/>
+                <Border Background="#0AFFFFFF" CornerRadius="10" Padding="16,12" Margin="0,0,0,24">
+                    <StackPanel>
+                        <!-- 用 RadioButton 组代替 ComboBox，避免 WPF 默认白色背景污染深色主题 -->
+                        <RadioButton x:Name="Sound0" Content="🔇  无声"
+                                     GroupName="SoundGroup" Tag="0"
+                                     Foreground="#E0E0E0" FontSize="13" Margin="0,4"
+                                     Checked="SoundRadio_Checked" Style="{StaticResource {x:Type RadioButton}}"/>
+                        <RadioButton x:Name="Sound1" Content="🔔  Windows Notify（清脆响亮）"
+                                     GroupName="SoundGroup" Tag="1"
+                                     Foreground="#E0E0E0" FontSize="13" Margin="0,4"
+                                     Checked="SoundRadio_Checked" Style="{StaticResource {x:Type RadioButton}}"/>
+                        <RadioButton x:Name="Sound2" Content="🔔  Windows Ding（简短清脆）"
+                                     GroupName="SoundGroup" Tag="2"
+                                     Foreground="#E0E0E0" FontSize="13" Margin="0,4"
+                                     Checked="SoundRadio_Checked" Style="{StaticResource {x:Type RadioButton}}"/>
+                        <RadioButton x:Name="Sound3" Content="🔔  Windows Background（低沉厚重）"
+                                     GroupName="SoundGroup" Tag="3"
+                                     Foreground="#E0E0E0" FontSize="13" Margin="0,4"
+                                     Checked="SoundRadio_Checked" Style="{StaticResource {x:Type RadioButton}}"/>
+                        <RadioButton x:Name="Sound4" Content="🔔  Chimes（风铃悠扬）"
+                                     GroupName="SoundGroup" Tag="4"
+                                     Foreground="#E0E0E0" FontSize="13" Margin="0,4"
+                                     Checked="SoundRadio_Checked" Style="{StaticResource {x:Type RadioButton}}"/>
+                        <Button x:Name="PreviewSoundBtn" Content="▶ 试听" Margin="0,10,0,0"
+                                HorizontalAlignment="Left" Padding="16,6"
+                                Click="PreviewSoundBtn_Click"
+                                Style="{StaticResource SecondaryButton}"/>
+                    </StackPanel>
                 </Border>
             </StackPanel>
         </StackPanel>

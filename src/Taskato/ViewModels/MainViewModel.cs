@@ -34,6 +34,9 @@ namespace Taskato.ViewModels
         /// <summary>是否开启多组番茄钟模式</summary>
         public bool IsMultiMode => _settingsService.Config.EnableMultiplePomodoros;
 
+        /// <summary>提示音方案，透传给 ToastWindow 使用</summary>
+        public int NotificationSoundChoice => _settingsService.Config.NotificationSoundChoice;
+
         // ==================== 任务相关属性 ====================
 
         /// <summary>
@@ -83,81 +86,19 @@ namespace Taskato.ViewModels
 
         // ==================== 番茄钟相关属性 ====================
 
+        public ObservableCollection<PomodoroTimerViewModel> AllTimers { get; } = new();
+
+        private PomodoroTimerViewModel? _currentActiveTimer;
         /// <summary>
-        /// 番茄钟倒计时显示文本（格式 mm:ss）
+        /// 当前选中的附加番茄钟（用于UI切换显示，避免列表过长）
         /// </summary>
-        private string _timerDisplay = "25:00";
-        public string TimerDisplay
+        public PomodoroTimerViewModel? CurrentActiveTimer
         {
-            get => _timerDisplay;
-            set => SetProperty(ref _timerDisplay, value);
+            get => _currentActiveTimer;
+            set => SetProperty(ref _currentActiveTimer, value);
         }
 
-        /// <summary>
-        /// 番茄钟进度条值（0.0 ~ 1.0，1.0 表示满）
-        /// </summary>
-        private double _timerProgress = 1.0;
-        public double TimerProgress
-        {
-            get => _timerProgress;
-            set => SetProperty(ref _timerProgress, value);
-        }
-
-        /// <summary>
-        /// 番茄钟当前状态文本（显示在状态标签上）
-        /// </summary>
-        private string _pomodoroStatusText = "空闲";
-        public string PomodoroStatusText
-        {
-            get => _pomodoroStatusText;
-            set => SetProperty(ref _pomodoroStatusText, value);
-        }
-
-        /// <summary>
-        /// 番茄钟是否正在运行中（用于控制按钮的显隐）
-        /// </summary>
-        private bool _isTimerRunning;
-        public bool IsTimerRunning
-        {
-            get => _isTimerRunning;
-            set => SetProperty(ref _isTimerRunning, value);
-        }
-
-        /// <summary>
-        /// 番茄钟是否处于暂停状态
-        /// </summary>
-        private bool _isPaused;
-        public bool IsPaused
-        {
-            get => _isPaused;
-            set => SetProperty(ref _isPaused, value);
-        }
-
-        /// <summary>
-        /// 番茄钟是否处于工作阶段
-        /// </summary>
-        public bool IsWorkingState => _pomodoroService.CurrentState == PomodoroService.PomodoroState.Working;
-
-        /// <summary>
-        /// 番茄钟是否处于休息阶段
-        /// </summary>
-        public bool IsRestingState => _pomodoroService.CurrentState == PomodoroService.PomodoroState.Resting;
-
-        /// <summary>
-        /// 附加计时器列表（多组模式开启时显示）
-        /// </summary>
-        public ObservableCollection<PomodoroTimerViewModel> AdditionalTimers { get; } = new();
-
-        // ==================== 命令绑定 ====================
-
-        /// <summary>增加专注时间 (每次 5 分钟)</summary>
-        public ICommand IncreaseTimeCommand { get; }
-
-        /// <summary>减少专注时间 (每次 5 分钟)</summary>
-        public ICommand DecreaseTimeCommand { get; }
-
-        /// <summary>提前结束工作进入休息</summary>
-        public ICommand EarlyRestCommand { get; }
+        // ==================== 任务及其他命令 ====================
 
         /// <summary>添加新任务的命令</summary>
         public ICommand AddTaskCommand { get; }
@@ -167,15 +108,6 @@ namespace Taskato.ViewModels
 
         /// <summary>删除任务的命令</summary>
         public ICommand DeleteTaskCommand { get; }
-
-        /// <summary>开始番茄钟工作的命令</summary>
-        public ICommand StartPomodoroCommand { get; }
-
-        /// <summary>暂停/恢复番茄钟的命令</summary>
-        public ICommand PausePomodoroCommand { get; }
-
-        /// <summary>停止番茄钟的命令</summary>
-        public ICommand StopPomodoroCommand { get; }
 
         /// <summary>打开历史查询窗体的命令</summary>
         public ICommand OpenHistoryCommand { get; }
@@ -188,19 +120,6 @@ namespace Taskato.ViewModels
 
         /// <summary>移除附加番茄钟命令</summary>
         public ICommand RemoveAdditionalTimerCommand { get; }
-
-        // ==================== 弹窗事件 ====================
-
-        /// <summary>
-        /// 番茄钟工作完成时触发 — 让 View 层弹出 ToastWindow
-        /// ViewModel 不应直接操作窗体，通过事件通知 View 来做
-        /// </summary>
-        public event Action? OnWorkCompleted;
-
-        /// <summary>
-        /// 番茄钟休息完成时触发
-        /// </summary>
-        public event Action? OnRestCompleted;
 
         // ==================== 构造函数 ====================
 
@@ -216,8 +135,14 @@ namespace Taskato.ViewModels
             _pomodoroService = pomodoroService;
             _settingsService = settingsService;
 
-            // 初始空闲状态时，展示倒计时时长
-            _timerDisplay = $"{_pomodoroService.WorkMinutes:D2}:00";
+            // 初始化主番茄钟并添加到列表
+            var mainTimer = new PomodoroTimerViewModel(_pomodoroService, "主番茄钟", newWorkMinutes => 
+            {
+                _settingsService.Config.WorkMinutes = newWorkMinutes;
+                _settingsService.Save();
+            });
+            AllTimers.Add(mainTimer);
+            CurrentActiveTimer = mainTimer;
 
             // ---------- 初始化命令 ----------
 
@@ -241,91 +166,23 @@ namespace Taskato.ViewModels
                     await DeleteTaskAsync(task);
             });
 
-            // 番茄钟控制命令
-            StartPomodoroCommand = new RelayCommand(_ => StartPomodoro(),
-                _ => !IsTimerRunning);
-            PausePomodoroCommand = new RelayCommand(_ => _pomodoroService.TogglePause(),
-                _ => IsTimerRunning);
-            StopPomodoroCommand = new RelayCommand(_ => _pomodoroService.Stop(),
-                _ => IsTimerRunning);
-
-            // 动态调整时间逻辑 (步进改为 5 分钟以提升效率)
-            IncreaseTimeCommand = new RelayCommand(_ =>
-            {
-                if (_pomodoroService.WorkMinutes < 240)
-                {
-                    _pomodoroService.WorkMinutes = Math.Min(240, _pomodoroService.WorkMinutes + 5);
-                    TimerDisplay = $"{_pomodoroService.WorkMinutes:D2}:00";
-                    
-                    // 同步到配置并保存
-                    _settingsService.Config.WorkMinutes = _pomodoroService.WorkMinutes;
-                    _settingsService.Save();
-                }
-            }, _ => !IsTimerRunning);
-
-            DecreaseTimeCommand = new RelayCommand(_ =>
-            {
-                if (_pomodoroService.WorkMinutes > 1)
-                {
-                    _pomodoroService.WorkMinutes = Math.Max(1, _pomodoroService.WorkMinutes - 5);
-                    TimerDisplay = $"{_pomodoroService.WorkMinutes:D2}:00";
-
-                    // 同步到配置并保存
-                    _settingsService.Config.WorkMinutes = _pomodoroService.WorkMinutes;
-                    _settingsService.Save();
-                }
-            }, _ => !IsTimerRunning);
-
-            // 提前休息逻辑 (仅在工作中可触发)
-            EarlyRestCommand = new RelayCommand(_ =>
-            {
-                _pomodoroService.Stop();
-                StartRest();
-            }, _ => IsWorkingState);
-
             // 附加计时器管理
             AddAdditionalTimerCommand = new RelayCommand(_ => AddAdditionalTimer());
             RemoveAdditionalTimerCommand = new RelayCommand(param => 
             {
                 if (param is PomodoroTimerViewModel timer)
-                    AdditionalTimers.Remove(timer);
+                {
+                    AllTimers.Remove(timer);
+                    if (CurrentActiveTimer == timer)
+                    {
+                        CurrentActiveTimer = AllTimers.FirstOrDefault();
+                    }
+                }
             });
 
             // 打开子窗体命令（具体的窗体创建逻辑在 View 层处理）
             OpenHistoryCommand = new RelayCommand(_ => OpenHistoryWindow());
             OpenSettingsCommand = new RelayCommand(_ => OpenSettingsWindow());
-
-            // ---------- 订阅番茄钟事件 ----------
-
-            // 每秒更新 UI 显示
-            _pomodoroService.Tick += (min, sec, progress) =>
-            {
-                TimerDisplay = $"{min:D2}:{sec:D2}";
-                TimerProgress = progress;
-            };
-
-            // 状态变更时更新状态文本和运行标记
-            _pomodoroService.StateChanged += state =>
-            {
-                PomodoroStatusText = state switch
-                {
-                    PomodoroService.PomodoroState.Working => "专注中",
-                    PomodoroService.PomodoroState.Paused => "已暂停",
-                    PomodoroService.PomodoroState.Resting => "休息中",
-                    _ => "空闲"
-                };
-
-                IsTimerRunning = state != PomodoroService.PomodoroState.Idle;
-                IsPaused = state == PomodoroService.PomodoroState.Paused;
-                
-                // 通知状态变更，触发 UI 按钮显隐和文字切换
-                OnPropertyChanged(nameof(IsWorkingState));
-                OnPropertyChanged(nameof(IsRestingState));
-            };
-
-            // 工作完成 → 通知 View 弹出提醒窗口
-            _pomodoroService.WorkCompleted += () => OnWorkCompleted?.Invoke();
-            _pomodoroService.RestCompleted += () => OnRestCompleted?.Invoke();
 
             // ---------- 订阅数据库全局变更事件 ----------
             // 当任何地方（如历史界面）删除了任务或修改了内容，主界面自动同步刷新
@@ -416,39 +273,7 @@ namespace Taskato.ViewModels
             CompletedCount = TodayTasks.Count(t => t.IsCompleted);
         }
 
-        // ==================== 番茄钟操作方法 ====================
 
-        /// <summary>
-        /// 开始番茄钟工作计时
-        /// </summary>
-        private void StartPomodoro()
-        {
-            // 更新初始显示
-            TimerDisplay = $"{_pomodoroService.WorkMinutes:D2}:00";
-            TimerProgress = 1.0;
-            _pomodoroService.StartWork();
-        }
-
-        /// <summary>
-        /// 开始番茄钟休息计时（由 ToastWindow 调用）
-        /// </summary>
-        public void StartRest()
-        {
-            TimerDisplay = $"{_pomodoroService.RestMinutes:D2}:00";
-            TimerProgress = 1.0;
-            _pomodoroService.StartRest();
-        }
-
-        /// <summary>
-        /// 继续工作（由 ToastWindow 调用）
-        /// </summary>
-        public void ContinueWork()
-        {
-            if (_settingsService.Config.AutoStartNextPomodoro)
-            {
-                StartPomodoro();
-            }
-        }
 
         // ==================== 子窗体打开 ====================
 
@@ -477,10 +302,9 @@ namespace Taskato.ViewModels
             };
             settingsWindow.ShowDialog();
 
-            if (_pomodoroService.CurrentState == PomodoroService.PomodoroState.Idle)
+            if (_pomodoroService.CurrentState == PomodoroService.PomodoroState.Idle && CurrentActiveTimer != null)
             {
-                TimerDisplay = $"{_pomodoroService.WorkMinutes:D2}:00";
-                TimerProgress = 1.0;
+                CurrentActiveTimer.WorkMinutes = _pomodoroService.WorkMinutes;
             }
 
             // 同步多组模式的状态
@@ -489,18 +313,13 @@ namespace Taskato.ViewModels
 
         private void AddAdditionalTimer()
         {
-            var service = new PomodoroService(20, 5); // 默认 20/5
-            var timerVM = new PomodoroTimerViewModel(service, $"附加计时器 {AdditionalTimers.Count + 1}");
+            // 使用与设置页面一致的工作/休息时长，而非写死的默认值
+            var service = new PomodoroService(_settingsService.Config.WorkMinutes, _settingsService.Config.RestMinutes);
+            var timerVM = new PomodoroTimerViewModel(service, $"附加组 {AllTimers.Count}");
+            AllTimers.Add(timerVM);
             
-            timerVM.WorkCompleted += () =>
-            {
-                // 转发事件到 View 层处理弹窗
-                OnWorkCompleted?.Invoke(); 
-                // 注意：由于 ToastWindow 目前绑定到主 VM 的 StartRest/ContinueWork，
-                // 这里的处理逻辑可能需要适配。
-            };
-            
-            AdditionalTimers.Add(timerVM);
+            // 自动选中新添加的计时器
+            CurrentActiveTimer = timerVM;
         }
     }
 }
