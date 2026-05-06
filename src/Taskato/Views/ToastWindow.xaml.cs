@@ -67,6 +67,31 @@ namespace Taskato.Views
                 ContinueButton.Content = "💪 开始工作";
                 ContinueButton.Style = (Style)FindResource("PrimaryButton");
             }
+
+            // 播放提示音 (使用 Windows 默认现代通知音)
+            PlayNotificationSound();
+        }
+
+        private void PlayNotificationSound()
+        {
+            try
+            {
+                // 使用用户选定的 Background 音效（低沉厚重，沉浸感强）
+                string soundPath = @"C:\Windows\Media\Alarm01.wav";
+                if (System.IO.File.Exists(soundPath))
+                {
+                    var player = new System.Media.SoundPlayer(soundPath);
+                    player.Play();
+                }
+                else
+                {
+                    System.Media.SystemSounds.Exclamation.Play();
+                }
+            }
+            catch
+            {
+                // 忽略播放错误
+            }
         }
 
         /// <summary>

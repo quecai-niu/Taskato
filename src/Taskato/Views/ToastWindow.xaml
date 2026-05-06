@@ -63,8 +63,8 @@
                        Margin="0,0,0,8" TextWrapping="Wrap" TextAlignment="Center"/>
 
             <!-- 计时器显示 (弹窗已出现时长) -->
-            <TextBlock x:Name="ElapsedTimerText" FontSize="12"
-                       Foreground="#555555" HorizontalAlignment="Center"
+            <TextBlock x:Name="ElapsedTimerText" FontSize="14" FontWeight="SemiBold"
+                       Foreground="#BBBBBB" HorizontalAlignment="Center"
                        Margin="0,0,0,16" Visibility="Collapsed"/>
 
             <!-- 操作按钮组 -->

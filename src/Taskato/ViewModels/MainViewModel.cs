@@ -256,6 +256,10 @@ namespace Taskato.ViewModels
                 {
                     _pomodoroService.WorkMinutes = Math.Min(240, _pomodoroService.WorkMinutes + 5);
                     TimerDisplay = $"{_pomodoroService.WorkMinutes:D2}:00";
+                    
+                    // 同步到配置并保存
+                    _settingsService.Config.WorkMinutes = _pomodoroService.WorkMinutes;
+                    _settingsService.Save();
                 }
             }, _ => !IsTimerRunning);
 
@@ -265,6 +269,10 @@ namespace Taskato.ViewModels
                 {
                     _pomodoroService.WorkMinutes = Math.Max(1, _pomodoroService.WorkMinutes - 5);
                     TimerDisplay = $"{_pomodoroService.WorkMinutes:D2}:00";
+
+                    // 同步到配置并保存
+                    _settingsService.Config.WorkMinutes = _pomodoroService.WorkMinutes;
+                    _settingsService.Save();
                 }
             }, _ => !IsTimerRunning);
 

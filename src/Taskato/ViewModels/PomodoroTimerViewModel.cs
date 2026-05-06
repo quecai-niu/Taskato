@@ -81,6 +81,8 @@ namespace Taskato.ViewModels
         public ICommand StartWorkCommand { get; }
         public ICommand PauseCommand { get; }
         public ICommand StopCommand { get; }
+        public ICommand IncreaseTimeCommand { get; }
+        public ICommand DecreaseTimeCommand { get; }
 
         public PomodoroTimerViewModel(PomodoroService pomodoroService, string name = "番茄钟")
         {
@@ -115,6 +117,24 @@ namespace Taskato.ViewModels
             StartWorkCommand = new RelayCommand(_ => _pomodoroService.StartWork(), _ => CurrentState == PomodoroService.PomodoroState.Idle || CurrentState == PomodoroService.PomodoroState.Paused);
             PauseCommand = new RelayCommand(_ => _pomodoroService.TogglePause(), _ => IsStarted);
             StopCommand = new RelayCommand(_ => _pomodoroService.Stop(), _ => IsStarted);
+
+            IncreaseTimeCommand = new RelayCommand(_ =>
+            {
+                if (_pomodoroService.WorkMinutes < 240)
+                {
+                    _pomodoroService.WorkMinutes = Math.Min(240, _pomodoroService.WorkMinutes + 5);
+                    TimerDisplay = $"{_pomodoroService.WorkMinutes:D2}:00";
+                }
+            }, _ => CurrentState == PomodoroService.PomodoroState.Idle);
+
+            DecreaseTimeCommand = new RelayCommand(_ =>
+            {
+                if (_pomodoroService.WorkMinutes > 1)
+                {
+                    _pomodoroService.WorkMinutes = Math.Max(1, _pomodoroService.WorkMinutes - 5);
+                    TimerDisplay = $"{_pomodoroService.WorkMinutes:D2}:00";
+                }
+            }, _ => CurrentState == PomodoroService.PomodoroState.Idle);
         }
 
         public void StartRest() => _pomodoroService.StartRest();

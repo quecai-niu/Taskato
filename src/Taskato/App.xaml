@@ -21,6 +21,7 @@
             <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
             <converters:TaskTimeDisplayConverter x:Key="TaskTimeDisplayConverter"/>
             <converters:IntToBoolConverter x:Key="IntToBoolConverter"/>
+            <converters:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter"/>
 
             <!-- ============================================
                  全局颜色常量（主题色系）

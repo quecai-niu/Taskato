@@ -164,43 +164,38 @@
                 <ItemsControl ItemsSource="{Binding TodayTasks}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <!-- 单个任务卡片容器
-                                 ClipToBounds=True 是关键：确保内部的左侧色条被裁切成与卡片相同的圆角，
-                                 这样左色条在顶角/底角处呈圆形，而不是直角突出。-->
+                            <!-- 单个任务卡片容器 -->
                             <Border x:Name="taskCard"
                                     Background="{StaticResource CardBackgroundBrush}"
                                     CornerRadius="14" Margin="0,0,0,10"
                                     BorderThickness="0"
-                                    Cursor="Hand" ClipToBounds="True"
+                                    Cursor="Hand" ClipToBounds="False"
                                     MouseLeftButtonDown="TaskCard_MouseLeftButtonDown">
                                 <Grid>
-                                    <!-- 左侧优先级色条：固定宽4px，铺满卡片全高。
-                                         由于外层 Border 有 ClipToBounds=True 和 CornerRadius=14，
-                                         这个色条的左上角和左下角会被自动裁切成圆角，
-                                         右侧则直接与卡片内容相邻，实现"只有左侧有颜色"的效果。 -->
-                                     <Border Width="4" CornerRadius="100" Margin="14,12,0,12" 
-                                             HorizontalAlignment="Left" VerticalAlignment="Stretch">
-                                        <Border.Effect>
-                                            <DropShadowEffect BlurRadius="15" ShadowDepth="0" Opacity="0.4"
-                                                              Color="{Binding Path=Background.Color, RelativeSource={RelativeSource AncestorType=Border}}"/>
-                                        </Border.Effect>
-                                        <Border.Style>
-                                            <Style TargetType="Border">
-                                                <Setter Property="Background" Value="{StaticResource Pri0Brush}"/>
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding Priority}" Value="1">
-                                                        <Setter Property="Background" Value="{StaticResource Pri1Brush}"/>
-                                                    </DataTrigger>
-                                                    <DataTrigger Binding="{Binding Priority}" Value="2">
-                                                        <Setter Property="Background" Value="{StaticResource Pri2Brush}"/>
-                                                    </DataTrigger>
-                                                    <DataTrigger Binding="{Binding Priority}" Value="3">
-                                                        <Setter Property="Background" Value="{StaticResource Pri3Brush}"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </Border.Style>
-                                    </Border>
+                                    <!-- 左侧优先级色条 -->
+                                     <Rectangle Width="4" RadiusX="2" RadiusY="2" Margin="14,14,0,14" 
+                                                HorizontalAlignment="Left" VerticalAlignment="Stretch">
+                                         <Rectangle.Effect>
+                                             <DropShadowEffect BlurRadius="12" ShadowDepth="0" Opacity="0.3"
+                                                               Color="{Binding Path=Fill.Color, RelativeSource={RelativeSource Self}}"/>
+                                         </Rectangle.Effect>
+                                         <Rectangle.Style>
+                                             <Style TargetType="Rectangle">
+                                                 <Setter Property="Fill" Value="{StaticResource Pri0Brush}"/>
+                                                 <Style.Triggers>
+                                                     <DataTrigger Binding="{Binding Priority}" Value="1">
+                                                         <Setter Property="Fill" Value="{StaticResource Pri1Brush}"/>
+                                                     </DataTrigger>
+                                                     <DataTrigger Binding="{Binding Priority}" Value="2">
+                                                         <Setter Property="Fill" Value="{StaticResource Pri2Brush}"/>
+                                                     </DataTrigger>
+                                                     <DataTrigger Binding="{Binding Priority}" Value="3">
+                                                         <Setter Property="Fill" Value="{StaticResource Pri3Brush}"/>
+                                                     </DataTrigger>
+                                                 </Style.Triggers>
+                                             </Style>
+                                         </Rectangle.Style>
+                                     </Rectangle>
 
                                     <!-- 内容区：左边距26px（色条间距） -->
                                     <Grid Margin="26,14,14,14" Background="Transparent">
@@ -310,7 +305,6 @@
             </ScrollViewer>
 
             <!-- ========== Row 4: 番茄钟区域 ========== -->
-            <!-- 番茄钟区域：Margin/Padding 收紧，避免挤压上方任务列表 -->
             <Border Grid.Row="4" Margin="20,6" Padding="14,10"
                     CornerRadius="14" BorderThickness="1"
                     BorderBrush="#1F6366F1">
@@ -325,11 +319,6 @@
                     <!-- 标题行: 番茄钟图标(果冻底座) + 状态标签 -->
                     <Grid Margin="0,0,0,8">
                         <StackPanel Orientation="Horizontal">
-                            <!-- 番茄钟标识：通过颜色和符号快速识别功能区域 -->
-                            <!-- 番茄钟图标：精调深红“果冻”风格
-                                 背景 #1FCD1A1A 为深红色的 12% 透明版本，确保底座有色且轻盈比较通透
-                                 Foreground #CD1A1A 为更正宗的番茄深红色
-                                 Padding="0,0,0,2" 强制微调 Emoji 重心，解决视觉偏低的问题 -->
                             <Border Width="26" Height="26" CornerRadius="8"
                                     Background="#1FCD1A1A" VerticalAlignment="Center">
                                 <TextBlock Text="🍅" FontSize="14" Foreground="#FF4D4D"
@@ -364,7 +353,6 @@
                                 </Style>
                             </Button.Style>
                         </Button>
-                        <!-- 计时器数字：增加左右边距（从 12 拉大到 24）以缓解拥挤感 -->
                         <TextBlock Text="{Binding TimerDisplay}" FontSize="40" FontWeight="Bold" Foreground="White" Margin="24,0"/>
                         <Button Content="＋" Command="{Binding IncreaseTimeCommand}">
                             <Button.Style>
@@ -418,7 +406,6 @@
 
                     <!-- 控制按钮组 -->
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                        <!-- 开始按钮 -->
                         <Button Margin="0,0,8,0" Padding="20,9" Command="{Binding StartPomodoroCommand}">
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
@@ -432,7 +419,6 @@
                                 </Style>
                             </Button.Style>
                         </Button>
-                        <!-- 暂停/继续按钮 -->
                         <Button Margin="0,0,8,0" Padding="20,9" Command="{Binding PausePomodoroCommand}">
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource SecondaryButton}">
@@ -451,7 +437,6 @@
                                 </Style>
                             </Button.Style>
                         </Button>
-                        <!-- 停止/提前休息按钮 -->
                         <Button Padding="20,9">
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource DangerButton}">
@@ -487,7 +472,20 @@
                                         
                                         <StackPanel VerticalAlignment="Center">
                                             <TextBlock Text="{Binding TimerName}" FontSize="10" Foreground="#888888" Margin="0,0,0,2"/>
-                                            <TextBlock Text="{Binding TimerDisplay}" FontSize="18" FontWeight="Bold" Foreground="White"/>
+                                            <!-- 时间显示与微调 -->
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <Button Content="－" Command="{Binding DecreaseTimeCommand}" FontSize="8" Width="18" Height="18" Style="{StaticResource JellyIconBtn}">
+                                                    <Button.Visibility>
+                                                        <Binding Path="IsStarted" Converter="{StaticResource InverseBooleanToVisibilityConverter}"/>
+                                                    </Button.Visibility>
+                                                </Button>
+                                                <TextBlock Text="{Binding TimerDisplay}" Foreground="White" FontSize="14" FontWeight="Bold" Width="45" TextAlignment="Center" VerticalAlignment="Center"/>
+                                                <Button Content="＋" Command="{Binding IncreaseTimeCommand}" FontSize="8" Width="18" Height="18" Style="{StaticResource JellyIconBtn}">
+                                                    <Button.Visibility>
+                                                        <Binding Path="IsStarted" Converter="{StaticResource InverseBooleanToVisibilityConverter}"/>
+                                                    </Button.Visibility>
+                                                </Button>
+                                            </StackPanel>
                                         </StackPanel>
 
                                         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0">
