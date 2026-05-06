@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>尊享版多彩番茄钟图标预览</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Microsoft YaHei, sans-serif;
+            background-color: #0B0B14;
+            color: #E0E0E0;
+            margin: 0;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 {
+            color: #FFFFFF;
+            margin-bottom: 10px;
+            font-weight: 300;
+            letter-spacing: 2px;
+        }
+        p.subtitle {
+            color: #888888;
+            margin-bottom: 40px;
+            font-size: 14px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 40px;
+            max-width: 900px;
+            width: 100%;
+        }
+        .card {
+            background: linear-gradient(145deg, #161628 0%, #10101C 100%);
+            border: 1px solid #232338;
+            border-radius: 24px;
+            padding: 40px 30px;
+            text-align: center;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        .card::before {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+        }
+        .card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5), 0 0 20px rgba(99, 102, 241, 0.2);
+            border-color: #4A4D8C;
+        }
+        .icon-wrapper {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 30px auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: radial-gradient(circle at center, #1D1D35 0%, #11111F 100%);
+            border-radius: 50%;
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.5), 0 10px 20px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.03);
+        }
+        .title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #FFFFFF;
+            letter-spacing: 1px;
+        }
+        .desc {
+            font-size: 13px;
+            color: #8A8A9E;
+            line-height: 1.6;
+            margin: 0 10px;
+        }
+        
+        .wpf-note {
+            margin-top: 50px;
+            background: rgba(99, 102, 241, 0.05);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            padding: 20px 30px;
+            border-radius: 12px;
+            max-width: 900px;
+            width: 100%;
+            font-size: 14px;
+            color: #A0A0C0;
+            text-align: center;
+        }
+        .wpf-note strong {
+            color: #6366F1;
+        }
+    </style>
+</head>
+<body>
+    <h1>全新尊享级番茄钟图标方案</h1>
+    <p class="subtitle">全面推翻重做，采用最高端的暗色主题、3D渐变与玻璃质感设计</p>
+
+    <div class="grid">
+        <!-- 方案 1: 3D 柔光哑光 (Soft 3D Matte) -->
+        <div class="card">
+            <div class="icon-wrapper">
+                <svg width="80" height="80" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <radialGradient id="matte-body" cx="35%" cy="30%" r="70%">
+                            <stop offset="0%" stop-color="#FF6B6B" />
+                            <stop offset="40%" stop-color="#E52D2D" />
+                            <stop offset="100%" stop-color="#600000" />
+                        </radialGradient>
+                        <linearGradient id="matte-leaf" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#2ED573" />
+                            <stop offset="100%" stop-color="#05632A" />
+                        </linearGradient>
+                        <filter id="soft-shadow" x="-30%" y="-30%" width="160%" height="160%">
+                            <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#000" flood-opacity="0.4"/>
+                        </filter>
+                    </defs>
+                    <path d="M32 58C48 58 58 46 58 30C58 16 48 8 32 8C16 8 6 16 6 30C6 46 16 58 32 58Z" fill="url(#matte-body)" filter="url(#soft-shadow)"/>
+                    <!-- 柔和内发光模拟 3D 边缘 -->
+                    <path d="M32 57C47 57 57 45 57 30C57 17 47 9 32 9C17 9 7 17 7 30C7 45 17 57 32 57Z" fill="none" stroke="#FF9999" stroke-width="1.5" opacity="0.3"/>
+                    <!-- Leaves -->
+                    <path d="M32 8C24 2 14 4 14 4C14 4 18 14 28 16C24 20 20 26 20 26C20 26 28 22 32 16C36 22 44 26 44 26C44 26 40 20 36 16C46 14 50 4 50 4C50 4 40 2 32 8Z" fill="url(#matte-leaf)" filter="url(#soft-shadow)"/>
+                </svg>
+            </div>
+            <div class="title">方案一：3D 柔光哑光 (Soft Matte)</div>
+            <div class="desc">使用偏置的径向渐变与深邃的阴影，呈现出高级且厚重的 3D 哑光磨砂质感，极其细腻。</div>
+        </div>
+
+        <!-- 方案 2: Fluent 流体叠层 (Fluent Overlap) -->
+        <div class="card">
+            <div class="icon-wrapper">
+                <svg width="80" height="80" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="fluent-dark" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#9E002D" />
+                            <stop offset="100%" stop-color="#3A000A" />
+                        </linearGradient>
+                        <linearGradient id="fluent-light" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#FF416C" />
+                            <stop offset="100%" stop-color="#FF4B2B" />
+                        </linearGradient>
+                        <linearGradient id="fluent-leaf1" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#11998E" />
+                            <stop offset="100%" stop-color="#38EF7D" />
+                        </linearGradient>
+                        <linearGradient id="fluent-leaf2" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#00C9FF" />
+                            <stop offset="100%" stop-color="#92FE9D" />
+                        </linearGradient>
+                        <filter id="fluent-shadow">
+                            <feDropShadow dx="2" dy="4" stdDeviation="3" flood-color="#000" flood-opacity="0.5"/>
+                        </filter>
+                    </defs>
+                    <!-- Back sphere -->
+                    <circle cx="36" cy="38" r="22" fill="url(#fluent-dark)" filter="url(#fluent-shadow)" />
+                    <!-- Front sphere -->
+                    <circle cx="28" cy="30" r="22" fill="url(#fluent-light)" opacity="0.95" />
+                    <!-- Leaf 1 -->
+                    <path d="M28 6 C16 2 10 10 10 10 C10 10 16 18 28 18 Z" fill="url(#fluent-leaf1)" opacity="0.9" filter="url(#fluent-shadow)"/>
+                    <!-- Leaf 2 -->
+                    <path d="M28 6 C40 2 46 10 46 10 C46 10 40 18 28 18 Z" fill="url(#fluent-leaf2)" opacity="0.9"/>
+                </svg>
+            </div>
+            <div class="title">方案二：微软流体风 (Fluent UI)</div>
+            <div class="desc">利用大色块错位叠层、多重渐变与半透明度，呈现出现代操作系统的流体 UI 与空间层次感。</div>
+        </div>
+
+        <!-- 方案 3: 水晶切面 (Crystal Jewel) -->
+        <div class="card">
+            <div class="icon-wrapper">
+                <svg width="80" height="80" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="gem-1" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#FF2E63" />
+                            <stop offset="100%" stop-color="#800020" />
+                        </linearGradient>
+                        <linearGradient id="gem-2" x1="100%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" stop-color="#FF5252" />
+                            <stop offset="100%" stop-color="#5C0000" />
+                        </linearGradient>
+                        <linearGradient id="gem-3" x1="0%" y1="100%" x2="100%" y2="0%">
+                            <stop offset="0%" stop-color="#8B0000" />
+                            <stop offset="100%" stop-color="#FF4081" />
+                        </linearGradient>
+                        <linearGradient id="gem-leaf" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#00E676" />
+                            <stop offset="100%" stop-color="#1DE9B6" />
+                        </linearGradient>
+                    </defs>
+                    <path d="M32 14 L10 32 L32 60 L54 32 Z" fill="url(#gem-1)" />
+                    <path d="M32 14 L10 32 L32 40 Z" fill="url(#gem-2)" />
+                    <path d="M32 14 L54 32 L32 40 Z" fill="url(#gem-3)" />
+                    <path d="M32 14 L18 4 L24 20 Z" fill="url(#gem-leaf)" opacity="0.95"/>
+                    <path d="M32 14 L46 4 L40 20 Z" fill="url(#gem-leaf)" opacity="0.8"/>
+                    <!-- 锐利高光 -->
+                    <path d="M32 14 L10 32 L32 60" fill="none" stroke="#FFFFFF" stroke-width="1" opacity="0.4"/>
+                </svg>
+            </div>
+            <div class="title">方案三：水晶多面体 (Crystal Jewel)</div>
+            <div class="desc">摒弃传统的圆润造型，改用尖锐的几何切割面，像一颗耀眼的红宝石，充满科技感与力量感。</div>
+        </div>
+
+        <!-- 方案 4: 赛博光环 (Cosmic Neon Glow) -->
+        <div class="card">
+            <div class="icon-wrapper">
+                <svg width="80" height="80" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <linearGradient id="glow-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#FF0099" />
+                            <stop offset="100%" stop-color="#FF6A00" />
+                        </linearGradient>
+                        <linearGradient id="glow-leaf" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stop-color="#00F2FE" />
+                            <stop offset="100%" stop-color="#4FACFE" />
+                        </linearGradient>
+                        <filter id="neon-glow" x="-50%" y="-50%" width="200%" height="200%">
+                            <feGaussianBlur stdDeviation="4" result="blur" />
+                            <feMerge>
+                                <feMergeNode in="blur" />
+                                <feMergeNode in="blur" />
+                                <feMergeNode in="SourceGraphic" />
+                            </feMerge>
+                        </filter>
+                    </defs>
+                    <!-- Core Body -->
+                    <circle cx="32" cy="36" r="22" fill="none" stroke="url(#glow-grad)" stroke-width="6" filter="url(#neon-glow)" />
+                    <circle cx="32" cy="36" r="22" fill="none" stroke="#FFD1EA" stroke-width="2" />
+                    <!-- Core Leaves -->
+                    <path d="M20 16 C24 6 32 16 32 16 C32 16 40 6 44 16" fill="none" stroke="url(#glow-leaf)" stroke-width="5" stroke-linecap="round" filter="url(#neon-glow)" />
+                    <path d="M20 16 C24 6 32 16 32 16 C32 16 40 6 44 16" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" />
+                </svg>
+            </div>
+            <div class="title">方案四：赛博光环 (Cosmic Neon)</div>
+            <div class="desc">极简的抽象能量光环，抛弃实体，仅保留耀眼的粗壮霓虹发光线条，完美融入深色电竞/黑客主题。</div>
+        </div>
+    </div>
+
+    <div class="wpf-note">
+        <strong>💡 设计师附言：</strong><br>
+        上一版的图标确实太廉价了，这次我为您准备了纯粹由高阶渐变、流体、多面体切割与外发光组成的**尊享版设计**。这 4 个方案在 WPF 中都可以使用 <code>RadialGradientBrush</code> 或 <code>DropShadowEffect</code> 完美 1:1 复现。请挑选最让您心动的那一款！
+    </div>
+</body>
+</html>

@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>番茄小图标 - 多风格方案 v2</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: #1a1a2e;
+  color: #e0e0e0;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  padding: 40px;
+  min-height: 100vh;
+}
+h1 {
+  text-align: center; font-size: 26px; margin-bottom: 6px;
+  background: linear-gradient(135deg, #ff6b6b, #ffa502, #7c4dff, #00e676);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.subtitle { text-align: center; color: #888; margin-bottom: 36px; font-size: 13px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px; max-width: 1100px; margin: 0 auto; }
+.card {
+  background: #16213e; border-radius: 14px; padding: 20px; text-align: center;
+  border: 1px solid #2a2a4a; transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+.card:hover { transform: translateY(-4px); border-color: #ff6348; box-shadow: 0 8px 28px rgba(255,99,72,0.12); }
+.card h3 { font-size: 15px; margin-bottom: 3px; color: #ccc; }
+.card .desc { font-size: 11px; color: #777; margin-bottom: 16px; line-height: 1.5; }
+.icon-row { display: flex; align-items: center; justify-content: center; gap: 20px; flex-wrap: wrap; }
+.icon-unit { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.icon-unit .lbl { font-size: 10px; color: #555; letter-spacing: 0.3px; }
+.icon-box { display: flex; align-items: center; justify-content: center; border-radius: 10px; }
+.icon-box.L { width: 80px; height: 80px; }
+.icon-box.S { width: 32px; height: 32px; border-radius: 6px; }
+svg { display: block; }
+.tag {
+  display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 10px;
+  margin: 4px 2px;
+}
+.tag-geo { background: #1e3a5f; color: #64b5f6; }
+.tag-flat { background: #3e1e5f; color: #ce93d8; }
+.tag-pixel { background: #1e5f3a; color: #69f0ae; }
+.tag-line { background: #5f4a1e; color: #ffd54f; }
+.tag-poly { background: #5f1e1e; color: #ff8a80; }
+
+/* Toast window simulation */
+.toast-sim {
+  margin-top: 12px; padding: 10px 14px; background: #0f0f23; border-radius: 8px;
+  display: flex; align-items: center; gap: 10px; justify-content: center;
+}
+.toast-sim .icon-slot { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; }
+.toast-sim .fake-text { font-size: 10px; color: #888; text-align: left; line-height: 1.4; }
+</style>
+</head>
+<body>
+
+<h1>番茄小图标 · 多风格方案</h1>
+<p class="subtitle">5 种截然不同的视觉语言 · 每种展示 64×64 / 26×26 / 弹窗模拟</p>
+
+<div class="grid">
+
+<!-- ===== 1. 抽象几何构造 ===== -->
+<div class="card">
+  <h3>方案 A — 抽象几何构造 <span class="tag tag-geo">几何</span></h3>
+  <p class="desc">Bauhaus 风格：圆 + 弧 + 三角，纯粹几何体构建番茄意象</p>
+  <div class="icon-row">
+    <div class="icon-unit"><div class="icon-box L">
+      <svg width="64" height="64" viewBox="0 0 64 64">
+        <!-- shadow -->
+        <ellipse cx="32" cy="57" rx="17" ry="4" fill="rgba(0,0,0,0.15)"/>
+        <!-- body: 3 overlapping arcs -->
+        <path d="M10 34 A22 22 0 1 1 54 34" fill="#e74c3c"/>
+        <!-- lighter belly arc -->
+        <path d="M14 38 A19 19 0 0 1 50 38" fill="#f39c70" opacity="0.6"/>
+        <!-- top highlight arc -->
+        <path d="M16 28 A16 16 0 0 1 48 28" fill="rgba(255,255,255,0.2)"/>
+        <!-- geometric stem -->
+        <rect x="30" y="4" width="4" height="10" rx="1.5" fill="#5d8c3c"/>
+        <!-- geometric leaf: triangle pair -->
+        <polygon points="32,8 16,2 22,12" fill="#27ae60"/>
+        <polygon points="32,8 48,2 42,12" fill="#2ecc71"/>
+        <!-- accent dots -->
+        <circle cx="22" cy="36" r="1.5" fill="rgba(255,255,255,0.3)"/>
+        <circle cx="28" cy="42" r="1" fill="rgba(255,255,255,0.2)"/>
+        <circle cx="36" cy="42" r="1.2" fill="rgba(255,255,255,0.2)"/>
+      </svg>
+    </div><span class="lbl">64×64</span></div>
+    <div class="icon-unit"><div class="icon-box S">
+      <svg width="26" height="26" viewBox="0 0 64 64">
+        <ellipse cx="32" cy="57" rx="17" ry="4" fill="rgba(0,0,0,0.15)"/>
+        <path d="M10 34 A22 22 0 1 1 54 34" fill="#e74c3c"/>
+        <path d="M14 38 A19 19 0 0 1 50 38" fill="#f39c70" opacity="0.6"/>
+        <path d="M16 28 A16 16 0 0 1 48 28" fill="rgba(255,255,255,0.2)"/>
+        <rect x="30" y="4" width="4" height="10" rx="1.5" fill="#5d8c3c"/>
+        <polygon points="32,8 16,2 22,12" fill="#27ae60"/>
+        <polygon points="32,8 48,2 42,12" fill="#2ecc71"/>
+        <circle cx="22" cy="36" r="1.5" fill="rgba(255,255,255,0.3)"/>
+        <circle cx="28" cy="42" r="1" fill="rgba(255,255,255,0.2)"/>
+        <circle cx="36" cy="42" r="1.2" fill="rgba(255,255,255,0.2)"/>
+      </svg>
+    </div><span class="lbl">26×26</span></div>
+  </div>
+  <div class="toast-sim">
+    <div class="icon-slot"><svg width="36" height="36" viewBox="0 0 64 64">
+      <ellipse cx="32" cy="57" rx="17" ry="4" fill="rgba(0,0,0,0.15)"/>
+      <path d="M10 34 A22 22 0 1 1 54 34" fill="#e74c3c"/>
+      <path d="M14 38 A19 19 0 0 1 50 38" fill="#f39c70" opacity="0.6"/>
+      <path d="M16 28 A16 16 0 0 1 48 28" fill="rgba(255,255,255,0.2)"/>
+      <rect x="30" y="4" width="4" height="10" rx="1.5" fill="#5d8c3c"/>
+      <polygon points="32,8 16,2 22,12" fill="#27ae60"/>
+      <polygon points="32,8 48,2 42,12" fill="#2ecc71"/>
+    </svg></div>
+    <div class="fake-text">弹窗 36px 效果</div>
+  </div>
+</div>
+
+<!-- ===== 2. 扁平夸张插画 ===== -->
+<div class="card">
+  <h3>方案 B — 扁平夸张插画 <span class="tag tag-flat">插画</span></h3>
+  <p class="desc">粗轮廓 + 纯色块 + 番茄切片，doodle 手绘感</p>
+  <div class="icon-row">
+    <div class="icon-unit"><div class="icon-box L">
+      <svg width="64" height="64" viewBox="0 0 64 64">
+        <!-- shadow -->
+        <ellipse cx="32" cy="58" rx="18" ry="4" fill="rgba(0,0,0,0.15)"/>
+        <!-- tomato body with bold outline -->
+        <path d="M12 32 Q10 18 20 10 Q30 4 40 6 Q52 8 55 22 Q57 38 48 48 Q36 56 24 52 Q14 48 12 32Z"
+              fill="#ff5252" stroke="#1a1a2e" stroke-width="2.5"/>
+        <!-- interior chambers (slice view!) -->
+        <path d="M24 20 Q32 14 40 18" fill="none" stroke="#1a1a2e" stroke-width="1.5" stroke-dasharray="0 14" stroke-linecap="round"/>
+        <path d="M20 28 Q32 22 44 30" fill="none" stroke="#1a1a2e" stroke-width="1.5" stroke-dasharray="0 14" stroke-linecap="round"/>
+        <path d="M22 36 Q32 30 42 40" fill="none" stroke="#1a1a2e" stroke-width="1.5" stroke-dasharray="0 14" stroke-linecap="round"/>
+        <!-- seeds -->
+        <ellipse cx="26" cy="24" rx="1.2" ry="2" fill="#ffcdd2" stroke="#1a1a2e" stroke-width="0.6" transform="rotate(-15 26 24)"/>
+        <ellipse cx="36" cy="22" rx="1.2" ry="2" fill="#ffcdd2" stroke="#1a1a2e" stroke-width="0.6" transform="rotate(10 36 22)"/>
+        <ellipse cx="28" cy="32" rx="1" ry="1.8" fill="#ffcdd2" stroke="#1a1a2e" stroke-width="0.6" transform="rotate(-5 28 32)"/>
+        <ellipse cx="38" cy="30" rx="1" ry="1.8" fill="#ffcdd2" stroke="#1a1a2e" stroke-width="0.6" transform="rotate(20 38 30)"/>
+        <!-- stem -->
+        <rect x="30" y="4" width="4" height="10" rx="2" fill="#66bb6a" stroke="#1a1a2e" stroke-width="1.5"/>
+        <!-- playful leaf -->
+        <path d="M33 8 Q44 -2 50 5 Q44 12 33 9" fill="#43a047" stroke="#1a1a2e" stroke-width="1.8"/>
+        <!-- doodle highlight -->
+        <path d="M18 16 Q24 12 30 14" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+    </div><span class="lbl">64×64</span></div>
+    <div class="icon-unit"><div class="icon-box S">
+      <svg width="26" height="26" viewBox="0 0 64 64">
+        <ellipse cx="32" cy="58" rx="18" ry="4" fill="rgba(0,0,0,0.15)"/>
+        <path d="M12 32 Q10 18 20 10 Q30 4 40 6 Q52 8 55 22 Q57 38 48 48 Q36 56 24 52 Q14 48 12 32Z"
+              fill="#ff5252" stroke="#1a1a2e" stroke-width="2.5"/>
+        <path d="M24 20 Q32 14 40 18" fill="none" stroke="#1a1a2e" stroke-width="1.5" stroke-dasharray="0 14" stroke-linecap="round"/>
+        <path d="M20 28 Q32 22 44 30" fill="none" stroke="#1a1a2e" stroke-width="1.5" stroke-dasharray="0 14" stroke-linecap="round"/>
+        <path d="M22 36 Q32 30 42 40" fill="none" stroke="#1a1a2e" stroke-width="1.5" stroke-dasharray="0 14" stroke-linecap="round"/>
+        <ellipse cx="26" cy="24" rx="1.2" ry="2" fill="#ffcdd2" stroke="#1a1a2e" stroke-width="0.6" transform="rotate(-15 26 24)"/>
+        <ellipse cx="36" cy="22" rx="1.2" ry="2" fill="#ffcdd2" stroke="#1a1a2e" stroke-width="0.6" transform="rotate(10 36 22)"/>
+        <ellipse cx="28" cy="32" rx="1" ry="1.8" fill="#ffcdd2" stroke="#1a1a2e" stroke-width="0.6" transform="rotate(-5 28 32)"/>
+        <ellipse cx="38" cy="30" rx="1" ry="1.8" fill="#ffcdd2" stroke="#1a1a2e" stroke-width="0.6" transform="rotate(20 38 30)"/>
+        <rect x="30" y="4" width="4" height="10" rx="2" fill="#66bb6a" stroke="#1a1a2e" stroke-width="1.5"/>
+        <path d="M33 8 Q44 -2 50 5 Q44 12 33 9" fill="#43a047" stroke="#1a1a2e" stroke-width="1.8"/>
+        <path d="M18 16 Q24 12 30 14" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+    </div><span class="lbl">26×26</span></div>
+  </div>
+  <div class="toast-sim">
+    <div class="icon-slot"><svg width="36" height="36" viewBox="0 0 64 64">
+      <ellipse cx="32" cy="58" rx="18" ry="4" fill="rgba(0,0,0,0.15)"/>
+      <path d="M12 32 Q10 18 20 10 Q30 4 40 6 Q52 8 55 22 Q57 38 48 48 Q36 56 24 52 Q14 48 12 32Z"
+            fill="#ff5252" stroke="#1a1a2e" stroke-width="2.5"/>
+      <path d="M24 20 Q32 14 40 18" fill="none" stroke="#1a1a2e" stroke-width="1.5" stroke-dasharray="0 14" stroke-linecap="round"/>
+      <path d="M20 28 Q32 22 44 30" fill="none" stroke="#1a1a2e" stroke-width="1.5" stroke-dasharray="0 14" stroke-linecap="round"/>
+      <path d="M22 36 Q32 30 42 40" fill="none" stroke="#1a1a2e" stroke-width="1.5" stroke-dasharray="0 14" stroke-linecap="round"/>
+      <ellipse cx="26" cy="24" rx="1.2" ry="2" fill="#ffcdd2" stroke="#1a1a2e" stroke-width="0.6"/>
+      <ellipse cx="36" cy="22" rx="1.2" ry="2" fill="#ffcdd2" stroke="#1a1a2e" stroke-width="0.6"/>
+      <rect x="30" y="4" width="4" height="10" rx="2" fill="#66bb6a" stroke="#1a1a2e" stroke-width="1.5"/>
+      <path d="M33 8 Q44 -2 50 5 Q44 12 33 9" fill="#43a047" stroke="#1a1a2e" stroke-width="1.8"/>
+    </svg></div>
+    <div class="fake-text">弹窗 36px 效果</div>
+  </div>
+</div>
+
+<!-- ===== 3. 像素复古 8-bit ===== -->
+<div class="card">
+  <h3>方案 C — 像素复古 8-bit <span class="tag tag-pixel">像素</span></h3>
+  <p class="desc">手点像素格，游戏机风格，怀旧又俏皮</p>
+  <div class="icon-row">
+    <div class="icon-unit"><div class="icon-box L">
+      <svg width="64" height="64" viewBox="0 0 64 64" shape-rendering="crispEdges">
+        <style>
+          .p3 { fill: #d32f2f } .p2 { fill: #e53935 } .p1 { fill: #ef5350 }
+          .pw { fill: #ff8a80 } .pg { fill: #43a047 } .ps { fill: #efebe9 }
+          .pb { fill: #1a1a2e }
+        </style>
+        <!-- shadow base -->
+        <rect x="16" y="56" width="32" height="4" rx="0" fill="rgba(0,0,0,0.2)"/>
+        <!-- row by row pixel body -->
+        <!-- y=10: stem -->
+        <rect x="30" y="4" width="4" height="6" class="pg"/>
+        <!-- y=10 -->
+        <rect x="22" y="10" width="4" height="4" class="p3"/>
+        <rect x="26" y="10" width="12" height="4" class="p2"/>
+        <rect x="38" y="10" width="4" height="4" class="p3"/>
+        <!-- y=14 -->
+        <rect x="18" y="14" width="4" height="4" class="p2"/>
+        <rect x="22" y="14" width="4" height="4" class="p1"/>
+        <rect x="26" y="14" width="12" height="4" class="p1"/>
+        <rect x="38" y="14" width="4" height="4" class="p1"/>
+        <rect x="42" y="14" width="4" height="4" class="p2"/>
+        <!-- y=18 -->
+        <rect x="14" y="18" width="4" height="4" class="p2"/>
+        <rect x="18" y="18" width="4" height="4" class="p1"/>
+        <rect x="22" y="18" width="4" height="4" class="pw"/>
+        <rect x="26" y="18" width="12" height="4" class="p1"/>
+        <rect x="38" y="18" width="4" height="4" class="pw"/>
+        <rect x="42" y="18" width="4" height="4" class="p1"/>
+        <rect x="46" y="18" width="4" height="4" class="p2"/>
+        <!-- y=22 -->
+        <rect x="12" y="22" width="4" height="4" class="p3"/>
+        <rect x="16" y="22" width="4" height="4" class="p1"/>
+        <rect x="20" y="22" width="4" height="4" class="p1"/>
+        <rect x="24" y="22" width="16" height="4" class="p1"/>
+        <rect x="40" y="22" width="4" height="4" class="p1"/>
+        <rect x="44" y="22" width="4" height="4" class="p1"/>
+        <rect x="48" y="22" width="4" height="4" class="p3"/>
+        <!-- y=26 -->
+        <rect x="10" y="26" width="4" height="4" class="p3"/>
+        <rect x="14" y="26" width="4" height="4" class="p1"/>
+        <rect x="18" y="26" width="28" height="4" class="p1"/>
+        <rect x="46" y="26" width="4" height="4" class="p1"/>
+        <rect x="50" y="26" width="4" height="4" class="p3"/>
+        <!-- y=30 -->
+        <rect x="10" y="30" width="4" height="4" class="p3"/>
+        <rect x="14" y="30" width="36" height="4" class="p1"/>
+        <rect x="50" y="30" width="4" height="4" class="p3"/>
+        <!-- y=34 -->
+        <rect x="10" y="34" width="4" height="4" class="p3"/>
+        <rect x="14" y="34" width="4" height="4" class="p1"/>
+        <rect x="18" y="34" width="28" height="4" class="p1"/>
+        <rect x="46" y="34" width="4" height="4" class="p1"/>
+        <rect x="50" y="34" width="4" height="4" class="p3"/>
+        <!-- y=38 -->
+        <rect x="12" y="38" width="4" height="4" class="p3"/>
+        <rect x="16" y="38" width="4" height="4" class="p1"/>
+        <rect x="20" y="38" width="24" height="4" class="p1"/>
+        <rect x="44" y="38" width="4" height="4" class="p1"/>
+        <rect x="48" y="38" width="4" height="4" class="p3"/>
+        <!-- y=42 -->
+        <rect x="14" y="42" width="4" height="4" class="p2"/>
+        <rect x="18" y="42" width="4" height="4" class="p1"/>
+        <rect x="22" y="42" width="20" height="4" class="p1"/>
+        <rect x="42" y="42" width="4" height="4" class="p1"/>
+        <rect x="46" y="42" width="4" height="4" class="p2"/>
+        <!-- y=46 -->
+        <rect x="16" y="46" width="4" height="4" class="p2"/>
+        <rect x="20" y="46" width="4" height="4" class="p1"/>
+        <rect x="24" y="46" width="16" height="4" class="p2"/>
+        <rect x="40" y="46" width="4" height="4" class="p1"/>
+        <rect x="44" y="46" width="4" height="4" class="p2"/>
+        <!-- y=50 -->
+        <rect x="20" y="50" width="4" height="4" class="p3"/>
+        <rect x="24" y="50" width="16" height="4" class="p2"/>
+        <rect x="40" y="50" width="4" height="4" class="p3"/>
+        <!-- leaf pixels -->
+        <rect x="24" y="6" width="6" height="4" class="pg"/>
+        <rect x="20" y="8" width="4" height="4" class="pg"/>
+        <rect x="14" y="12" width="4" height="4" class="pg"/>
+        <rect x="18" y="10" width="4" height="4" class="pg"/>
+        <rect x="38" y="6" width="6" height="4" class="pg"/>
+        <rect x="44" y="10" width="4" height="4" class="pg"/>
+      </svg>
+    </div><span class="lbl">64×64</span></div>
+    <div class="icon-unit"><div class="icon-box S">
+      <svg width="26" height="26" viewBox="0 0 64 64" shape-rendering="crispEdges">
+        <style>
+          .p3 { fill: #d32f2f } .p2 { fill: #e53935 } .p1 { fill: #ef5350 }
+          .pw { fill: #ff8a80 } .pg { fill: #43a047 }
+        </style>
+        <rect x="16" y="56" width="32" height="4" fill="rgba(0,0,0,0.2)"/>
+        <rect x="30" y="4" width="4" height="6" class="pg"/>
+        <rect x="22" y="10" width="4" height="4" class="p3"/><rect x="26" y="10" width="12" height="4" class="p2"/><rect x="38" y="10" width="4" height="4" class="p3"/>
+        <rect x="18" y="14" width="4" height="4" class="p2"/><rect x="22" y="14" width="4" height="4" class="p1"/><rect x="26" y="14" width="12" height="4" class="p1"/><rect x="38" y="14" width="4" height="4" class="p1"/><rect x="42" y="14" width="4" height="4" class="p2"/>
+        <rect x="14" y="18" width="4" height="4" class="p2"/><rect x="18" y="18" width="4" height="4" class="p1"/><rect x="22" y="18" width="4" height="4" class="pw"/><rect x="26" y="18" width="12" height="4" class="p1"/><rect x="38" y="18" width="4" height="4" class="pw"/><rect x="42" y="18" width="4" height="4" class="p1"/><rect x="46" y="18" width="4" height="4" class="p2"/>
+        <rect x="12" y="22" width="4" height="4" class="p3"/><rect x="16" y="22" width="4" height="4" class="p1"/><rect x="20" y="22" width="4" height="4" class="p1"/><rect x="24" y="22" width="16" height="4" class="p1"/><rect x="40" y="22" width="4" height="4" class="p1"/><rect x="44" y="22" width="4" height="4" class="p1"/><rect x="48" y="22" width="4" height="4" class="p3"/>
+        <rect x="10" y="26" width="4" height="4" class="p3"/><rect x="14" y="26" width="4" height="4" class="p1"/><rect x="18" y="26" width="28" height="4" class="p1"/><rect x="46" y="26" width="4" height="4" class="p1"/><rect x="50" y="26" width="4" height="4" class="p3"/>
+        <rect x="10" y="30" width="4" height="4" class="p3"/><rect x="14" y="30" width="36" height="4" class="p1"/><rect x="50" y="30" width="4" height="4" class="p3"/>
+        <rect x="10" y="34" width="4" height="4" class="p3"/><rect x="14" y="34" width="4" height="4" class="p1"/><rect x="18" y="34" width="28" height="4" class="p1"/><rect x="46" y="34" width="4" height="4" class="p1"/><rect x="50" y="34" width="4" height="4" class="p3"/>
+        <rect x="12" y="38" width="4" height="4" class="p3"/><rect x="16" y="38" width="4" height="4" class="p1"/><rect x="20" y="38" width="24" height="4" class="p1"/><rect x="44" y="38" width="4" height="4" class="p1"/><rect x="48" y="38" width="4" height="4" class="p3"/>
+        <rect x="14" y="42" width="4" height="4" class="p2"/><rect x="18" y="42" width="4" height="4" class="p1"/><rect x="22" y="42" width="20" height="4" class="p1"/><rect x="42" y="42" width="4" height="4" class="p1"/><rect x="46" y="42" width="4" height="4" class="p2"/>
+        <rect x="16" y="46" width="4" height="4" class="p2"/><rect x="20" y="46" width="4" height="4" class="p1"/><rect x="24" y="46" width="16" height="4" class="p2"/><rect x="40" y="46" width="4" height="4" class="p1"/><rect x="44" y="46" width="4" height="4" class="p2"/>
+        <rect x="20" y="50" width="4" height="4" class="p3"/><rect x="24" y="50" width="16" height="4" class="p2"/><rect x="40" y="50" width="4" height="4" class="p3"/>
+        <rect x="24" y="6" width="6" height="4" class="pg"/><rect x="20" y="8" width="4" height="4" class="pg"/><rect x="14" y="12" width="4" height="4" class="pg"/><rect x="18" y="10" width="4" height="4" class="pg"/>
+        <rect x="38" y="6" width="6" height="4" class="pg"/><rect x="44" y="10" width="4" height="4" class="pg"/>
+      </svg>
+    </div><span class="lbl">26×26</span></div>
+  </div>
+  <div class="toast-sim">
+    <div class="icon-slot"><svg width="36" height="36" viewBox="0 0 64 64" shape-rendering="crispEdges">
+      <style>.p3 { fill: #d32f2f } .p2 { fill: #e53935 } .p1 { fill: #ef5350 } .pw { fill: #ff8a80 } .pg { fill: #43a047 }</style>
+      <rect x="16" y="56" width="32" height="4" fill="rgba(0,0,0,0.2)"/>
+      <rect x="30" y="4" width="4" height="6" class="pg"/>
+      <rect x="22" y="10" width="4" height="4" class="p3"/><rect x="26" y="10" width="12" height="4" class="p2"/><rect x="38" y="10" width="4" height="4" class="p3"/>
+      <rect x="18" y="14" width="4" height="4" class="p2"/><rect x="22" y="14" width="4" height="4" class="p1"/><rect x="26" y="14" width="12" height="4" class="p1"/><rect x="38" y="14" width="4" height="4" class="p1"/><rect x="42" y="14" width="4" height="4" class="p2"/>
+      <rect x="14" y="18" width="4" height="4" class="p2"/><rect x="18" y="18" width="4" height="4" class="p1"/><rect x="22" y="18" width="4" height="4" class="pw"/><rect x="26" y="18" width="12" height="4" class="p1"/><rect x="38" y="18" width="4" height="4" class="pw"/><rect x="42" y="18" width="4" height="4" class="p1"/><rect x="46" y="18" width="4" height="4" class="p2"/>
+      <rect x="12" y="22" width="4" height="4" class="p3"/><rect x="16" y="22" width="4" height="4" class="p1"/><rect x="20" y="22" width="4" height="4" class="p1"/><rect x="24" y="22" width="16" height="4" class="p1"/><rect x="40" y="22" width="4" height="4" class="p1"/><rect x="44" y="22" width="4" height="4" class="p1"/><rect x="48" y="22" width="4" height="4" class="p3"/>
+      <rect x="10" y="26" width="4" height="4" class="p3"/><rect x="14" y="26" width="4" height="4" class="p1"/><rect x="18" y="26" width="28" height="4" class="p1"/><rect x="46" y="26" width="4" height="4" class="p1"/><rect x="50" y="26" width="4" height="4" class="p3"/>
+      <rect x="10" y="30" width="4" height="4" class="p3"/><rect x="14" y="30" width="36" height="4" class="p1"/><rect x="50" y="30" width="4" height="4" class="p3"/>
+      <rect x="10" y="34" width="4" height="4" class="p3"/><rect x="14" y="34" width="4" height="4" class="p1"/><rect x="18" y="34" width="28" height="4" class="p1"/><rect x="46" y="34" width="4" height="4" class="p1"/><rect x="50" y="34" width="4" height="4" class="p3"/>
+      <rect x="12" y="38" width="4" height="4" class="p3"/><rect x="16" y="38" width="4" height="4" class="p1"/><rect x="20" y="38" width="24" height="4" class="p1"/><rect x="44" y="38" width="4" height="4" class="p1"/><rect x="48" y="38" width="4" height="4" class="p3"/>
+      <rect x="14" y="42" width="4" height="4" class="p2"/><rect x="18" y="42" width="4" height="4" class="p1"/><rect x="22" y="42" width="20" height="4" class="p1"/><rect x="42" y="42" width="4" height="4" class="p1"/><rect x="46" y="42" width="4" height="4" class="p2"/>
+      <rect x="16" y="46" width="4" height="4" class="p2"/><rect x="20" y="46" width="4" height="4" class="p1"/><rect x="24" y="46" width="16" height="4" class="p2"/><rect x="40" y="46" width="4" height="4" class="p1"/><rect x="44" y="46" width="4" height="4" class="p2"/>
+      <rect x="20" y="50" width="4" height="4" class="p3"/><rect x="24" y="50" width="16" height="4" class="p2"/><rect x="40" y="50" width="4" height="4" class="p3"/>
+      <rect x="24" y="6" width="6" height="4" class="pg"/><rect x="20" y="8" width="4" height="4" class="pg"/><rect x="14" y="12" width="4" height="4" class="pg"/>
+      <rect x="38" y="6" width="6" height="4" class="pg"/><rect x="44" y="10" width="4" height="4" class="pg"/>
+    </svg></div>
+    <div class="fake-text">弹窗 36px 效果</div>
+  </div>
+</div>
+
+<!-- ===== 4. 极简一笔线条 ===== -->
+<div class="card">
+  <h3>方案 D — 极简一笔线条 <span class="tag tag-line">线条</span></h3>
+  <p class="desc">单笔连续轮廓 + 水彩色块点缀，日式留白美学</p>
+  <div class="icon-row">
+    <div class="icon-unit"><div class="icon-box L">
+      <svg width="64" height="64" viewBox="0 0 64 64">
+        <!-- minimal shadow -->
+        <ellipse cx="32" cy="58" rx="12" ry="2.5" fill="rgba(0,0,0,0.1)"/>
+        <!-- single continuous line body + leaf -->
+        <path d="M30 4 Q28 1 26 4 Q24 8 28 10
+                 Q16 18 14 30 Q12 44 22 50 Q32 56 42 50 Q52 44 50 30 Q48 18 36 10
+                 Q40 8 38 4 Q36 1 34 4
+                 Q34 14 34 20 Q34 26 34 30"
+              fill="none" stroke="#e74c3c" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        <!-- color wash fill -->
+        <path d="M18 30 Q16 20 24 14 Q32 10 40 14 Q48 20 46 32 Q44 44 36 48 Q28 52 22 46 Q18 40 18 30Z"
+              fill="rgba(231,76,60,0.25)"/>
+        <!-- accent dot -->
+        <circle cx="32" cy="34" r="1.8" fill="#e74c3c" opacity="0.6"/>
+        <!-- secondary wash -->
+        <circle cx="28" cy="22" r="6" fill="rgba(241,196,15,0.2)"/>
+      </svg>
+    </div><span class="lbl">64×64</span></div>
+    <div class="icon-unit"><div class="icon-box S">
+      <svg width="26" height="26" viewBox="0 0 64 64">
+        <ellipse cx="32" cy="58" rx="12" ry="2.5" fill="rgba(0,0,0,0.1)"/>
+        <path d="M30 4 Q28 1 26 4 Q24 8 28 10 Q16 18 14 30 Q12 44 22 50 Q32 56 42 50 Q52 44 50 30 Q48 18 36 10 Q40 8 38 4 Q36 1 34 4 Q34 14 34 20 Q34 26 34 30"
+              fill="none" stroke="#e74c3c" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M18 30 Q16 20 24 14 Q32 10 40 14 Q48 20 46 32 Q44 44 36 48 Q28 52 22 46 Q18 40 18 30Z"
+              fill="rgba(231,76,60,0.25)"/>
+        <circle cx="32" cy="34" r="1.8" fill="#e74c3c" opacity="0.6"/>
+        <circle cx="28" cy="22" r="6" fill="rgba(241,196,15,0.2)"/>
+      </svg>
+    </div><span class="lbl">26×26</span></div>
+  </div>
+  <div class="toast-sim">
+    <div class="icon-slot"><svg width="36" height="36" viewBox="0 0 64 64">
+      <ellipse cx="32" cy="58" rx="12" ry="2.5" fill="rgba(0,0,0,0.1)"/>
+      <path d="M30 4 Q28 1 26 4 Q24 8 28 10 Q16 18 14 30 Q12 44 22 50 Q32 56 42 50 Q52 44 50 30 Q48 18 36 10 Q40 8 38 4 Q36 1 34 4 Q34 14 34 20 Q34 26 34 30"
+            fill="none" stroke="#e74c3c" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M18 30 Q16 20 24 14 Q32 10 40 14 Q48 20 46 32 Q44 44 36 48 Q28 52 22 46 Q18 40 18 30Z"
+            fill="rgba(231,76,60,0.25)"/>
+      <circle cx="32" cy="34" r="1.8" fill="#e74c3c" opacity="0.6"/>
+    </svg></div>
+    <div class="fake-text">弹窗 36px 效果</div>
+  </div>
+</div>
+
+<!-- ===== 5. 低多边形几何 ===== -->
+<div class="card">
+  <h3>方案 E — 低多边形艺术 <span class="tag tag-poly">低多边形</span></h3>
+  <p class="desc">三角形切面拼接，3D 低多边形渲染感，现代艺术风</p>
+  <div class="icon-row">
+    <div class="icon-unit"><div class="icon-box L">
+      <svg width="64" height="64" viewBox="0 0 64 64">
+        <!-- shadow -->
+        <ellipse cx="32" cy="57" rx="16" ry="4" fill="rgba(0,0,0,0.15)"/>
+        <!-- body: triangle mesh -->
+        <polygon points="32,10 24,18 30,18" fill="#ff6b6b"/>
+        <polygon points="32,10 30,18 38,16" fill="#ee5a5a"/>
+        <polygon points="32,10 38,16 46,14" fill="#ff7675"/>
+        <polygon points="24,18 18,28 28,26" fill="#d94040"/>
+        <polygon points="24,18 28,26 30,18" fill="#e84545"/>
+        <polygon points="30,18 28,26 32,24" fill="#ff5252"/>
+        <polygon points="30,18 32,24 38,16" fill="#f55656"/>
+        <polygon points="38,16 32,24 42,20" fill="#ff6b6b"/>
+        <polygon points="38,16 42,20 46,14" fill="#ff8a80"/>
+        <polygon points="46,14 42,20 50,18" fill="#ff7675"/>
+        <polygon points="18,28 14,38 22,38" fill="#c62828"/>
+        <polygon points="18,28 22,38 28,26" fill="#d32f2f"/>
+        <polygon points="28,26 22,38 32,36" fill="#e53935"/>
+        <polygon points="28,26 32,36 32,24" fill="#ef5350"/>
+        <polygon points="32,24 32,36 38,30" fill="#ee5a5a"/>
+        <polygon points="32,24 38,30 42,20" fill="#f55656"/>
+        <polygon points="42,20 38,30 46,28" fill="#ff6b6b"/>
+        <polygon points="42,20 46,28 50,18" fill="#ff8a80"/>
+        <polygon points="50,18 46,28 52,24" fill="#ff9999"/>
+        <polygon points="14,38 12,48 20,48" fill="#b71c1c"/>
+        <polygon points="14,38 20,48 22,38" fill="#c62828"/>
+        <polygon points="22,38 20,48 28,46" fill="#d32f2f"/>
+        <polygon points="22,38 28,46 32,36" fill="#e53935"/>
+        <polygon points="32,36 28,46 36,44" fill="#e84545"/>
+        <polygon points="32,36 36,44 38,30" fill="#ef5350"/>
+        <polygon points="38,30 36,44 44,40" fill="#f55656"/>
+        <polygon points="38,30 44,40 46,28" fill="#ff6b6b"/>
+        <polygon points="46,28 44,40 50,36" fill="#ff7675"/>
+        <polygon points="46,28 50,36 52,24" fill="#ff8a80"/>
+        <!-- bottom row -->
+        <polygon points="12,48 16,56 20,48" fill="#8e0000"/>
+        <polygon points="20,48 16,56 26,54" fill="#a01818"/>
+        <polygon points="20,48 26,54 28,46" fill="#c62828"/>
+        <polygon points="28,46 26,54 34,52" fill="#d32f2f"/>
+        <polygon points="28,46 34,52 36,44" fill="#e53935"/>
+        <polygon points="36,44 34,52 42,50" fill="#e84545"/>
+        <polygon points="36,44 42,50 44,40" fill="#ef5350"/>
+        <polygon points="44,40 42,50 48,46" fill="#f55656"/>
+        <polygon points="44,40 48,46 50,36" fill="#ff6b6b"/>
+        <polygon points="16,56 26,56 26,54" fill="#7a0000"/>
+        <polygon points="26,54 26,56 36,56" fill="#8e0000"/>
+        <polygon points="26,54 36,56 34,52" fill="#a01818"/>
+        <polygon points="34,52 36,56 44,54" fill="#b71c1c"/>
+        <polygon points="34,52 44,54 42,50" fill="#c62828"/>
+        <polygon points="42,50 44,54 50,52" fill="#d32f2f"/>
+        <polygon points="42,50 50,52 48,46" fill="#e53935"/>
+        <!-- stem -->
+        <polygon points="30,10 32,10 31,2" fill="#5d8c3c"/>
+        <polygon points="34,10 32,10 31,2" fill="#4a7a2e"/>
+        <!-- leaf: triangle group -->
+        <polygon points="31,6 20,0 18,6" fill="#43a047"/>
+        <polygon points="31,6 18,6 22,12" fill="#388e3c"/>
+        <polygon points="31,6 42,3 38,10" fill="#2e7d32"/>
+        <polygon points="31,6 38,10 46,5" fill="#388e3c"/>
+      </svg>
+    </div><span class="lbl">64×64</span></div>
+    <div class="icon-unit"><div class="icon-box S">
+      <svg width="26" height="26" viewBox="0 0 64 64">
+        <ellipse cx="32" cy="57" rx="16" ry="4" fill="rgba(0,0,0,0.15)"/>
+        <polygon points="32,10 24,18 30,18" fill="#ff6b6b"/>
+        <polygon points="32,10 30,18 38,16" fill="#ee5a5a"/>
+        <polygon points="32,10 38,16 46,14" fill="#ff7675"/>
+        <polygon points="24,18 18,28 28,26" fill="#d94040"/>
+        <polygon points="24,18 28,26 30,18" fill="#e84545"/>
+        <polygon points="30,18 28,26 32,24" fill="#ff5252"/>
+        <polygon points="30,18 32,24 38,16" fill="#f55656"/>
+        <polygon points="38,16 32,24 42,20" fill="#ff6b6b"/>
+        <polygon points="18,28 14,38 22,38" fill="#c62828"/>
+        <polygon points="18,28 22,38 28,26" fill="#d32f2f"/>
+        <polygon points="28,26 22,38 32,36" fill="#e53935"/>
+        <polygon points="28,26 32,36 32,24" fill="#ef5350"/>
+        <polygon points="32,24 32,36 38,30" fill="#ee5a5a"/>
+        <polygon points="32,24 38,30 42,20" fill="#f55656"/>
+        <polygon points="42,20 38,30 46,28" fill="#ff6b6b"/>
+        <polygon points="46,14 42,20 50,18" fill="#ff7675"/>
+        <polygon points="14,38 12,48 20,48" fill="#b71c1c"/>
+        <polygon points="14,38 20,48 22,38" fill="#c62828"/>
+        <polygon points="22,38 20,48 28,46" fill="#d32f2f"/>
+        <polygon points="22,38 28,46 32,36" fill="#e53935"/>
+        <polygon points="32,36 28,46 36,44" fill="#e84545"/>
+        <polygon points="32,36 36,44 38,30" fill="#ef5350"/>
+        <polygon points="38,30 36,44 44,40" fill="#f55656"/>
+        <polygon points="12,48 16,56 20,48" fill="#8e0000"/>
+        <polygon points="20,48 16,56 26,54" fill="#a01818"/>
+        <polygon points="20,48 26,54 28,46" fill="#c62828"/>
+        <polygon points="28,46 26,54 34,52" fill="#d32f2f"/>
+        <polygon points="28,46 34,52 36,44" fill="#e53935"/>
+        <polygon points="36,44 34,52 42,50" fill="#e84545"/>
+        <polygon points="16,56 26,56 26,54" fill="#7a0000"/>
+        <polygon points="26,54 26,56 36,56" fill="#8e0000"/>
+        <polygon points="26,54 36,56 34,52" fill="#a01818"/>
+        <polygon points="30,10 32,10 31,2" fill="#5d8c3c"/>
+        <polygon points="34,10 32,10 31,2" fill="#4a7a2e"/>
+        <polygon points="31,6 20,0 18,6" fill="#43a047"/>
+        <polygon points="31,6 18,6 22,12" fill="#388e3c"/>
+        <polygon points="31,6 42,3 38,10" fill="#2e7d32"/>
+      </svg>
+    </div><span class="lbl">26×26</span></div>
+  </div>
+  <div class="toast-sim">
+    <div class="icon-slot"><svg width="36" height="36" viewBox="0 0 64 64">
+      <ellipse cx="32" cy="57" rx="16" ry="4" fill="rgba(0,0,0,0.15)"/>
+      <polygon points="32,10 24,18 30,18" fill="#ff6b6b"/><polygon points="32,10 30,18 38,16" fill="#ee5a5a"/>
+      <polygon points="32,10 38,16 46,14" fill="#ff7675"/><polygon points="24,18 18,28 28,26" fill="#d94040"/>
+      <polygon points="24,18 28,26 30,18" fill="#e84545"/><polygon points="30,18 28,26 32,24" fill="#ff5252"/>
+      <polygon points="30,18 32,24 38,16" fill="#f55656"/><polygon points="38,16 32,24 42,20" fill="#ff6b6b"/>
+      <polygon points="18,28 14,38 22,38" fill="#c62828"/><polygon points="18,28 22,38 28,26" fill="#d32f2f"/>
+      <polygon points="28,26 22,38 32,36" fill="#e53935"/><polygon points="28,26 32,36 32,24" fill="#ef5350"/>
+      <polygon points="32,24 32,36 38,30" fill="#ee5a5a"/><polygon points="32,24 38,30 42,20" fill="#f55656"/>
+      <polygon points="14,38 12,48 20,48" fill="#b71c1c"/><polygon points="14,38 20,48 22,38" fill="#c62828"/>
+      <polygon points="22,38 20,48 28,46" fill="#d32f2f"/><polygon points="22,38 28,46 32,36" fill="#e53935"/>
+      <polygon points="12,48 16,56 20,48" fill="#8e0000"/><polygon points="20,48 16,56 26,54" fill="#a01818"/>
+      <polygon points="30,10 32,10 31,2" fill="#5d8c3c"/><polygon points="31,6 20,0 18,6" fill="#43a047"/>
+    </svg></div>
+    <div class="fake-text">弹窗 36px 效果</div>
+  </div>
+</div>
+
+</div>
+
+<div style="text-align:center; margin-top:36px; color:#555; font-size:12px; line-height:1.6;">
+  <p>每款展示 64px（大） / 26px（实际菜单尺寸） / 36px（弹窗动画尺寸）<br>
+  实际使用时底色容器为 <code style="background:#1a1a2e;padding:1px 6px;border-radius:4px;">#1FCD1A1A</code>（半透明深红），图标需在该底色上清晰可辨</p>
+</div>
+
+</body>
+</html>

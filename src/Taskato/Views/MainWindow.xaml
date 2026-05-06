@@ -323,10 +323,9 @@
                         <StackPanel Orientation="Horizontal">
                             <Border Width="26" Height="26" CornerRadius="8"
                                     Background="#1FCD1A1A" VerticalAlignment="Center">
-                                <TextBlock Text="🍅" FontSize="14" Foreground="#FF4D4D"
-                                           FontFamily="Segoe UI Emoji"
-                                           HorizontalAlignment="Center" VerticalAlignment="Center"
-                                           Padding="0,0,0,2"/>
+                                <Image Source="pack://application:,,,/Assets/pomodoro_icon.png" Width="20" Height="20" 
+                                       RenderOptions.BitmapScalingMode="HighQuality"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
                             <TextBlock Text=" 番茄钟" FontSize="13" FontWeight="SemiBold"
                                        Foreground="#A78BFA" VerticalAlignment="Center"/>

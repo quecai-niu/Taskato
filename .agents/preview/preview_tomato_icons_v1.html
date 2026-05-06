@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>番茄小图标设计方案 - Tomato Icon Designs</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: #1a1a2e;
+  color: #e0e0e0;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  padding: 40px;
+  min-height: 100vh;
+}
+h1 {
+  text-align: center;
+  font-size: 28px;
+  margin-bottom: 8px;
+  background: linear-gradient(135deg, #ff6b6b, #ffa502, #ff6348);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.subtitle {
+  text-align: center;
+  color: #888;
+  margin-bottom: 40px;
+  font-size: 14px;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.card {
+  background: #16213e;
+  border-radius: 16px;
+  padding: 24px;
+  text-align: center;
+  border: 1px solid #2a2a4a;
+  transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+  cursor: pointer;
+}
+.card:hover {
+  transform: translateY(-4px);
+  border-color: #ff6348;
+  box-shadow: 0 8px 32px rgba(255, 99, 72, 0.15);
+}
+.card h3 {
+  font-size: 16px;
+  margin-bottom: 4px;
+  color: #ccc;
+}
+.card .desc {
+  font-size: 12px;
+  color: #777;
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+.icon-stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.icon-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.icon-wrapper .size-label {
+  font-size: 10px;
+  color: #555;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.icon-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0f0f23;
+  border-radius: 10px;
+}
+.icon-box.lg { width: 80px; height: 80px; }
+.icon-box.sm { width: 32px; height: 32px; border-radius: 6px; }
+svg { display: block; }
+</style>
+</head>
+<body>
+
+<h1>🍅 番茄小图标设计方案</h1>
+<p class="subtitle">6 种不同风格 · 点击卡片选择 · 大尺寸预览 + 实际尺寸对比</p>
+
+<div class="grid">
+
+<!-- ==================== 设计1: 流光溢彩 3D ==================== -->
+<div class="card" onclick="select(1)">
+  <h3>方案 1 — 流光溢彩 3D</h3>
+  <p class="desc">多层径向渐变，顶部高光，深邃立体感</p>
+  <div class="icon-stage">
+    <div class="icon-wrapper">
+      <div class="icon-box lg">
+        <svg width="64" height="64" viewBox="0 0 64 64">
+          <defs>
+            <radialGradient id="g1_body" cx="38%" cy="35%" r="55%">
+              <stop offset="0%" stop-color="#ff6b6b"/>
+              <stop offset="25%" stop-color="#ee5a5a"/>
+              <stop offset="50%" stop-color="#d94040"/>
+              <stop offset="75%" stop-color="#c0392b"/>
+              <stop offset="100%" stop-color="#a01818"/>
+            </radialGradient>
+            <radialGradient id="g1_highlight" cx="35%" cy="28%" r="25%">
+              <stop offset="0%" stop-color="rgba(255,255,255,0.55)"/>
+              <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+            </radialGradient>
+            <radialGradient id="g1_shadow" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="rgba(0,0,0,0.3)"/>
+              <stop offset="100%" stop-color="rgba(0,0,0,0)"/>
+            </radialGradient>
+            <linearGradient id="g1_leaf" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#4ecb71"/>
+              <stop offset="100%" stop-color="#2d8a4e"/>
+            </linearGradient>
+            <linearGradient id="g1_stem" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#5a8a3c"/>
+              <stop offset="100%" stop-color="#3d6628"/>
+            </linearGradient>
+            <filter id="f1_drop">
+              <feDropShadow dx="0" dy="1" stdDeviation="2" flood-color="#a01818" flood-opacity="0.6"/>
+            </filter>
+          </defs>
+          <!-- shadow -->
+          <ellipse cx="32" cy="58" rx="20" ry="5" fill="rgba(0,0,0,0.25)"/>
+          <!-- body -->
+          <ellipse cx="32" cy="30" rx="21" ry="22" fill="url(#g1_body)" filter="url(#f1_drop)"/>
+          <!-- highlight -->
+          <ellipse cx="27" cy="20" rx="12" ry="9" fill="url(#g1_highlight)"/>
+          <!-- secondary highlight -->
+          <ellipse cx="20" cy="32" rx="3" ry="5" fill="rgba(255,255,255,0.12)" transform="rotate(-20 20 32)"/>
+          <!-- stem -->
+          <path d="M31 10 Q30 4 28 1" stroke="url(#g1_stem)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+          <!-- leaf -->
+          <path d="M30 9 Q22 2 18 5 Q22 8 30 10" fill="url(#g1_leaf)" opacity="0.95"/>
+          <path d="M30 8 Q24 3 20 6" fill="rgba(255,255,255,0.15)"/>
+        </svg>
+      </div>
+      <span class="size-label">64×64</span>
+    </div>
+    <div class="icon-wrapper">
+      <div class="icon-box sm">
+        <svg width="26" height="26" viewBox="0 0 64 64">
+          <use href="#g1_body"/><use href="#g1_highlight"/><use href="#g1_leaf"/><use href="#g1_stem"/>
+          <ellipse cx="32" cy="58" rx="20" ry="5" fill="rgba(0,0,0,0.25)"/>
+          <ellipse cx="32" cy="30" rx="21" ry="22" fill="url(#g1_body)"/>
+          <ellipse cx="27" cy="20" rx="12" ry="9" fill="url(#g1_highlight)"/>
+          <ellipse cx="20" cy="32" rx="3" ry="5" fill="rgba(255,255,255,0.12)" transform="rotate(-20 20 32)"/>
+          <path d="M31 10 Q30 4 28 1" stroke="url(#g1_stem)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+          <path d="M30 9 Q22 2 18 5 Q22 8 30 10" fill="url(#g1_leaf)" opacity="0.95"/>
+          <path d="M30 8 Q24 3 20 6" fill="rgba(255,255,255,0.15)"/>
+        </svg>
+      </div>
+      <span class="size-label">26×26</span>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 设计2: 极光幻彩 ==================== -->
+<div class="card" onclick="select(2)">
+  <h3>方案 2 — 极光幻彩</h3>
+  <p class="desc">粉紫到橙红的渐变，宛如极光流转，叶脉细节丰富</p>
+  <div class="icon-stage">
+    <div class="icon-wrapper">
+      <div class="icon-box lg">
+        <svg width="64" height="64" viewBox="0 0 64 64">
+          <defs>
+            <linearGradient id="g2_body" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#ff6bb5"/>
+              <stop offset="30%" stop-color="#ff4d6a"/>
+              <stop offset="55%" stop-color="#ff6b3d"/>
+              <stop offset="80%" stop-color="#ff8c2e"/>
+              <stop offset="100%" stop-color="#e07020"/>
+            </linearGradient>
+            <radialGradient id="g2_glow" cx="35%" cy="30%" r="35%">
+              <stop offset="0%" stop-color="rgba(255,255,255,0.5)"/>
+              <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+            </radialGradient>
+            <linearGradient id="g2_leaf" x1="0" y1="0" x2="0.3" y2="1">
+              <stop offset="0%" stop-color="#7bed9f"/>
+              <stop offset="50%" stop-color="#2ed573"/>
+              <stop offset="100%" stop-color="#1e8449"/>
+            </linearGradient>
+            <linearGradient id="g2_stem" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#6ab04c"/>
+              <stop offset="100%" stop-color="#40782a"/>
+            </linearGradient>
+          </defs>
+          <ellipse cx="32" cy="58" rx="19" ry="4.5" fill="rgba(0,0,0,0.2)"/>
+          <!-- body shape with slight asymmetry -->
+          <path d="M12 34 Q10 22 18 14 Q26 6 38 7 Q50 8 54 18 Q58 28 54 38 Q50 48 40 50 Q28 52 18 46 Q12 42 12 34Z" fill="url(#g2_body)"/>
+          <ellipse cx="26" cy="20" rx="13" ry="9" fill="url(#g2_glow)"/>
+          <ellipse cx="19" cy="34" rx="2.5" ry="4" fill="rgba(255,255,255,0.15)" transform="rotate(-25 19 34)"/>
+          <!-- stem -->
+          <path d="M32 7 Q32 3 30 0" stroke="url(#g2_stem)" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+          <!-- leaf pair -->
+          <path d="M31 6 Q19 -2 14 3 Q18 7 31 8" fill="url(#g2_leaf)"/>
+          <path d="M31 6 Q40 -3 46 1 Q40 5 31 8" fill="url(#g2_leaf)" transform="rotate(10 31 6)"/>
+          <!-- leaf veins -->
+          <line x1="25" y1="4" x2="17" y2="1" stroke="rgba(255,255,255,0.3)" stroke-width="0.5"/>
+          <line x1="35" y1="5" x2="42" y2="0" stroke="rgba(255,255,255,0.3)" stroke-width="0.5"/>
+        </svg>
+      </div>
+      <span class="size-label">64×64</span>
+    </div>
+    <div class="icon-wrapper">
+      <div class="icon-box sm">
+        <svg width="26" height="26" viewBox="0 0 64 64">
+          <use href="#g2_body"/><use href="#g2_glow"/><use href="#g2_leaf"/><use href="#g2_stem"/>
+          <ellipse cx="32" cy="58" rx="19" ry="4.5" fill="rgba(0,0,0,0.2)"/>
+          <path d="M12 34 Q10 22 18 14 Q26 6 38 7 Q50 8 54 18 Q58 28 54 38 Q50 48 40 50 Q28 52 18 46 Q12 42 12 34Z" fill="url(#g2_body)"/>
+          <ellipse cx="26" cy="20" rx="13" ry="9" fill="url(#g2_glow)"/>
+          <ellipse cx="19" cy="34" rx="2.5" ry="4" fill="rgba(255,255,255,0.15)" transform="rotate(-25 19 34)"/>
+          <path d="M32 7 Q32 3 30 0" stroke="url(#g2_stem)" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+          <path d="M31 6 Q19 -2 14 3 Q18 7 31 8" fill="url(#g2_leaf)"/>
+          <path d="M31 6 Q40 -3 46 1 Q40 5 31 8" fill="url(#g2_leaf)"/>
+          <line x1="25" y1="4" x2="17" y2="1" stroke="rgba(255,255,255,0.3)" stroke-width="0.5"/>
+          <line x1="35" y1="5" x2="42" y2="0" stroke="rgba(255,255,255,0.3)" stroke-width="0.5"/>
+        </svg>
+      </div>
+      <span class="size-label">26×26</span>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 设计3: 霓虹赛博 ==================== -->
+<div class="card" onclick="select(3)">
+  <h3>方案 3 — 霓虹赛博</h3>
+  <p class="desc">暗底发光，霓虹灯管风格，赛博朋克数字感</p>
+  <div class="icon-stage">
+    <div class="icon-wrapper">
+      <div class="icon-box lg" style="background:#0a0a14;">
+        <svg width="64" height="64" viewBox="0 0 64 64">
+          <defs>
+            <filter id="f3_glow1">
+              <feGaussianBlur stdDeviation="3" result="blur"/>
+              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+            <filter id="f3_glow2">
+              <feGaussianBlur stdDeviation="2" result="blur"/>
+              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+            <linearGradient id="g3_body" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#ff2d55"/>
+              <stop offset="50%" stop-color="#ff3b30"/>
+              <stop offset="100%" stop-color="#ff375f"/>
+            </linearGradient>
+            <linearGradient id="g3_leaf" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#30d158"/>
+              <stop offset="100%" stop-color="#34c759"/>
+            </linearGradient>
+          </defs>
+          <!-- outer glow -->
+          <ellipse cx="32" cy="32" rx="23" ry="24" fill="none" stroke="#ff2d55" stroke-width="2" opacity="0.6" filter="url(#f3_glow1)"/>
+          <!-- body -->
+          <ellipse cx="32" cy="32" rx="21" ry="22" fill="#1c1c2e" stroke="url(#g3_body)" stroke-width="2" filter="url(#f3_glow2)"/>
+          <!-- inner glow ring -->
+          <ellipse cx="32" cy="32" rx="18" ry="19" fill="none" stroke="#ff2d55" stroke-width="0.8" opacity="0.4" stroke-dasharray="4 3"/>
+          <!-- highlight -->
+          <ellipse cx="25" cy="22" rx="8" ry="5" fill="rgba(255,45,85,0.2)"/>
+          <!-- center dot -->
+          <circle cx="32" cy="34" r="2" fill="#ff6b8a" opacity="0.8"/>
+          <!-- grid lines -->
+          <line x1="14" y1="40" x2="50" y2="40" stroke="#ff2d55" stroke-width="0.3" opacity="0.3"/>
+          <line x1="32" y1="12" x2="32" y2="54" stroke="#ff2d55" stroke-width="0.3" opacity="0.3"/>
+          <!-- stem -->
+          <path d="M30 10 Q29 5 28 1" stroke="#30d158" stroke-width="2" fill="none" stroke-linecap="round" filter="url(#f3_glow2)"/>
+          <!-- leaf -->
+          <path d="M29 9 Q20 2 16 5 Q20 8 29 10" fill="#30d158" opacity="0.8" filter="url(#f3_glow2)"/>
+        </svg>
+      </div>
+      <span class="size-label">64×64</span>
+    </div>
+    <div class="icon-wrapper">
+      <div class="icon-box sm" style="background:#0a0a14;">
+        <svg width="26" height="26" viewBox="0 0 64 64">
+          <use href="#f3_glow1"/><use href="#f3_glow2"/><use href="#g3_body"/><use href="#g3_leaf"/>
+          <ellipse cx="32" cy="32" rx="23" ry="24" fill="none" stroke="#ff2d55" stroke-width="2" opacity="0.6" filter="url(#f3_glow1)"/>
+          <ellipse cx="32" cy="32" rx="21" ry="22" fill="#1c1c2e" stroke="url(#g3_body)" stroke-width="2" filter="url(#f3_glow2)"/>
+          <ellipse cx="32" cy="32" rx="18" ry="19" fill="none" stroke="#ff2d55" stroke-width="0.8" opacity="0.4" stroke-dasharray="4 3"/>
+          <ellipse cx="25" cy="22" rx="8" ry="5" fill="rgba(255,45,85,0.2)"/>
+          <circle cx="32" cy="34" r="2" fill="#ff6b8a" opacity="0.8"/>
+          <line x1="14" y1="40" x2="50" y2="40" stroke="#ff2d55" stroke-width="0.3" opacity="0.3"/>
+          <line x1="32" y1="12" x2="32" y2="54" stroke="#ff2d55" stroke-width="0.3" opacity="0.3"/>
+          <path d="M30 10 Q29 5 28 1" stroke="#30d158" stroke-width="2" fill="none" stroke-linecap="round" filter="url(#f3_glow2)"/>
+          <path d="M29 9 Q20 2 16 5 Q20 8 29 10" fill="#30d158" opacity="0.8" filter="url(#f3_glow2)"/>
+        </svg>
+      </div>
+      <span class="size-label">26×26</span>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 设计4: 俏皮卡通 ==================== -->
+<div class="card" onclick="select(4)">
+  <h3>方案 4 — 俏皮卡通</h3>
+  <p class="desc">圆润可爱，小表情点缀，亲和力满分</p>
+  <div class="icon-stage">
+    <div class="icon-wrapper">
+      <div class="icon-box lg">
+        <svg width="64" height="64" viewBox="0 0 64 64">
+          <defs>
+            <radialGradient id="g4_body" cx="40%" cy="35%" r="55%">
+              <stop offset="0%" stop-color="#ff7675"/>
+              <stop offset="40%" stop-color="#ff5252"/>
+              <stop offset="80%" stop-color="#e84142"/>
+              <stop offset="100%" stop-color="#c62828"/>
+            </radialGradient>
+            <radialGradient id="g4_hl" cx="38%" cy="30%" r="30%">
+              <stop offset="0%" stop-color="rgba(255,255,255,0.5)"/>
+              <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+            </radialGradient>
+            <linearGradient id="g4_leaf" x1="0" y1="0" x2="0.5" y2="1">
+              <stop offset="0%" stop-color="#55efc4"/>
+              <stop offset="100%" stop-color="#00b894"/>
+            </linearGradient>
+            <linearGradient id="g4_stem" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#7bc67e"/>
+              <stop offset="100%" stop-color="#388e3c"/>
+            </linearGradient>
+          </defs>
+          <!-- shadow -->
+          <ellipse cx="32" cy="57" rx="17" ry="4" fill="rgba(0,0,0,0.2)"/>
+          <!-- body -->
+          <path d="M14 36 Q12 24 20 16 Q28 8 38 8 Q48 8 54 18 Q58 28 54 40 Q50 50 40 52 Q28 54 18 48 Q14 44 14 36Z" fill="url(#g4_body)"/>
+          <!-- belly lighter patch -->
+          <ellipse cx="32" cy="36" rx="12" ry="10" fill="rgba(255,255,255,0.08)"/>
+          <!-- highlight -->
+          <ellipse cx="26" cy="20" rx="11" ry="8" fill="url(#g4_hl)"/>
+          <!-- eyes -->
+          <ellipse cx="25" cy="28" rx="2.5" ry="3" fill="#7a1a1a"/>
+          <ellipse cx="37" cy="28" rx="2.5" ry="3" fill="#7a1a1a"/>
+          <!-- eye sparkles -->
+          <circle cx="24" cy="26.5" r="1.2" fill="white"/>
+          <circle cx="36" cy="26.5" r="1.2" fill="white"/>
+          <!-- cute blush -->
+          <ellipse cx="20" cy="33" rx="3" ry="1.8" fill="rgba(255,150,150,0.4)"/>
+          <ellipse cx="42" cy="33" rx="3" ry="1.8" fill="rgba(255,150,150,0.4)"/>
+          <!-- smile -->
+          <path d="M27 38 Q32 43 37 38" stroke="#7a1a1a" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+          <!-- stem -->
+          <path d="M31 8 Q30 3 28 0" stroke="url(#g4_stem)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+          <!-- leaves -->
+          <path d="M30 7 Q20 0 16 4 Q20 8 30 9" fill="url(#g4_leaf)"/>
+          <path d="M30 7 Q42 -1 47 3 Q41 7 30 9" fill="url(#g4_leaf)"/>
+        </svg>
+      </div>
+      <span class="size-label">64×64</span>
+    </div>
+    <div class="icon-wrapper">
+      <div class="icon-box sm">
+        <svg width="26" height="26" viewBox="0 0 64 64">
+          <use href="#g4_body"/><use href="#g4_hl"/><use href="#g4_leaf"/><use href="#g4_stem"/>
+          <ellipse cx="32" cy="57" rx="17" ry="4" fill="rgba(0,0,0,0.2)"/>
+          <path d="M14 36 Q12 24 20 16 Q28 8 38 8 Q48 8 54 18 Q58 28 54 40 Q50 50 40 52 Q28 54 18 48 Q14 44 14 36Z" fill="url(#g4_body)"/>
+          <ellipse cx="32" cy="36" rx="12" ry="10" fill="rgba(255,255,255,0.08)"/>
+          <ellipse cx="26" cy="20" rx="11" ry="8" fill="url(#g4_hl)"/>
+          <ellipse cx="25" cy="28" rx="2.5" ry="3" fill="#7a1a1a"/>
+          <ellipse cx="37" cy="28" rx="2.5" ry="3" fill="#7a1a1a"/>
+          <circle cx="24" cy="26.5" r="1.2" fill="white"/>
+          <circle cx="36" cy="26.5" r="1.2" fill="white"/>
+          <ellipse cx="20" cy="33" rx="3" ry="1.8" fill="rgba(255,150,150,0.4)"/>
+          <ellipse cx="42" cy="33" rx="3" ry="1.8" fill="rgba(255,150,150,0.4)"/>
+          <path d="M27 38 Q32 43 37 38" stroke="#7a1a1a" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+          <path d="M31 8 Q30 3 28 0" stroke="url(#g4_stem)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+          <path d="M30 7 Q20 0 16 4 Q20 8 30 9" fill="url(#g4_leaf)"/>
+          <path d="M30 7 Q42 -1 47 3 Q41 7 30 9" fill="url(#g4_leaf)"/>
+        </svg>
+      </div>
+      <span class="size-label">26×26</span>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 设计5: 琉璃玻璃态 ==================== -->
+<div class="card" onclick="select(5)">
+  <h3>方案 5 — 琉璃玻璃态</h3>
+  <p class="desc">毛玻璃质感，半透明层叠，轻盈通透</p>
+  <div class="icon-stage">
+    <div class="icon-wrapper">
+      <div class="icon-box lg" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+        <svg width="64" height="64" viewBox="0 0 64 64">
+          <defs>
+            <linearGradient id="g5_bg" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="rgba(255,180,180,0.9)"/>
+              <stop offset="50%" stop-color="rgba(255,100,100,0.85)"/>
+              <stop offset="100%" stop-color="rgba(200,50,50,0.9)"/>
+            </linearGradient>
+            <radialGradient id="g5_glass" cx="35%" cy="25%" r="40%">
+              <stop offset="0%" stop-color="rgba(255,255,255,0.6)"/>
+              <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+            </radialGradient>
+            <linearGradient id="g5_leaf1" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="rgba(100,255,180,0.9)"/>
+              <stop offset="100%" stop-color="rgba(30,180,100,0.85)"/>
+            </linearGradient>
+            <linearGradient id="g5_leaf2" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="rgba(120,255,200,0.85)"/>
+              <stop offset="100%" stop-color="rgba(40,200,110,0.8)"/>
+            </linearGradient>
+            <filter id="f5_blur">
+              <feGaussianBlur stdDeviation="0.8"/>
+            </filter>
+          </defs>
+          <!-- base shadow -->
+          <ellipse cx="32" cy="55" rx="18" ry="5" fill="rgba(0,0,0,0.3)"/>
+          <!-- body layers -->
+          <ellipse cx="32" cy="32" rx="22" ry="23" fill="url(#g5_bg)" opacity="0.9"/>
+          <!-- glass overlay -->
+          <ellipse cx="32" cy="32" rx="22" ry="23" fill="url(#g5_glass)"/>
+          <!-- edge frost -->
+          <ellipse cx="32" cy="32" rx="20" ry="21" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="1.5"/>
+          <!-- inner frost ring -->
+          <ellipse cx="30" cy="28" rx="14" ry="11" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+          <!-- specular highlight -->
+          <ellipse cx="24" cy="20" rx="7" ry="5" fill="rgba(255,255,255,0.4)"/>
+          <ellipse cx="22" cy="18" rx="3" ry="2" fill="rgba(255,255,255,0.6)"/>
+          <!-- bottom reflection -->
+          <ellipse cx="38" cy="44" rx="6" ry="3" fill="rgba(255,255,255,0.08)"/>
+          <!-- stem -->
+          <line x1="31" y1="10" x2="30" y2="2" stroke="rgba(180,200,160,0.9)" stroke-width="2.5" stroke-linecap="round"/>
+          <!-- leaves -->
+          <path d="M31 9 Q20 2 17 6 Q21 9 31 10" fill="url(#g5_leaf1)"/>
+          <path d="M30 10 Q40 0 45 4 Q40 8 30 11" fill="url(#g5_leaf2)"/>
+          <!-- leaf highlights -->
+          <path d="M28 8 Q22 5 19 7" stroke="rgba(255,255,255,0.3)" stroke-width="0.8" fill="none"/>
+          <path d="M32 9 Q38 4 42 5" stroke="rgba(255,255,255,0.3)" stroke-width="0.8" fill="none"/>
+        </svg>
+      </div>
+      <span class="size-label">64×64</span>
+    </div>
+    <div class="icon-wrapper">
+      <div class="icon-box sm" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+        <svg width="26" height="26" viewBox="0 0 64 64">
+          <use href="#g5_bg"/><use href="#g5_glass"/><use href="#g5_leaf1"/><use href="#g5_leaf2"/>
+          <ellipse cx="32" cy="55" rx="18" ry="5" fill="rgba(0,0,0,0.3)"/>
+          <ellipse cx="32" cy="32" rx="22" ry="23" fill="url(#g5_bg)" opacity="0.9"/>
+          <ellipse cx="32" cy="32" rx="22" ry="23" fill="url(#g5_glass)"/>
+          <ellipse cx="32" cy="32" rx="20" ry="21" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="1.5"/>
+          <ellipse cx="30" cy="28" rx="14" ry="11" fill="none" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+          <ellipse cx="24" cy="20" rx="7" ry="5" fill="rgba(255,255,255,0.4)"/>
+          <ellipse cx="22" cy="18" rx="3" ry="2" fill="rgba(255,255,255,0.6)"/>
+          <ellipse cx="38" cy="44" rx="6" ry="3" fill="rgba(255,255,255,0.08)"/>
+          <line x1="31" y1="10" x2="30" y2="2" stroke="rgba(180,200,160,0.9)" stroke-width="2.5" stroke-linecap="round"/>
+          <path d="M31 9 Q20 2 17 6 Q21 9 31 10" fill="url(#g5_leaf1)"/>
+          <path d="M30 10 Q40 0 45 4 Q40 8 30 11" fill="url(#g5_leaf2)"/>
+          <path d="M28 8 Q22 5 19 7" stroke="rgba(255,255,255,0.3)" stroke-width="0.8" fill="none"/>
+          <path d="M32 9 Q38 4 42 5" stroke="rgba(255,255,255,0.3)" stroke-width="0.8" fill="none"/>
+        </svg>
+      </div>
+      <span class="size-label">26×26</span>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 设计6: 水彩笔触艺术 ==================== -->
+<div class="card" onclick="select(6)">
+  <h3>方案 6 — 水彩笔触艺术</h3>
+  <p class="desc">有机形态，多层色彩叠加，手绘水彩风格</p>
+  <div class="icon-stage">
+    <div class="icon-wrapper">
+      <div class="icon-box lg">
+        <svg width="64" height="64" viewBox="0 0 64 64">
+          <defs>
+            <radialGradient id="g6_wc1" cx="30%" cy="30%" r="60%">
+              <stop offset="0%" stop-color="#ff9999"/>
+              <stop offset="30%" stop-color="#ff6666"/>
+              <stop offset="60%" stop-color="#e84545"/>
+              <stop offset="100%" stop-color="#b82525"/>
+            </radialGradient>
+            <radialGradient id="g6_wc2" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="#ffc048"/>
+              <stop offset="60%" stop-color="rgba(255,160,60,0.3)"/>
+              <stop offset="100%" stop-color="rgba(255,120,40,0)"/>
+            </radialGradient>
+            <radialGradient id="g6_hl" cx="35%" cy="25%" r="30%">
+              <stop offset="0%" stop-color="rgba(255,255,255,0.6)"/>
+              <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+            </radialGradient>
+            <linearGradient id="g6_leaf" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#7bed9f"/>
+              <stop offset="30%" stop-color="#2ed573"/>
+              <stop offset="100%" stop-color="#1e8e3e"/>
+            </linearGradient>
+            <linearGradient id="g6_stem" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#8bc34a"/>
+              <stop offset="100%" stop-color="#558b2f"/>
+            </linearGradient>
+          </defs>
+          <!-- soft shadow -->
+          <ellipse cx="32" cy="57" rx="18" ry="5" fill="rgba(0,0,0,0.18)"/>
+          <!-- organic body -->
+          <path d="M11 35 Q9 22 17 12 Q25 4 37 4 Q51 4 57 16 Q62 30 56 42 Q50 54 38 56 Q24 58 16 48 Q11 42 11 35Z" fill="url(#g6_wc1)"/>
+          <!-- warm color wash overlay -->
+          <path d="M15 38 Q14 28 22 18 Q30 10 40 10 Q52 10 56 22 Q60 34 54 44 Q46 54 36 54 Q26 54 18 48" fill="url(#g6_wc2)" opacity="0.5"/>
+          <!-- highlight -->
+          <ellipse cx="26" cy="18" rx="12" ry="9" fill="url(#g6_hl)"/>
+          <!-- subtle color patches -->
+          <ellipse cx="44" cy="28" rx="5" ry="6" fill="rgba(255,220,120,0.15)"/>
+          <ellipse cx="20" cy="42" rx="4" ry="5" fill="rgba(255,180,180,0.2)"/>
+          <!-- stem -->
+          <path d="M32 6 Q31 1 29 -2" stroke="url(#g6_stem)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+          <!-- leaves -->
+          <path d="M31 5 Q18 -2 13 3 Q18 7 31 7" fill="url(#g6_leaf)" opacity="0.9"/>
+          <path d="M31 5 Q43 -3 49 2 Q44 6 31 7" fill="url(#g6_leaf)" opacity="0.85"/>
+          <!-- watercolor texture dots -->
+          <circle cx="28" cy="24" r="1.5" fill="rgba(255,255,255,0.2)"/>
+          <circle cx="38" cy="30" r="1" fill="rgba(255,255,255,0.15)"/>
+          <circle cx="22" cy="38" r="1.2" fill="rgba(255,255,255,0.12)"/>
+          <circle cx="42" cy="40" r="0.8" fill="rgba(255,255,255,0.1)"/>
+        </svg>
+      </div>
+      <span class="size-label">64×64</span>
+    </div>
+    <div class="icon-wrapper">
+      <div class="icon-box sm">
+        <svg width="26" height="26" viewBox="0 0 64 64">
+          <use href="#g6_wc1"/><use href="#g6_wc2"/><use href="#g6_hl"/><use href="#g6_leaf"/><use href="#g6_stem"/>
+          <ellipse cx="32" cy="57" rx="18" ry="5" fill="rgba(0,0,0,0.18)"/>
+          <path d="M11 35 Q9 22 17 12 Q25 4 37 4 Q51 4 57 16 Q62 30 56 42 Q50 54 38 56 Q24 58 16 48 Q11 42 11 35Z" fill="url(#g6_wc1)"/>
+          <path d="M15 38 Q14 28 22 18 Q30 10 40 10 Q52 10 56 22 Q60 34 54 44 Q46 54 36 54 Q26 54 18 48" fill="url(#g6_wc2)" opacity="0.5"/>
+          <ellipse cx="26" cy="18" rx="12" ry="9" fill="url(#g6_hl)"/>
+          <ellipse cx="44" cy="28" rx="5" ry="6" fill="rgba(255,220,120,0.15)"/>
+          <ellipse cx="20" cy="42" rx="4" ry="5" fill="rgba(255,180,180,0.2)"/>
+          <path d="M32 6 Q31 1 29 -2" stroke="url(#g6_stem)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+          <path d="M31 5 Q18 -2 13 3 Q18 7 31 7" fill="url(#g6_leaf)" opacity="0.9"/>
+          <path d="M31 5 Q43 -3 49 2 Q44 6 31 7" fill="url(#g6_leaf)" opacity="0.85"/>
+          <circle cx="28" cy="24" r="1.5" fill="rgba(255,255,255,0.2)"/>
+          <circle cx="38" cy="30" r="1" fill="rgba(255,255,255,0.15)"/>
+          <circle cx="22" cy="38" r="1.2" fill="rgba(255,255,255,0.12)"/>
+        </svg>
+      </div>
+      <span class="size-label">26×26</span>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<div id="selection-bar" style="display:none; position:fixed; bottom:0; left:0; right:0; background:#16213e; border-top:1px solid #2a2a4a; padding:16px 24px; text-align:center; z-index:100;">
+  <span id="selection-text" style="color:#ccc; font-size:14px; margin-right:16px;"></span>
+</div>
+
+<div style="text-align:center; margin-top:32px; color:#555; font-size:12px;">
+  <p>提示：每个图标同时展示 64×64 和 26×26（实际应用尺寸）两个版本<br>
+  实际使用时图标放置在 26×26 圆角容器内，背景色 #1FCD1A1A（半透明深红）</p>
+</div>
+
+<script>
+function select(n) {
+  const bar = document.getElementById('selection-bar');
+  const text = document.getElementById('selection-text');
+  bar.style.display = 'block';
+  text.textContent = '已选择 方案 ' + n + ' — 确认后在聊天中告诉我编号';
+  // highlight
+  document.querySelectorAll('.card').forEach(c => c.style.outline = 'none');
+  document.querySelectorAll('.card')[n-1].style.outline = '2px solid #ff6348';
+  document.querySelectorAll('.card')[n-1].style.borderColor = '#ff6348';
+}
+</script>
+
+</body>
+</html>

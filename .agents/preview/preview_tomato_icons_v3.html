@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>番茄小图标 v3 — 扁身大叶 · 正确比例</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: #1a1a2e; color: #e0e0e0;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  padding: 40px; min-height: 100vh;
+}
+h1 { text-align: center; font-size: 24px; margin-bottom: 6px;
+  background: linear-gradient(135deg, #ff6b6b, #ffa502, #7c4dff, #00e676);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.subtitle { text-align: center; color: #888; margin-bottom: 12px; font-size: 13px; }
+.note { text-align: center; color: #ffa502; margin-bottom: 32px; font-size: 12px;
+  background: rgba(255,165,2,0.08); padding: 6px 16px; border-radius: 12px; display: inline-block;
+  width: 100%; max-width: 500px; margin-left: auto; margin-right: auto;
+}
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 20px; max-width: 1100px; margin: 0 auto; }
+.card {
+  background: #16213e; border-radius: 14px; padding: 20px; text-align: center;
+  border: 1px solid #2a2a4a; transition: transform 0.2s, border-color 0.2s;
+}
+.card:hover { transform: translateY(-4px); border-color: #ff6348; }
+.card h3 { font-size: 15px; margin-bottom: 4px; color: #ccc; }
+.card .desc { font-size: 11px; color: #777; margin-bottom: 16px; line-height: 1.5; }
+.icon-row { display: flex; align-items: center; justify-content: center; gap: 18px; flex-wrap: wrap; }
+.icon-unit { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.icon-unit .lbl { font-size: 10px; color: #555; }
+.icon-box { display: flex; align-items: center; justify-content: center; border-radius: 10px; }
+.icon-box.L { width: 80px; height: 80px; }
+.icon-box.S { width: 32px; height: 32px; border-radius: 6px; background: rgba(205,26,26,0.12); }
+svg { display: block; }
+.toast-sim {
+  margin-top: 12px; padding: 8px 14px; background: #0f0f23; border-radius: 8px;
+  display: flex; align-items: center; gap: 10px; justify-content: center;
+}
+.toast-sim .icon-slot { width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; }
+.toast-sim .fake-text { font-size: 10px; color: #888; }
+</style>
+</head>
+<body>
+
+<h1>番茄小图标 v3 — 扁身·大叶</h1>
+<p class="subtitle">5 种风格 · 统一比例：宽扁身体 + 蓬大叶片 · 模拟实际 26×26 容器</p>
+<div style="text-align:center;"><p class="note">✓ 本次核心约束：番茄是扁的（横宽 > 竖高），叶子又大又蓬</p></div>
+
+<div class="grid">
+
+<!-- ===== 1. 流光溢彩 3D ===== -->
+<div class="card">
+  <h3>方案 1 — 流光溢彩</h3>
+  <p class="desc">多层径向渐变 + 顶部高光，3D 立体感，经典红绿配色</p>
+  <div class="icon-row">
+    <div class="icon-unit"><div class="icon-box L">
+      <svg width="64" height="64" viewBox="0 0 64 64">
+        <defs>
+          <radialGradient id="v3_1_body" cx="38%" cy="32%" r="52%">
+            <stop offset="0%" stop-color="#ff7675"/>
+            <stop offset="20%" stop-color="#ff5252"/>
+            <stop offset="50%" stop-color="#e84142"/>
+            <stop offset="80%" stop-color="#c0392b"/>
+            <stop offset="100%" stop-color="#96281b"/>
+          </radialGradient>
+          <radialGradient id="v3_1_hl" cx="35%" cy="25%" r="28%">
+            <stop offset="0%" stop-color="rgba(255,255,255,0.6)"/>
+            <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+          </radialGradient>
+          <linearGradient id="v3_1_leaf" x1="0" y1="0" x2="0.4" y2="1">
+            <stop offset="0%" stop-color="#6fdf8a"/>
+            <stop offset="50%" stop-color="#2ecc71"/>
+            <stop offset="100%" stop-color="#1a7a3a"/>
+          </linearGradient>
+          <linearGradient id="v3_1_leaf2" x1="0.3" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#82e89a"/>
+            <stop offset="50%" stop-color="#27ae60"/>
+            <stop offset="100%" stop-color="#165a2e"/>
+          </linearGradient>
+        </defs>
+        <!-- shadow -->
+        <ellipse cx="32" cy="57" rx="19" ry="4.5" fill="rgba(0,0,0,0.25)"/>
+        <!-- body: wide ellipse (扁!) -->
+        <ellipse cx="32" cy="31" rx="23" ry="19" fill="url(#v3_1_body)"/>
+        <!-- body grooves -->
+        <path d="M14 28 Q22 24 32 26 Q42 24 50 28" fill="none" stroke="rgba(0,0,0,0.08)" stroke-width="1.5"/>
+        <path d="M12 34 Q22 30 32 31 Q42 30 52 34" fill="none" stroke="rgba(0,0,0,0.06)" stroke-width="1"/>
+        <!-- highlight -->
+        <ellipse cx="26" cy="22" rx="13" ry="8" fill="url(#v3_1_hl)"/>
+        <ellipse cx="20" cy="32" rx="3" ry="5" fill="rgba(255,255,255,0.1)" transform="rotate(-15 20 32)"/>
+        <!-- big stem -->
+        <rect x="30" y="4" width="4" height="11" rx="2" fill="#6b8e3a"/>
+        <!-- BIG leaves -->
+        <path d="M32 8 Q18 -2 10 5 Q14 10 32 12" fill="url(#v3_1_leaf)"/>
+        <path d="M32 8 Q46 -4 54 3 Q50 9 32 12" fill="url(#v3_1_leaf2)"/>
+        <path d="M32 9 Q28 -4 24 0 Q26 4 32 9" fill="url(#v3_1_leaf)" opacity="0.7"/>
+        <!-- leaf highlights -->
+        <path d="M28 7 Q20 2 14 4" stroke="rgba(255,255,255,0.25)" stroke-width="0.8" fill="none"/>
+        <path d="M36 6 Q46 1 50 4" stroke="rgba(255,255,255,0.2)" stroke-width="0.8" fill="none"/>
+      </svg>
+    </div><span class="lbl">64×64</span></div>
+    <div class="icon-unit"><div class="icon-box S">
+      <svg width="26" height="26" viewBox="0 0 64 64">
+        <ellipse cx="32" cy="57" rx="19" ry="4.5" fill="rgba(0,0,0,0.25)"/>
+        <ellipse cx="32" cy="31" rx="23" ry="19" fill="url(#v3_1_body)"/>
+        <ellipse cx="26" cy="22" rx="13" ry="8" fill="url(#v3_1_hl)"/>
+        <rect x="30" y="4" width="4" height="11" rx="2" fill="#6b8e3a"/>
+        <path d="M32 8 Q18 -2 10 5 Q14 10 32 12" fill="url(#v3_1_leaf)"/>
+        <path d="M32 8 Q46 -4 54 3 Q50 9 32 12" fill="url(#v3_1_leaf2)"/>
+        <path d="M32 9 Q28 -4 24 0 Q26 4 32 9" fill="url(#v3_1_leaf)" opacity="0.7"/>
+      </svg>
+    </div><span class="lbl">26×26</span></div>
+  </div>
+  <div class="toast-sim">
+    <div class="icon-slot"><svg width="34" height="34" viewBox="0 0 64 64">
+      <ellipse cx="32" cy="57" rx="19" ry="4.5" fill="rgba(0,0,0,0.25)"/>
+      <ellipse cx="32" cy="31" rx="23" ry="19" fill="url(#v3_1_body)"/>
+      <ellipse cx="26" cy="22" rx="13" ry="8" fill="url(#v3_1_hl)"/>
+      <rect x="30" y="4" width="4" height="11" rx="2" fill="#6b8e3a"/>
+      <path d="M32 8 Q18 -2 10 5 Q14 10 32 12" fill="url(#v3_1_leaf)"/>
+      <path d="M32 8 Q46 -4 54 3 Q50 9 32 12" fill="url(#v3_1_leaf2)"/>
+      <path d="M32 9 Q28 -4 24 0 Q26 4 32 9" fill="url(#v3_1_leaf)" opacity="0.7"/>
+    </svg></div><div class="fake-text">36px 弹窗</div>
+  </div>
+</div>
+
+<!-- ===== 2. 阳光暖色 ===== -->
+<div class="card">
+  <h3>方案 2 — 阳光暖色</h3>
+  <p class="desc">暖黄到橙红渐变，像阳光下的番茄，温暖活泼</p>
+  <div class="icon-row">
+    <div class="icon-unit"><div class="icon-box L">
+      <svg width="64" height="64" viewBox="0 0 64 64">
+        <defs>
+          <linearGradient id="v3_2_body" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#ffa502"/>
+            <stop offset="25%" stop-color="#ff7f50"/>
+            <stop offset="55%" stop-color="#ff6348"/>
+            <stop offset="100%" stop-color="#e55039"/>
+          </linearGradient>
+          <radialGradient id="v3_2_sun" cx="30%" cy="20%" r="30%">
+            <stop offset="0%" stop-color="rgba(255,255,255,0.55)"/>
+            <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+          </radialGradient>
+          <linearGradient id="v3_2_leaf" x1="0" y1="0" x2="0.2" y2="1">
+            <stop offset="0%" stop-color="#7bed9f"/>
+            <stop offset="40%" stop-color="#26de81"/>
+            <stop offset="100%" stop-color="#20bf6b"/>
+          </linearGradient>
+          <linearGradient id="v3_2_leafr" x1="1" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#a3f7bf"/>
+            <stop offset="40%" stop-color="#2ed573"/>
+            <stop offset="100%" stop-color="#1e8e3e"/>
+          </linearGradient>
+        </defs>
+        <ellipse cx="32" cy="56" rx="18" ry="4" fill="rgba(0,0,0,0.18)"/>
+        <!-- wide body -->
+        <ellipse cx="32" cy="30" rx="24" ry="20" fill="url(#v3_2_body)"/>
+        <!-- warm blush -->
+        <ellipse cx="20" cy="34" rx="5" ry="6" fill="rgba(255,200,150,0.2)"/>
+        <ellipse cx="44" cy="34" rx="5" ry="6" fill="rgba(255,200,150,0.2)"/>
+        <!-- sun highlight -->
+        <ellipse cx="24" cy="20" rx="12" ry="7" fill="url(#v3_2_sun)"/>
+        <!-- stem -->
+        <rect x="30" y="4" width="4" height="10" rx="2" fill="#7d9e4a"/>
+        <!-- BIG leaves -->
+        <path d="M32 7 Q14 -3 6 6 Q10 12 32 10" fill="url(#v3_2_leaf)"/>
+        <path d="M32 7 Q48 -5 58 4 Q52 10 32 10" fill="url(#v3_2_leafr)"/>
+        <path d="M32 6 Q24 -2 20 2 Q24 5 32 8" fill="#a3f7bf" opacity="0.5"/>
+        <!-- leaf veins -->
+        <line x1="26" y1="5" x2="12" y2="2" stroke="rgba(255,255,255,0.3)" stroke-width="0.7"/>
+        <line x1="36" y1="5" x2="50" y2="1" stroke="rgba(255,255,255,0.3)" stroke-width="0.7"/>
+      </svg>
+    </div><span class="lbl">64×64</span></div>
+    <div class="icon-unit"><div class="icon-box S">
+      <svg width="26" height="26" viewBox="0 0 64 64">
+        <ellipse cx="32" cy="56" rx="18" ry="4" fill="rgba(0,0,0,0.18)"/>
+        <ellipse cx="32" cy="30" rx="24" ry="20" fill="url(#v3_2_body)"/>
+        <ellipse cx="24" cy="20" rx="12" ry="7" fill="url(#v3_2_sun)"/>
+        <rect x="30" y="4" width="4" height="10" rx="2" fill="#7d9e4a"/>
+        <path d="M32 7 Q14 -3 6 6 Q10 12 32 10" fill="url(#v3_2_leaf)"/>
+        <path d="M32 7 Q48 -5 58 4 Q52 10 32 10" fill="url(#v3_2_leafr)"/>
+        <path d="M32 6 Q24 -2 20 2 Q24 5 32 8" fill="#a3f7bf" opacity="0.5"/>
+      </svg>
+    </div><span class="lbl">26×26</span></div>
+  </div>
+  <div class="toast-sim">
+    <div class="icon-slot"><svg width="34" height="34" viewBox="0 0 64 64">
+      <ellipse cx="32" cy="56" rx="18" ry="4" fill="rgba(0,0,0,0.18)"/>
+      <ellipse cx="32" cy="30" rx="24" ry="20" fill="url(#v3_2_body)"/>
+      <ellipse cx="24" cy="20" rx="12" ry="7" fill="url(#v3_2_sun)"/>
+      <rect x="30" y="4" width="4" height="10" rx="2" fill="#7d9e4a"/>
+      <path d="M32 7 Q14 -3 6 6 Q10 12 32 10" fill="url(#v3_2_leaf)"/>
+      <path d="M32 7 Q48 -5 58 4 Q52 10 32 10" fill="url(#v3_2_leafr)"/>
+    </svg></div><div class="fake-text">36px 弹窗</div>
+  </div>
+</div>
+
+<!-- ===== 3. 清新水彩 ===== -->
+<div class="card">
+  <h3>方案 3 — 清新水彩</h3>
+  <p class="desc">多层半透明色彩叠加，粉嫩水润的质感，柔和自然</p>
+  <div class="icon-row">
+    <div class="icon-unit"><div class="icon-box L">
+      <svg width="64" height="64" viewBox="0 0 64 64">
+        <defs>
+          <radialGradient id="v3_3_base" cx="45%" cy="40%" r="55%">
+            <stop offset="0%" stop-color="#ff9999"/>
+            <stop offset="30%" stop-color="#ff6b6b"/>
+            <stop offset="60%" stop-color="#ee5a5a"/>
+            <stop offset="100%" stop-color="#c44545"/>
+          </radialGradient>
+          <radialGradient id="v3_3_wash1" cx="30%" cy="50%" r="45%">
+            <stop offset="0%" stop-color="rgba(255,180,100,0.35)"/>
+            <stop offset="100%" stop-color="rgba(255,120,50,0)"/>
+          </radialGradient>
+          <radialGradient id="v3_3_wash2" cx="60%" cy="55%" r="40%">
+            <stop offset="0%" stop-color="rgba(255,150,180,0.3)"/>
+            <stop offset="100%" stop-color="rgba(255,100,150,0)"/>
+          </radialGradient>
+          <radialGradient id="v3_3_hl" cx="35%" cy="22%" r="25%">
+            <stop offset="0%" stop-color="rgba(255,255,255,0.55)"/>
+            <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+          </radialGradient>
+          <linearGradient id="v3_3_leaf" x1="0" y1="0" x2="0.3" y2="1">
+            <stop offset="0%" stop-color="#a0f0b8"/>
+            <stop offset="50%" stop-color="#4cd964"/>
+            <stop offset="100%" stop-color="#2a8f3f"/>
+          </linearGradient>
+          <linearGradient id="v3_3_leaf2" x1="1" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#b8f5cc"/>
+            <stop offset="50%" stop-color="#34c759"/>
+            <stop offset="100%" stop-color="#1b7a30"/>
+          </linearGradient>
+        </defs>
+        <ellipse cx="32" cy="56" rx="17" ry="3.5" fill="rgba(0,0,0,0.12)"/>
+        <!-- wide body -->
+        <ellipse cx="32" cy="31" rx="23" ry="18" fill="url(#v3_3_base)"/>
+        <!-- watercolor washes -->
+        <ellipse cx="26" cy="34" rx="11" ry="9" fill="url(#v3_3_wash1)"/>
+        <ellipse cx="38" cy="35" rx="9" ry="8" fill="url(#v3_3_wash2)"/>
+        <!-- highlight -->
+        <ellipse cx="25" cy="22" rx="12" ry="7" fill="url(#v3_3_hl)"/>
+        <!-- subtle texture -->
+        <circle cx="30" cy="28" r="1" fill="rgba(255,255,255,0.15)"/>
+        <circle cx="38" cy="36" r="1.2" fill="rgba(255,255,255,0.1)"/>
+        <!-- stem -->
+        <rect x="31" y="5" width="3" height="10" rx="1.5" fill="#6b9e4a"/>
+        <!-- BIG leaves -->
+        <path d="M33 8 Q16 0 8 8 Q12 14 33 12" fill="url(#v3_3_leaf)"/>
+        <path d="M33 8 Q50 0 56 6 Q52 12 33 12" fill="url(#v3_3_leaf2)"/>
+        <path d="M33 7 Q22 -2 18 2 Q22 5 33 9" fill="#b8f5cc" opacity="0.4"/>
+        <!-- leaf veins -->
+        <path d="M28 7 Q17 3 12 6" stroke="rgba(255,255,255,0.25)" stroke-width="0.7" fill="none"/>
+        <path d="M37 7 Q46 2 52 5" stroke="rgba(255,255,255,0.2)" stroke-width="0.7" fill="none"/>
+      </svg>
+    </div><span class="lbl">64×64</span></div>
+    <div class="icon-unit"><div class="icon-box S">
+      <svg width="26" height="26" viewBox="0 0 64 64">
+        <ellipse cx="32" cy="56" rx="17" ry="3.5" fill="rgba(0,0,0,0.12)"/>
+        <ellipse cx="32" cy="31" rx="23" ry="18" fill="url(#v3_3_base)"/>
+        <ellipse cx="26" cy="34" rx="11" ry="9" fill="url(#v3_3_wash1)"/>
+        <ellipse cx="25" cy="22" rx="12" ry="7" fill="url(#v3_3_hl)"/>
+        <rect x="31" y="5" width="3" height="10" rx="1.5" fill="#6b9e4a"/>
+        <path d="M33 8 Q16 0 8 8 Q12 14 33 12" fill="url(#v3_3_leaf)"/>
+        <path d="M33 8 Q50 0 56 6 Q52 12 33 12" fill="url(#v3_3_leaf2)"/>
+      </svg>
+    </div><span class="lbl">26×26</span></div>
+  </div>
+  <div class="toast-sim">
+    <div class="icon-slot"><svg width="34" height="34" viewBox="0 0 64 64">
+      <ellipse cx="32" cy="56" rx="17" ry="3.5" fill="rgba(0,0,0,0.12)"/>
+      <ellipse cx="32" cy="31" rx="23" ry="18" fill="url(#v3_3_base)"/>
+      <ellipse cx="25" cy="22" rx="12" ry="7" fill="url(#v3_3_hl)"/>
+      <rect x="31" y="5" width="3" height="10" rx="1.5" fill="#6b9e4a"/>
+      <path d="M33 8 Q16 0 8 8 Q12 14 33 12" fill="url(#v3_3_leaf)"/>
+      <path d="M33 8 Q50 0 56 6 Q52 12 33 12" fill="url(#v3_3_leaf2)"/>
+    </svg></div><div class="fake-text">36px 弹窗</div>
+  </div>
+</div>
+
+<!-- ===== 4. 手绘插画 ===== -->
+<div class="card">
+  <h3>方案 4 — 手绘插画</h3>
+  <p class="desc">粗线描边 + 纯色块，切面透视见籽粒，可爱又写实</p>
+  <div class="icon-row">
+    <div class="icon-unit"><div class="icon-box L">
+      <svg width="64" height="64" viewBox="0 0 64 64">
+        <style>
+          .p4o { fill:none; stroke:#1a1a2e; stroke-linecap:round; stroke-linejoin:round; }
+        </style>
+        <!-- shadow -->
+        <ellipse cx="32" cy="56" rx="17" ry="3.5" fill="rgba(0,0,0,0.12)"/>
+        <!-- body: wide squat -->
+        <path d="M10 30 Q9 18 19 12 Q30 6 42 10 Q52 14 55 26 Q57 38 48 46 Q36 54 24 50 Q14 46 10 30Z"
+              fill="#ff5252" stroke="#1a1a2e" stroke-width="2.5"/>
+        <!-- section lines (tomato chambers) -->
+        <path d="M18 22 Q28 16 38 20" class="p4o" stroke-width="1.2" stroke-dasharray="0 12" opacity="0.6"/>
+        <path d="M16 30 Q32 24 46 28" class="p4o" stroke-width="1.2" stroke-dasharray="0 12" opacity="0.6"/>
+        <path d="M18 38 Q32 32 44 38" class="p4o" stroke-width="1.2" stroke-dasharray="0 12" opacity="0.6"/>
+        <!-- seeds -->
+        <ellipse cx="26" cy="22" rx="1" ry="1.8" fill="#ffcdd2" stroke="#1a1a2e" stroke-width="0.5" transform="rotate(-10 26 22)"/>
+        <ellipse cx="36" cy="24" rx="1" ry="1.8" fill="#ffcdd2" stroke="#1a1a2e" stroke-width="0.5" transform="rotate(15 36 24)"/>
+        <ellipse cx="28" cy="32" rx="0.9" ry="1.6" fill="#ffcdd2" stroke="#1a1a2e" stroke-width="0.5" transform="rotate(-5 28 32)"/>
+        <ellipse cx="38" cy="30" rx="0.9" ry="1.6" fill="#ffcdd2" stroke="#1a1a2e" stroke-width="0.5" transform="rotate(12 38 30)"/>
+        <!-- highlight -->
+        <path d="M16 18 Q22 12 28 14" class="p4o" stroke-width="1.2" stroke="rgba(255,255,255,0.35)" fill="none"/>
+        <!-- stem -->
+        <rect x="30" y="4" width="4" height="10" rx="2" fill="#66bb6a" stroke="#1a1a2e" stroke-width="1.5"/>
+        <!-- BIG leaves -->
+        <path d="M32 8 Q18 -2 9 6 Q14 12 32 10" fill="#43a047" stroke="#1a1a2e" stroke-width="1.8"/>
+        <path d="M32 8 Q48 -3 57 4 Q52 11 32 10" fill="#66bb6a" stroke="#1a1a2e" stroke-width="1.8"/>
+      </svg>
+    </div><span class="lbl">64×64</span></div>
+    <div class="icon-unit"><div class="icon-box S">
+      <svg width="26" height="26" viewBox="0 0 64 64">
+        <ellipse cx="32" cy="56" rx="17" ry="3.5" fill="rgba(0,0,0,0.12)"/>
+        <path d="M10 30 Q9 18 19 12 Q30 6 42 10 Q52 14 55 26 Q57 38 48 46 Q36 54 24 50 Q14 46 10 30Z"
+              fill="#ff5252" stroke="#1a1a2e" stroke-width="2.5"/>
+        <path d="M16 30 Q32 24 46 28" fill="none" stroke="#1a1a2e" stroke-width="1.2" stroke-dasharray="0 12" opacity="0.6"/>
+        <path d="M18 38 Q32 32 44 38" fill="none" stroke="#1a1a2e" stroke-width="1.2" stroke-dasharray="0 12" opacity="0.6"/>
+        <rect x="30" y="4" width="4" height="10" rx="2" fill="#66bb6a" stroke="#1a1a2e" stroke-width="1.5"/>
+        <path d="M32 8 Q18 -2 9 6 Q14 12 32 10" fill="#43a047" stroke="#1a1a2e" stroke-width="1.8"/>
+        <path d="M32 8 Q48 -3 57 4 Q52 11 32 10" fill="#66bb6a" stroke="#1a1a2e" stroke-width="1.8"/>
+      </svg>
+    </div><span class="lbl">26×26</span></div>
+  </div>
+  <div class="toast-sim">
+    <div class="icon-slot"><svg width="34" height="34" viewBox="0 0 64 64">
+      <ellipse cx="32" cy="56" rx="17" ry="3.5" fill="rgba(0,0,0,0.12)"/>
+      <path d="M10 30 Q9 18 19 12 Q30 6 42 10 Q52 14 55 26 Q57 38 48 46 Q36 54 24 50 Q14 46 10 30Z"
+            fill="#ff5252" stroke="#1a1a2e" stroke-width="2.5"/>
+      <rect x="30" y="4" width="4" height="10" rx="2" fill="#66bb6a" stroke="#1a1a2e" stroke-width="1.5"/>
+      <path d="M32 8 Q18 -2 9 6 Q14 12 32 10" fill="#43a047" stroke="#1a1a2e" stroke-width="1.8"/>
+      <path d="M32 8 Q48 -3 57 4 Q52 11 32 10" fill="#66bb6a" stroke="#1a1a2e" stroke-width="1.8"/>
+    </svg></div><div class="fake-text">36px 弹窗</div>
+  </div>
+</div>
+
+<!-- ===== 5. 低饱和度质感 ===== -->
+<div class="card">
+  <h3>方案 5 — 哑光质感</h3>
+  <p class="desc">低饱和度砖红 + 磨砂质感，高级内敛，适合长期注视</p>
+  <div class="icon-row">
+    <div class="icon-unit"><div class="icon-box L">
+      <svg width="64" height="64" viewBox="0 0 64 64">
+        <defs>
+          <radialGradient id="v3_5_body" cx="42%" cy="38%" r="55%">
+            <stop offset="0%" stop-color="#d4776a"/>
+            <stop offset="30%" stop-color="#c06050"/>
+            <stop offset="60%" stop-color="#a84538"/>
+            <stop offset="100%" stop-color="#8b3025"/>
+          </radialGradient>
+          <radialGradient id="v3_5_hl" cx="35%" cy="25%" r="30%">
+            <stop offset="0%" stop-color="rgba(255,255,255,0.35)"/>
+            <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+          </radialGradient>
+          <linearGradient id="v3_5_leaf" x1="0" y1="0" x2="0.3" y2="1">
+            <stop offset="0%" stop-color="#8b9e6b"/>
+            <stop offset="50%" stop-color="#6d8345"/>
+            <stop offset="100%" stop-color="#4a6e2e"/>
+          </linearGradient>
+          <linearGradient id="v3_5_leaf2" x1="1" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#9eb87a"/>
+            <stop offset="50%" stop-color="#6e8a4a"/>
+            <stop offset="100%" stop-color="#4a6e2e"/>
+          </linearGradient>
+        </defs>
+        <ellipse cx="32" cy="57" rx="18" ry="4" fill="rgba(0,0,0,0.2)"/>
+        <!-- wide body -->
+        <ellipse cx="32" cy="31" rx="23" ry="19" fill="url(#v3_5_body)"/>
+        <!-- matte texture: subtle noise-like overlays -->
+        <ellipse cx="32" cy="31" rx="23" ry="19" fill="rgba(180,130,120,0.08)"/>
+        <!-- highlight -->
+        <ellipse cx="25" cy="22" rx="13" ry="8" fill="url(#v3_5_hl)"/>
+        <!-- subtle shadow in bottom -->
+        <ellipse cx="32" cy="44" rx="14" ry="5" fill="rgba(0,0,0,0.08)"/>
+        <!-- stem -->
+        <rect x="31" y="5" width="3" height="10" rx="1.5" fill="#6b7a4a"/>
+        <!-- BIG leaves -->
+        <path d="M33 8 Q17 0 9 8 Q13 13 33 11" fill="url(#v3_5_leaf)"/>
+        <path d="M33 8 Q47 -2 55 5 Q51 11 33 11" fill="url(#v3_5_leaf2)"/>
+        <path d="M33 7 Q23 -1 19 3 Q22 5 33 8" fill="#9eb87a" opacity="0.35"/>
+      </svg>
+    </div><span class="lbl">64×64</span></div>
+    <div class="icon-unit"><div class="icon-box S">
+      <svg width="26" height="26" viewBox="0 0 64 64">
+        <ellipse cx="32" cy="57" rx="18" ry="4" fill="rgba(0,0,0,0.2)"/>
+        <ellipse cx="32" cy="31" rx="23" ry="19" fill="url(#v3_5_body)"/>
+        <ellipse cx="25" cy="22" rx="13" ry="8" fill="url(#v3_5_hl)"/>
+        <rect x="31" y="5" width="3" height="10" rx="1.5" fill="#6b7a4a"/>
+        <path d="M33 8 Q17 0 9 8 Q13 13 33 11" fill="url(#v3_5_leaf)"/>
+        <path d="M33 8 Q47 -2 55 5 Q51 11 33 11" fill="url(#v3_5_leaf2)"/>
+      </svg>
+    </div><span class="lbl">26×26</span></div>
+  </div>
+  <div class="toast-sim">
+    <div class="icon-slot"><svg width="34" height="34" viewBox="0 0 64 64">
+      <ellipse cx="32" cy="57" rx="18" ry="4" fill="rgba(0,0,0,0.2)"/>
+      <ellipse cx="32" cy="31" rx="23" ry="19" fill="url(#v3_5_body)"/>
+      <ellipse cx="25" cy="22" rx="13" ry="8" fill="url(#v3_5_hl)"/>
+      <rect x="31" y="5" width="3" height="10" rx="1.5" fill="#6b7a4a"/>
+      <path d="M33 8 Q17 0 9 8 Q13 13 33 11" fill="url(#v3_5_leaf)"/>
+      <path d="M33 8 Q47 -2 55 5 Q51 11 33 11" fill="url(#v3_5_leaf2)"/>
+    </svg></div><div class="fake-text">36px 弹窗</div>
+  </div>
+</div>
+
+</div>
+
+<div style="text-align:center; margin-top:32px; color:#555; font-size:12px; line-height:1.6;">
+  <p>本次 5 款共守铁律：<b>横宽 > 竖高</b> + <b>蓬大叶片</b> + <b>一看就是番茄</b><br>
+  实际 26×26 容器背景色 <code style="background:#1a1a2e;padding:1px 6px;border-radius:4px;">#1FCD1A1A</code></p>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>像素风番茄变体 (Pixel Art Variations)</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            padding: 40px;
+            background: #111111;
+            color: #E0E0E0;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 {
+            color: #FFFFFF;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        p.subtitle {
+            color: #888888;
+            margin-bottom: 40px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+            max-width: 900px;
+            width: 100%;
+        }
+        .card {
+            background: #1A1A24;
+            border: 1px solid #2A2A3A;
+            border-radius: 16px;
+            padding: 30px;
+            display: flex;
+            align-items: center;
+            transition: 0.3s;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: #6366F1;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+        }
+        .icon-container {
+            width: 120px;
+            height: 120px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #232332;
+            border-radius: 12px;
+            margin-right: 20px;
+            flex-shrink: 0;
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.5);
+        }
+        .info h3 {
+            margin: 0 0 10px 0;
+            color: #FFFFFF;
+        }
+        .info p {
+            margin: 0;
+            color: #A0A0A0;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        svg {
+            image-rendering: pixelated;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>像素风·大叶片变体 (Pixel Art Evolutions)</h1>
+    <p class="subtitle">在像素点的限制内，通过精细调校网格、表情与调色板，衍生出的 4 种全新表现</p>
+
+    <div class="grid" id="grid">
+        <!-- JS 会在这里注入 Card -->
+    </div>
+
+    <script>
+        const colors = {
+            ' ': 'transparent',
+            'r': '#c0392b', // 深红过渡
+            'R': '#e74c3c', // 亮红主色
+            'd': '#900000', // 暗红边缘
+            'h': '#ff7979', // 柔和高光
+            'H': '#ffffff', // 强烈高光
+            'g': '#2ecc71', // 亮绿叶片
+            'G': '#27ae60', // 暗绿叶边
+            'e': '#2d3436', // 眼睛
+            'b': '#fd79a8', // 红晕
+            '1': '#0f380f', // GB 极暗绿
+            '2': '#306230', // GB 暗绿
+            '3': '#8bac0f', // GB 亮绿
+            '4': '#9bbc0f'  // GB 极亮绿
+        };
+
+        const designs = [
+            {
+                name: "复古大叶片 (Overgrown Retro)",
+                desc: "经典的 16x16 像素。极度放大了顶部叶片的横向张力，使得整体轮廓更加饱满，有一种老派 RPG 游戏里珍贵道具的感觉。",
+                grid: 16,
+                data: [
+                    "  G          G  ",
+                    " GGG   G    GGG ",
+                    " GgG  GGG   GgG ",
+                    "  GgGGgGgGGgGg  ",
+                    "   GggggggggG   ",
+                    "    GggggggG    ",
+                    "   dddddddddd   ",
+                    "  dRRrrrrrrrrR  ",
+                    " dRRhrRrrrrrrRd ",
+                    " dRhhrRrrrrrrRd ",
+                    " dRrrrrrrrrrrRd ",
+                    " ddRrrrrrrrrRdd ",
+                    "  ddRrrrrrrRdd  ",
+                    "   dddddddddd   "
+                ]
+            },
+            {
+                name: "Q版颜文字 (Chibi Face)",
+                desc: "在宽大的厚叶片之下，巧妙融入了极其简单的 2 像素眼睛与小红晕。保留了颗粒感，同时拥有极高的亲和力。",
+                grid: 16,
+                data: [
+                    "       G        ",
+                    "   G  GGG  G    ",
+                    "  GGG GgG GGG   ",
+                    "  GgGGGgGGGgG   ",
+                    "   GggggggggG   ",
+                    "    GggggggG    ",
+                    "   dRRRRRRRRd   ",
+                    "  dRRRRRRRRRRd  ",
+                    " dRRhRRRRRRRRRd ",
+                    " dRReeRRReeRRRd ",
+                    " dRRbbRrrbbRRRd ",
+                    " ddRRrrrrrrRRdd ",
+                    "  ddRRrrrrRRdd  ",
+                    "   dddddddddd   "
+                ]
+            },
+            {
+                name: "24x24 高精像素 (High-Res Detailed)",
+                desc: "像素网格增加至 24x24，允许叶片拥有更加平滑柔顺的自然下垂弧度，番茄主体的明暗光影过渡也变得极其细腻。",
+                grid: 24,
+                data: [
+                    "        G               ",
+                    "       GGG      G       ",
+                    "      GGgGG    GGG      ",
+                    "   G   GgG    GGgGG     ",
+                    "  GGG  GGG   GGgGG      ",
+                    " GGgGG  GGGGGGGgG       ",
+                    "  GgG    GGggggG        ",
+                    "  GGG     GgggG         ",
+                    "   G    dddddddddd      ",
+                    "      ddRRRRRRRRRRdd    ",
+                    "     dRRRRRRRRRRRRRRd   ",
+                    "    dRRHhRRRRRRRRRRRRd  ",
+                    "   dRRHhhRRRRRRRRRRRRd  ",
+                    "   dRHhhRRRRRRRRRRRRRd  ",
+                    "   dRHhRRRRRRRrrrrRRRd  ",
+                    "   dRRRRRRRRRrrrrrrrRd  ",
+                    "   ddRRRRRRRrrrrrrrRdd  ",
+                    "    ddRRRRRrrrrrrrRdd   ",
+                    "     ddRRRrrrrrrrRdd    ",
+                    "      ddddddddddddd     "
+                ]
+            },
+            {
+                name: "GameBoy 风格 (4-Color Retro)",
+                desc: "原汁原味的 GameBoy 怀旧感！造型上选用了超大叶片，颜色仅严格采用 GB 经典的 4 种浓淡绿阶，极客情怀拉满。",
+                grid: 16,
+                data: [
+                    "       1        ",
+                    "   1  111  1    ",
+                    "  111 121 111   ",
+                    "  12111211121   ",
+                    "   1222222221   ",
+                    "    11222211    ",
+                    "   2222222222   ",
+                    "  233333333332  ",
+                    " 23343333333332 ",
+                    " 23443333333332 ",
+                    " 23333333333332 ",
+                    " 22333333333322 ",
+                    "  223333333322  ",
+                    "   2222222222   "
+                ]
+            }
+        ];
+
+        const container = document.getElementById('grid');
+
+        designs.forEach(design => {
+            const svgSize = 80;
+            const pixelSize = svgSize / design.grid;
+            const offsetY = Math.floor((design.grid - design.data.length) / 2);
+            
+            let rects = '';
+            for (let y = 0; y < design.data.length; y++) {
+                for (let x = 0; x < design.data[y].length; x++) {
+                    const char = design.data[y][x];
+                    if (char !== ' ') {
+                        rects += `<rect x="${x * pixelSize}" y="${(y + offsetY) * pixelSize}" width="${pixelSize + 0.5}" height="${pixelSize + 0.5}" fill="${colors[char]}"/>`;
+                    }
+                }
+            }
+
+            const cardHtml = `
+                <div class="card">
+                    <div class="icon-container" style="background: ${design.name.includes('GameBoy') ? '#9bbc0f22' : '#232332'}">
+                        <svg width="${svgSize}" height="${svgSize}" viewBox="0 0 ${svgSize} ${svgSize}" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg">
+                            ${rects}
+                        </svg>
+                    </div>
+                    <div class="info">
+                        <h3>${design.name}</h3>
+                        <p>${design.desc}</p>
+                    </div>
+                </div>
+            `;
+            container.innerHTML += cardHtml;
+        });
+    </script>
+</body>
+</html>
