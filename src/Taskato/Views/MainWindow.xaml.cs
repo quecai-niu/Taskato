@@ -189,6 +189,11 @@ namespace Taskato.Views
                 if (vm.AddTaskCommand.CanExecute(null))
                     vm.AddTaskCommand.Execute(null);
             }
+            else if (e.Key == Key.Tab && DataContext is MainViewModel vmTab)
+            {
+                e.Handled = true; // 拦截默认的焦点切换
+                vmTab.NewTaskPriority = (vmTab.NewTaskPriority + 1) % 4; // 0,1,2,3 循环
+            }
         }
 
         /// <summary>
@@ -251,6 +256,8 @@ namespace Taskato.Views
                     // 数据覆盖逻辑：在 V2 中我们使用替身编辑，保存时同步本体
                     task.Title = detailWindow.EditingTask.Title;
                     task.Priority = detailWindow.EditingTask.Priority;
+                    task.IsCompleted = detailWindow.EditingTask.IsCompleted;
+                    task.CompletedAt = detailWindow.EditingTask.CompletedAt;
                     
                     if (DataContext is MainViewModel vm)
                     {

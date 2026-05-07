@@ -93,5 +93,12 @@ namespace Taskato.Views
                 Close();
             }
         }
+
+        private void StatusBadge_Click(object sender, MouseButtonEventArgs e)
+        {
+            EditingTask.IsCompleted = !EditingTask.IsCompleted;
+            EditingTask.CompletedAt = EditingTask.IsCompleted ? DateTime.Now : null;
+            e.Handled = true;
+        }
     }
 }

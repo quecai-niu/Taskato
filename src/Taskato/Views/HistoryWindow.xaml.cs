@@ -80,6 +80,8 @@ namespace Taskato.Views
                     // 将替身数据覆盖回本体
                     task.Title = detailWindow.EditingTask.Title;
                     task.Priority = detailWindow.EditingTask.Priority;
+                    task.IsCompleted = detailWindow.EditingTask.IsCompleted;
+                    task.CompletedAt = detailWindow.EditingTask.CompletedAt;
 
                     if (DataContext is HistoryViewModel vm)
                     {

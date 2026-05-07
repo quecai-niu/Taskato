@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Taskato 历史界面优化预览</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #121212;
+            color: #ffffff;
+            margin: 0;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 40px;
+        }
+        .section {
+            background-color: #1A1A2E;
+            border-radius: 16px;
+            padding: 30px;
+            width: 500px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+        }
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #A855F7;
+            margin-bottom: 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 10px;
+        }
+
+        /* 日期控件通用基础 */
+        .date-picker-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+        }
+        .label {
+            font-size: 13px;
+            color: #888;
+            width: 100px;
+        }
+        .dp-base {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            width: 140px;
+            background-color: rgba(255, 255, 255, 0.05);
+            color: #E0E0E0;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .dp-icon {
+            font-size: 12px;
+            opacity: 0.6;
+        }
+
+        /* 款式 A：标准圆角 (推荐) */
+        .dp-style-a {
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px; /* 柔和圆角 */
+        }
+        .dp-style-a:hover {
+            border-color: rgba(255, 255, 255, 0.3);
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        /* 款式 B：流体胶囊 */
+        .dp-style-b {
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px; /* 全圆角 */
+        }
+        .dp-style-b:hover {
+            border-color: rgba(255, 255, 255, 0.2);
+            background-color: rgba(255, 255, 255, 0.08);
+        }
+
+        /* 款式 C：霓虹微光 */
+        .dp-style-c {
+            border: 1px solid rgba(99, 102, 241, 0.4);
+            border-radius: 8px;
+            background-color: rgba(99, 102, 241, 0.1);
+            box-shadow: 0 0 8px rgba(99, 102, 241, 0.2);
+        }
+        .dp-style-c:hover {
+            border-color: rgba(168, 85, 247, 0.6);
+            box-shadow: 0 0 12px rgba(168, 85, 247, 0.4);
+        }
+
+        /* ================= 任务状态徽章修改 ================= */
+        .detail-footer {
+            border-top: 1px solid rgba(255,255,255,0.05);
+            padding-top: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .time-info {
+            font-size: 12px;
+            color: #555;
+            line-height: 1.6;
+        }
+
+        /* 徽章基础样式 */
+        .status-badge {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 20px;
+            border: 1.5px solid transparent;
+            transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        /* 未完成状态 - 鼠标放上去提示可点击完成 */
+        .badge-pending {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.2);
+            color: #888;
+        }
+        .badge-pending:hover {
+            cursor: pointer;
+            background-color: rgba(34, 197, 94, 0.15); /* 绿色底暗示完成 */
+            border-color: #22C55E;
+            color: #22C55E;
+            transform: scale(1.08);
+            box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3);
+        }
+
+        /* 已完成状态 - 鼠标放上去提示可撤销 */
+        .badge-completed {
+            background-color: rgba(34, 197, 94, 0.15);
+            border-color: rgba(34, 197, 94, 0.3);
+            color: #22C55E;
+        }
+        .badge-completed:hover {
+            cursor: pointer;
+            background-color: rgba(239, 68, 68, 0.15); /* 红色底暗示撤销/未完成 */
+            border-color: #EF4444;
+            color: #EF4444;
+            transform: scale(1.08);
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- 方案展示：日期控件风格 -->
+    <div class="section">
+        <div class="section-title">1. 日期控件 (DatePicker) 美化方案</div>
+        
+        <div class="date-picker-row">
+            <div class="label">方案 A (推荐)<br><small>标准柔和圆角</small></div>
+            <div class="dp-base dp-style-a">
+                <span>2026-05-07</span>
+                <span class="dp-icon">📅</span>
+            </div>
+            <div class="dp-base dp-style-a">
+                <span>2026-05-08</span>
+                <span class="dp-icon">📅</span>
+            </div>
+        </div>
+
+        <div class="date-picker-row">
+            <div class="label">方案 B<br><small>流体胶囊全圆角</small></div>
+            <div class="dp-base dp-style-b">
+                <span>2026-05-07</span>
+                <span class="dp-icon">📅</span>
+            </div>
+            <div class="dp-base dp-style-b">
+                <span>2026-05-08</span>
+                <span class="dp-icon">📅</span>
+            </div>
+        </div>
+
+        <div class="date-picker-row" style="margin-bottom: 0;">
+            <div class="label">方案 C<br><small>霓虹辉光</small></div>
+            <div class="dp-base dp-style-c">
+                <span>2026-05-07</span>
+                <span class="dp-icon">📅</span>
+            </div>
+            <div class="dp-base dp-style-c">
+                <span>2026-05-08</span>
+                <span class="dp-icon">📅</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 方案展示：历史状态徽章点击交互 -->
+    <div class="section">
+        <div class="section-title">2. 任务状态修改 (悬停体验)</div>
+        <p style="font-size: 13px; color: #aaa; margin-bottom: 20px;">
+            请将鼠标悬停在右侧的图标上体验。增加 Hover 颜色反馈，让用户明确知道这是个可点击的按钮：
+        </p>
+
+        <!-- 未完成卡片 -->
+        <div class="detail-footer" style="margin-bottom: 20px;">
+            <div class="time-info">
+                📅 创建时间：2026-05-05 09:15<br>
+            </div>
+            <!-- 鼠标悬停时会变成绿色勾暗示可标记完成 -->
+            <div class="status-badge badge-pending" title="点击标记为已完成">
+                ⏳
+            </div>
+        </div>
+
+        <!-- 已完成卡片 -->
+        <div class="detail-footer">
+            <div class="time-info">
+                📅 创建时间：2026-05-05 09:15<br>
+                ✅ 完成时间：2026-05-06 14:20
+            </div>
+            <!-- 鼠标悬停时会变成红色暗示可撤销 -->
+            <div class="status-badge badge-completed" title="点击标记为未完成">
+                ✓
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

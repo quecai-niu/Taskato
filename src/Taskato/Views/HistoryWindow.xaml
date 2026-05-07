@@ -20,6 +20,63 @@
         这个窗体会以对话框模式打开（ShowDialog），
         关闭后焦点回到主窗体。
     -->
+    <Window.Resources>
+        <Style x:Key="NeonDatePickerStyle" TargetType="DatePicker">
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="DatePicker">
+                        <Grid x:Name="PART_Root">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <DatePickerTextBox x:Name="PART_TextBox"
+                                               Grid.Column="0"
+                                               HorizontalContentAlignment="Left"
+                                               VerticalContentAlignment="Center"
+                                               Background="Transparent"
+                                               BorderThickness="0"
+                                               Foreground="{TemplateBinding Foreground}">
+                                <DatePickerTextBox.Template>
+                                    <ControlTemplate TargetType="DatePickerTextBox">
+                                        <ScrollViewer x:Name="PART_ContentHost" Margin="4,0"/>
+                                    </ControlTemplate>
+                                </DatePickerTextBox.Template>
+                            </DatePickerTextBox>
+                            <Button x:Name="PART_Button"
+                                    Grid.Column="1"
+                                    Focusable="False"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Cursor="Hand"
+                                    Margin="0,0,4,0">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border Background="Transparent" Padding="4">
+                                            <Image Source="pack://application:,,,/Assets/calendar.png" Width="16" Height="16" Opacity="0.9" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Opacity" Value="0.6"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+                            <Popup x:Name="PART_Popup"
+                                   AllowsTransparency="True"
+                                   Placement="Bottom"
+                                   PlacementTarget="{Binding ElementName=PART_Root}"
+                                   StaysOpen="False"/>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
 
     <Border Style="{StaticResource SubWindowBorderStyle}">
 
@@ -77,17 +134,34 @@
                     <TextBlock Grid.Column="0" Text="开始日期" FontSize="13"
                                Foreground="{StaticResource TextSecondaryBrush}"
                                VerticalAlignment="Center" Margin="0,0,10,0"/>
-                    <DatePicker Grid.Column="1"
-                                SelectedDate="{Binding StartDate}"
-                                Margin="0,0,10,0"
-                                Foreground="{StaticResource TextPrimaryBrush}"/>
+                    <Border Grid.Column="1" Margin="0,0,10,0"
+                            Background="#1A6366F1"
+                            BorderBrush="#666366F1"
+                            BorderThickness="1"
+                            CornerRadius="8">
+                        <Border.Effect>
+                            <DropShadowEffect Color="#A855F7" BlurRadius="8" ShadowDepth="0" Opacity="0.2"/>
+                        </Border.Effect>
+                        <DatePicker SelectedDate="{Binding StartDate}"
+                                    Style="{StaticResource NeonDatePickerStyle}"
+                                    Margin="4,2"/>
+                    </Border>
 
                     <TextBlock Grid.Column="2" Text="至" FontSize="13"
                                Foreground="{StaticResource TextSecondaryBrush}"
                                VerticalAlignment="Center" Margin="0,0,10,0"/>
-                    <DatePicker Grid.Column="3"
-                                SelectedDate="{Binding EndDate}"
-                                Foreground="{StaticResource TextPrimaryBrush}"/>
+                    <Border Grid.Column="3"
+                            Background="#1A6366F1"
+                            BorderBrush="#666366F1"
+                            BorderThickness="1"
+                            CornerRadius="8">
+                        <Border.Effect>
+                            <DropShadowEffect Color="#A855F7" BlurRadius="8" ShadowDepth="0" Opacity="0.2"/>
+                        </Border.Effect>
+                        <DatePicker SelectedDate="{Binding EndDate}"
+                                    Style="{StaticResource NeonDatePickerStyle}"
+                                    Margin="4,2"/>
+                    </Border>
                 </Grid>
 
                 <!-- 关键词行 -->

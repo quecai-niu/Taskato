@@ -145,7 +145,9 @@
 
                     <!-- 状态印章徽章 -->
                     <Border HorizontalAlignment="Right" VerticalAlignment="Center"
-                            Width="36" Height="36" CornerRadius="8">
+                            Width="36" Height="36" CornerRadius="8"
+                            Cursor="Hand" ToolTip="点击切换完成状态"
+                            MouseLeftButtonDown="StatusBadge_Click">
                         <Border.Style>
                             <Style TargetType="Border">
                                 <!-- 未完成：灰显沙漏 -->
@@ -158,6 +160,24 @@
                                         <Setter Property="Background" Value="#1A22C55E"/>
                                         <Setter Property="BorderBrush" Value="#3322C55E"/>
                                     </DataTrigger>
+                                    <!-- 悬停 未完成 -->
+                                    <MultiDataTrigger>
+                                        <MultiDataTrigger.Conditions>
+                                            <Condition Binding="{Binding IsCompleted}" Value="False"/>
+                                            <Condition Binding="{Binding RelativeSource={RelativeSource Self}, Path=IsMouseOver}" Value="True"/>
+                                        </MultiDataTrigger.Conditions>
+                                        <Setter Property="Background" Value="#2622C55E"/>
+                                        <Setter Property="BorderBrush" Value="#22C55E"/>
+                                    </MultiDataTrigger>
+                                    <!-- 悬停 已完成 -->
+                                    <MultiDataTrigger>
+                                        <MultiDataTrigger.Conditions>
+                                            <Condition Binding="{Binding IsCompleted}" Value="True"/>
+                                            <Condition Binding="{Binding RelativeSource={RelativeSource Self}, Path=IsMouseOver}" Value="True"/>
+                                        </MultiDataTrigger.Conditions>
+                                        <Setter Property="Background" Value="#26EF4444"/>
+                                        <Setter Property="BorderBrush" Value="#EF4444"/>
+                                    </MultiDataTrigger>
                                 </Style.Triggers>
                             </Style>
                         </Border.Style>
@@ -166,13 +186,25 @@
                                 <Style TargetType="TextBlock">
                                     <Setter Property="Text" Value="⏳"/>
                                     <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}"/>
-                                    <Setter Property="ToolTip" Value="目前为未完成状态"/>
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding IsCompleted}" Value="True">
                                             <Setter Property="Text" Value="✓"/>
                                             <Setter Property="Foreground" Value="#22C55E"/>
-                                            <Setter Property="ToolTip" Value="该任务已完成结算"/>
                                         </DataTrigger>
+                                        <MultiDataTrigger>
+                                            <MultiDataTrigger.Conditions>
+                                                <Condition Binding="{Binding IsCompleted}" Value="False"/>
+                                                <Condition Binding="{Binding RelativeSource={RelativeSource AncestorType=Border}, Path=IsMouseOver}" Value="True"/>
+                                            </MultiDataTrigger.Conditions>
+                                            <Setter Property="Foreground" Value="#22C55E"/>
+                                        </MultiDataTrigger>
+                                        <MultiDataTrigger>
+                                            <MultiDataTrigger.Conditions>
+                                                <Condition Binding="{Binding IsCompleted}" Value="True"/>
+                                                <Condition Binding="{Binding RelativeSource={RelativeSource AncestorType=Border}, Path=IsMouseOver}" Value="True"/>
+                                            </MultiDataTrigger.Conditions>
+                                            <Setter Property="Foreground" Value="#EF4444"/>
+                                        </MultiDataTrigger>
                                     </Style.Triggers>
                                 </Style>
                             </TextBlock.Style>
