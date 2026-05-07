@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taskato 主页延期任务预览</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #121212;
+            color: #ffffff;
+            margin: 0;
+            padding: 40px;
+            display: flex;
+            justify-content: center;
+        }
+        .app-container {
+            width: 400px;
+            background-color: #1a1a1a;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        /* 头部日期区域 */
+        .header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            font-size: 13px;
+        }
+        .header-icon {
+            opacity: 0.8;
+            margin-right: 6px;
+        }
+        .header-title {
+            color: #A855F7; /* ThemePrimaryBrush */
+            font-weight: 600;
+        }
+        .header-stats {
+            color: #888;
+            margin-left: 12px;
+        }
+        
+        /* 任务卡片 */
+        .task-card {
+            background-color: #242424;
+            border-radius: 14px;
+            margin-bottom: 12px;
+            display: flex;
+            padding: 14px;
+            position: relative;
+            overflow: hidden;
+        }
+        .priority-bar {
+            width: 4px;
+            border-radius: 2px;
+            margin-right: 14px;
+        }
+        .pri-0 { background-color: #6B7280; box-shadow: 0 0 8px rgba(107,114,128,0.4); }
+        .pri-2 { background-color: #F59E0B; box-shadow: 0 0 8px rgba(245,158,11,0.4); }
+        .pri-3 { background-color: #EF4444; box-shadow: 0 0 8px rgba(239,68,68,0.4); }
+
+        /* 复选框 */
+        .checkbox {
+            width: 20px;
+            height: 20px;
+            border-radius: 6px;
+            border: 2px solid #444;
+            margin-right: 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* 内容区 */
+        .content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .task-title {
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 6px;
+            color: #E5E7EB;
+        }
+        .tags {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 6px;
+        }
+        .tag {
+            background-color: rgba(168, 85, 247, 0.15);
+            color: #D8B4FE;
+            font-size: 10px;
+            font-weight: 600;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        
+        /* 时间显示重点！ */
+        .time-label {
+            font-size: 11px;
+            color: #9CA3AF;
+        }
+        .overdue-mark {
+            color: #EF4444;
+            font-weight: 600;
+            margin-right: 4px;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <!-- 头部日期 -->
+        <div class="header">
+            <span class="header-icon">📅</span>
+            <!-- 标题从单纯的“今日”修改为包含“待办”的含义 -->
+            <span class="header-title">待办与今日 · 5月7日</span>
+            <span class="header-stats">完成 0/3</span>
+        </div>
+
+        <!-- 任务 1：今天创建的新任务 -->
+        <div class="task-card">
+            <div class="priority-bar pri-0"></div>
+            <div class="checkbox"></div>
+            <div class="content">
+                <div class="task-title">阅读设计模式第三章</div>
+                <div class="tags">
+                    <div class="tag"><span style="color:#A855F7; opacity:0.6">#</span>学习</div>
+                </div>
+                <div class="time-label">
+                    10:30 创建
+                </div>
+            </div>
+        </div>
+
+        <!-- 任务 2：昨天顺延下来的未完成任务 -->
+        <div class="task-card">
+            <div class="priority-bar pri-2"></div>
+            <div class="checkbox"></div>
+            <div class="content">
+                <div class="task-title">整理周报数据</div>
+                <div class="tags">
+                    <div class="tag"><span style="color:#A855F7; opacity:0.6">#</span>工作</div>
+                </div>
+                <!-- 跨天任务智能补充了日期前缀 -->
+                <div class="time-label">
+                    <span class="overdue-mark">昨天</span> 18:20 创建
+                </div>
+            </div>
+        </div>
+
+        <!-- 任务 3：很久之前顺延下来的未完成任务 -->
+        <div class="task-card">
+            <div class="priority-bar pri-3"></div>
+            <div class="checkbox"></div>
+            <div class="content">
+                <div class="task-title">缴纳物业费和水电费</div>
+                <div class="tags">
+                    <div class="tag"><span style="color:#A855F7; opacity:0.6">#</span>生活</div>
+                    <div class="tag"><span style="color:#A855F7; opacity:0.6">#</span>紧急</div>
+                </div>
+                <!-- 跨多天任务显示具体日期 -->
+                <div class="time-label">
+                    <span class="overdue-mark">5月5日</span> 09:15 创建
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</body>
+</html>

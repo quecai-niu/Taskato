@@ -72,9 +72,8 @@ namespace Taskato.Services
         /// </summary>
         public async Task<int> UpdateTaskAsync(TaskItem task)
         {
-            var result = await _db.ExecuteAsync(
-                "UPDATE TaskItems SET Title = ?, IsCompleted = ?, CompletedAt = ?, Priority = ?, OrderIndex = ? WHERE Id = ?",
-                task.Title, task.IsCompleted, task.CompletedAt, task.Priority, task.OrderIndex, task.Id);
+            // 使用标准的 ORM 更新方法，避免手写 SQL 可能带来的参数绑定（如 DateTime?, bool）隐患
+            var result = await _db.UpdateAsync(task);
             
             if (result > 0) OnDataChanged?.Invoke(); // 触发全局刷新通知
             return result;
@@ -100,10 +99,11 @@ namespace Taskato.Services
         public async Task<List<TaskItem>> GetTodayTasksAsync()
         {
             var todayStart = DateTime.Today;              // 今天 00:00:00
-            var todayEnd = todayStart.AddDays(1);         // 明天 00:00:00
 
+            // 获取条件：“今天创建的任务 (无论是否完成) + 过去未完成的任务”
+            // 排序规则：1. 优先级降序；2. 手动排序索引升序；3. 创建时间降序
             return await _db.Table<TaskItem>()
-                .Where(t => t.CreatedAt >= todayStart && t.CreatedAt < todayEnd)
+                .Where(t => t.CreatedAt >= todayStart || t.IsCompleted == false)
                 .OrderByDescending(t => t.Priority)     // 级别高在前
                 .ThenBy(t => t.OrderIndex)               // 拖拽序号越小越靠前
                 .ThenByDescending(t => t.CreatedAt)      // 最后按时间倒序

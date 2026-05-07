@@ -66,11 +66,18 @@ namespace Taskato.Converters
             // values[1] = CompletedAt (DateTime? 可空)
             if (values[0] is DateTime createdAt)
             {
-                var result = $"{createdAt:HH:mm} 创建";
+                string GetDatePrefix(DateTime dt)
+                {
+                    if (dt.Date == DateTime.Today) return "";
+                    if (dt.Date == DateTime.Today.AddDays(-1)) return "昨天 ";
+                    return $"{dt:M月d日} ";
+                }
+
+                var result = $"{GetDatePrefix(createdAt)}{createdAt:HH:mm} 创建";
 
                 if (values[1] is DateTime completedAt)
                 {
-                    result += $" · {completedAt:HH:mm} 完成";
+                    result += $" · {GetDatePrefix(completedAt)}{completedAt:HH:mm} 完成";
                 }
 
                 return result;
