@@ -68,7 +68,9 @@ namespace Taskato.Views
                 _elapsedTimer.Tick += (s, e) =>
                 {
                     _secondsElapsed++;
-                    ElapsedTimerText.Text = $"已显示 {TimeSpan.FromSeconds(_secondsElapsed):mm\\:ss}";
+                    int m = _secondsElapsed / 60;
+                    int sec = _secondsElapsed % 60;
+                    ElapsedTimerText.Text = $"已显示 {m:D2}:{sec:D2}";
                 };
                 _elapsedTimer.Start();
             }
@@ -111,6 +113,7 @@ namespace Taskato.Views
                 // 1. MediaPlayer 原生支持异步加载与播放，不会阻塞主线程。
                 // 2. 相比 SoundPlayer，第一次加载也不容易卡顿。
                 _mediaPlayer = new System.Windows.Media.MediaPlayer();
+                _mediaPlayer.Volume = 1.0; // 提升音量
                 _mediaPlayer.Open(new Uri(soundPath, UriKind.Absolute));
                 _mediaPlayer.Play();
             }

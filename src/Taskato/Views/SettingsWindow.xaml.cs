@@ -340,6 +340,7 @@ namespace Taskato.Views
                 {
                     _mediaPlayer = new System.Windows.Media.MediaPlayer();
                 }
+                _mediaPlayer.Volume = 1.0; // 提升音量
                 _mediaPlayer.Open(new Uri(path, UriKind.Absolute));
                 _mediaPlayer.Play();
             }

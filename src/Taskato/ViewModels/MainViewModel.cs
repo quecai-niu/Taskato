@@ -331,9 +331,15 @@ namespace Taskato.ViewModels
             };
             settingsWindow.ShowDialog();
 
-            if (_pomodoroService.CurrentState == PomodoroService.PomodoroState.Idle && CurrentActiveTimer != null)
+            if (_pomodoroService.CurrentState == PomodoroService.PomodoroState.Idle && CurrentActiveTimer == AllTimers.FirstOrDefault())
             {
                 CurrentActiveTimer.WorkMinutes = _pomodoroService.WorkMinutes;
+            }
+
+            // 同步所有的子番茄钟的休息时间
+            foreach (var timer in AllTimers)
+            {
+                timer.RestMinutes = _settingsService.Config.RestMinutes;
             }
 
             // 同步多组模式的状态
