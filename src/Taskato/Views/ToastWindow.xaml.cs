@@ -27,8 +27,13 @@ namespace Taskato.Views
         /// <summary>自定义音效路径</summary>
         private readonly string _customSoundPath;
 
-        /// <summary>媒体播放器实例（保持引用以防提前被回收）</summary>
-        private System.Windows.Media.MediaPlayer? _mediaPlayer;
+        /// <summary>媒体播放器实例（双通道增益）</summary>
+        private System.Windows.Media.MediaPlayer? _mediaPlayer1;
+        private System.Windows.Media.MediaPlayer? _mediaPlayer2;
+        
+        /// <summary>WAV播放器实例（双通道增益）</summary>
+        private System.Media.SoundPlayer? _soundPlayer1;
+        private System.Media.SoundPlayer? _soundPlayer2;
 
         /// <summary>
         /// 构造函数
@@ -109,13 +114,26 @@ namespace Taskato.Views
                     return;
                 }
 
-                // 使用 MediaPlayer 播放音频：
-                // 1. MediaPlayer 原生支持异步加载与播放，不会阻塞主线程。
-                // 2. 相比 SoundPlayer，第一次加载也不容易卡顿。
-                _mediaPlayer = new System.Windows.Media.MediaPlayer();
-                _mediaPlayer.Volume = 1.0; // 提升音量
-                _mediaPlayer.Open(new Uri(soundPath, UriKind.Absolute));
-                _mediaPlayer.Play();
+                if (soundPath.EndsWith(".wav", StringComparison.OrdinalIgnoreCase))
+                {
+                    // 双通道并行播放 WAV：叠加振幅，感官音量提升约 6dB
+                    _soundPlayer1 = new System.Media.SoundPlayer(soundPath);
+                    _soundPlayer2 = new System.Media.SoundPlayer(soundPath);
+                    _soundPlayer1.Play();
+                    _soundPlayer2.Play();
+                }
+                else
+                {
+                    // 双通道并行播放 MP3/其他
+                    _mediaPlayer1 = new System.Windows.Media.MediaPlayer();
+                    _mediaPlayer2 = new System.Windows.Media.MediaPlayer();
+                    _mediaPlayer1.Volume = 1.0;
+                    _mediaPlayer2.Volume = 1.0;
+                    _mediaPlayer1.Open(new Uri(soundPath, UriKind.Absolute));
+                    _mediaPlayer2.Open(new Uri(soundPath, UriKind.Absolute));
+                    _mediaPlayer1.Play();
+                    _mediaPlayer2.Play();
+                }
             }
             catch
             {

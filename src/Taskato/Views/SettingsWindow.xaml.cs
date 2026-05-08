@@ -315,7 +315,10 @@ namespace Taskato.Views
             foreach (var r in radios) r.Checked += SoundRadio_Checked;
         }
 
-        private System.Windows.Media.MediaPlayer? _mediaPlayer;
+        private System.Windows.Media.MediaPlayer? _mediaPlayer1;
+        private System.Windows.Media.MediaPlayer? _mediaPlayer2;
+        private System.Media.SoundPlayer? _soundPlayer1;
+        private System.Media.SoundPlayer? _soundPlayer2;
 
         /// <summary>
         /// 试听按钮 — 使用 MediaPlayer 异步播放以避免卡顿
@@ -336,13 +339,28 @@ namespace Taskato.Views
 
             if (soundMap.TryGetValue(choice, out string? path) && System.IO.File.Exists(path))
             {
-                if (_mediaPlayer == null)
+                if (path.EndsWith(".wav", StringComparison.OrdinalIgnoreCase))
                 {
-                    _mediaPlayer = new System.Windows.Media.MediaPlayer();
+                    // 双通道并行试听
+                    if (_soundPlayer1 != null) _soundPlayer1.Dispose();
+                    if (_soundPlayer2 != null) _soundPlayer2.Dispose();
+                    _soundPlayer1 = new System.Media.SoundPlayer(path);
+                    _soundPlayer2 = new System.Media.SoundPlayer(path);
+                    _soundPlayer1.Play();
+                    _soundPlayer2.Play();
                 }
-                _mediaPlayer.Volume = 1.0; // 提升音量
-                _mediaPlayer.Open(new Uri(path, UriKind.Absolute));
-                _mediaPlayer.Play();
+                else
+                {
+                    if (_mediaPlayer1 == null) _mediaPlayer1 = new System.Windows.Media.MediaPlayer();
+                    if (_mediaPlayer2 == null) _mediaPlayer2 = new System.Windows.Media.MediaPlayer();
+                    
+                    _mediaPlayer1.Volume = 1.0;
+                    _mediaPlayer2.Volume = 1.0;
+                    _mediaPlayer1.Open(new Uri(path, UriKind.Absolute));
+                    _mediaPlayer2.Open(new Uri(path, UriKind.Absolute));
+                    _mediaPlayer1.Play();
+                    _mediaPlayer2.Play();
+                }
             }
         }
 
