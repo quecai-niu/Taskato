@@ -512,7 +512,7 @@
                                                                     <!-- 附加组删除按钮（主番茄钟不显示） -->
                                                                     <TextBlock Text="×" FontSize="14" Foreground="#EF4444"
                                                                                VerticalAlignment="Center" Cursor="Hand"
-                                                                               Margin="6,0,0,0" Padding="2,0"
+                                                                               Margin="6,0,0,0" Padding="4,2"
                                                                                MouseLeftButtonDown="RemoveTimerButton_Click"
                                                                                Tag="{Binding}">
                                                                         <TextBlock.Style>
