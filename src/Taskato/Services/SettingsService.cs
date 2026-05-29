@@ -54,6 +54,9 @@ namespace Taskato.Services
 
         /// <summary>休息过半时发送飞书提醒</summary>
         public bool FeishuRestHalfwayEnabled { get; set; } = true;
+
+        /// <summary>跨天时自动弹出昨日总结</summary>
+        public bool AutoShowDailySummary { get; set; } = false;
     }
 
     /// <summary>

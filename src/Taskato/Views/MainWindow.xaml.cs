@@ -24,8 +24,7 @@ namespace Taskato.Views
         {
             InitializeComponent();
 
-            // 设置日期显示（静态文本，不需要绑定）
-            DateLabel.Text = $"待办与今日 · {DateTime.Today:M月d日}";
+            // 日期显示已通过 XAML 绑定到 MainViewModel.DateLabelText，跨天自动刷新
 
             // 绑定 ViewModel 事件 — 番茄钟完成时弹出 Toast 窗口
             Loaded += (s, e) =>
@@ -300,7 +299,7 @@ namespace Taskato.Views
             {
                 var detailWindow = new TaskDetailWindow(task) { Owner = this };
                 detailWindow.ShowDialog();
-                
+
                 // 详情页关闭后，判断用户是否点击了保存
                 if (detailWindow.IsSaved)
                 {
@@ -309,7 +308,7 @@ namespace Taskato.Views
                     task.Priority = detailWindow.EditingTask.Priority;
                     task.IsCompleted = detailWindow.EditingTask.IsCompleted;
                     task.CompletedAt = detailWindow.EditingTask.CompletedAt;
-                    
+
                     if (DataContext is MainViewModel vm)
                     {
                         await vm.SaveTaskEditAsync(task);
@@ -318,6 +317,18 @@ namespace Taskato.Views
 
                 e.Handled = true;
             }
+        }
+
+        /// <summary>
+        /// 附加番茄钟选项卡 × 按钮 → 移除该计时器
+        /// </summary>
+        private void RemoveTimerButton_Click(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is FrameworkElement element && DataContext is MainViewModel vm)
+            {
+                vm.RemoveAdditionalTimerCommand.Execute(element.Tag);
+            }
+            e.Handled = true;
         }
     }
 }

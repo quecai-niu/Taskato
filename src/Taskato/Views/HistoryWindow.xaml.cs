@@ -94,6 +94,55 @@ namespace Taskato.Views
         }
 
         /// <summary>
+        /// 状态筛选 RadioButton 点击
+        /// </summary>
+        private void StatusFilter_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is System.Windows.Controls.RadioButton rb && rb.Tag is string tagStr &&
+                int.TryParse(tagStr, out int val) &&
+                DataContext is ViewModels.HistoryViewModel vm)
+            {
+                vm.StatusFilter = val;
+            }
+        }
+
+        /// <summary>
+        /// 排序字段 ComboBox 选择变更
+        /// </summary>
+        private void SortFieldCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        {
+            if (sender is System.Windows.Controls.ComboBox combo &&
+                combo.SelectedItem is System.Windows.Controls.ComboBoxItem item &&
+                item.Tag is string field &&
+                DataContext is ViewModels.HistoryViewModel vm)
+            {
+                vm.SortField = field;
+            }
+        }
+
+        /// <summary>
+        /// 排序方向按钮点击（切换升降序）
+        /// </summary>
+        private void SortDirectionBtn_Click(object sender, RoutedEventArgs e)
+        {
+            if (DataContext is ViewModels.HistoryViewModel vm)
+            {
+                vm.SortDesc = !vm.SortDesc;
+            }
+        }
+
+        /// <summary>
+        /// 等级优先 CheckBox 状态变更
+        /// </summary>
+        private void PriorityFirst_Changed(object sender, RoutedEventArgs e)
+        {
+            if (sender is System.Windows.Controls.CheckBox cb && DataContext is ViewModels.HistoryViewModel vm)
+            {
+                vm.PriorityFirst = cb.IsChecked == true;
+            }
+        }
+
+        /// <summary>
         /// 监听按键：支持按 Esc 键直接退出历史窗体
         /// </summary>
         protected override void OnKeyDown(System.Windows.Input.KeyEventArgs e)

@@ -235,6 +235,65 @@
                     </Button>
                 </Grid>
 
+                <!-- 分隔线 -->
+                <Border Height="1" Background="{StaticResource SeparatorBrush}" Margin="0,12,0,8"/>
+
+                <!-- 状态筛选行 -->
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                    <TextBlock Text="筛选" FontSize="13"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               VerticalAlignment="Center" Margin="0,0,12,0"/>
+                    <RadioButton Content="全部" GroupName="StatusGroup"
+                                 Foreground="{StaticResource TextPrimaryBrush}" FontSize="12"
+                                 VerticalAlignment="Center" Margin="0,0,10,0"
+                                 Click="StatusFilter_Click" Tag="0"/>
+                    <RadioButton Content="未完成" GroupName="StatusGroup"
+                                 Foreground="{StaticResource TextPrimaryBrush}" FontSize="12"
+                                 VerticalAlignment="Center" Margin="0,0,10,0"
+                                 Click="StatusFilter_Click" Tag="1"/>
+                    <RadioButton Content="已完成" GroupName="StatusGroup"
+                                 Foreground="{StaticResource TextPrimaryBrush}" FontSize="12"
+                                 VerticalAlignment="Center"
+                                 Click="StatusFilter_Click" Tag="2"/>
+                </StackPanel>
+
+                <!-- 排序行 -->
+                <Grid Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="160"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Column="0" Text="排序" FontSize="13"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               VerticalAlignment="Center" Margin="0,0,12,0"/>
+
+                    <ComboBox Grid.Column="1" x:Name="SortFieldCombo"
+                              SelectedIndex="0" FontSize="12"
+                              Foreground="{StaticResource TextPrimaryBrush}"
+                              Background="#1A6366F1" BorderBrush="#666366F1"
+                              SelectionChanged="SortFieldCombo_SelectionChanged">
+                        <ComboBoxItem Content="发布时间" Tag="CreatedAt"/>
+                        <ComboBoxItem Content="完成时间" Tag="CompletedAt"/>
+                        <ComboBoxItem Content="最后修改时间" Tag="LastModifiedAt"/>
+                    </ComboBox>
+
+                    <Button Grid.Column="2"
+                            Content="{Binding SortDirectionText}"
+                            FontSize="12" Padding="10,6" Margin="10,0"
+                            Cursor="Hand" Style="{StaticResource SecondaryButton}"
+                            Click="SortDirectionBtn_Click"/>
+
+                    <CheckBox Grid.Column="3"
+                              Content="等级优先"
+                              Foreground="{StaticResource TextPrimaryBrush}"
+                              FontSize="12" VerticalAlignment="Center"
+                              Margin="10,0,0,0"
+                              Click="PriorityFirst_Changed"/>
+                </Grid>
+
                 <!-- 搜索结果计数 -->
                 <TextBlock FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,10,0,0">
                     <TextBlock.Text>

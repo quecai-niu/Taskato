@@ -129,4 +129,28 @@ namespace Taskato.Converters
             return value is Visibility v && v != Visibility.Visible;
         }
     }
+
+    /// <summary>
+    /// 优先级整数转标签文本（3→"[紧急]", 2→"[高]", 1→"[中]", 0→""）
+    /// </summary>
+    public class PriorityToLabelConverter : System.Windows.Data.IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        {
+            if (value is int p)
+            {
+                return p switch
+                {
+                    3 => "[紧急]",
+                    2 => "[高]",
+                    1 => "[中]",
+                    _ => ""
+                };
+            }
+            return "";
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+            => throw new NotImplementedException();
+    }
 }

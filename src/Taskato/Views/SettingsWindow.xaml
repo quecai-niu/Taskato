@@ -222,6 +222,21 @@
                     </Grid>
                 </Border>
 
+                <!-- 每日总结 -->
+                <TextBlock Text="📊 每日总结" FontSize="12" FontWeight="SemiBold"
+                           Foreground="{StaticResource TextSecondaryBrush}"
+                           Margin="0,8,0,12"/>
+                <Border Background="#0AFFFFFF" CornerRadius="10" Padding="16,12" Margin="0,0,0,24">
+                    <Grid>
+                        <TextBlock Text="跨天时自动弹出昨日总结" FontSize="14"
+                                   Foreground="#CCCCCC" VerticalAlignment="Center"/>
+                        <CheckBox x:Name="AutoDailySummaryCheckBox"
+                                  HorizontalAlignment="Right" VerticalAlignment="Center"
+                                  Checked="AutoDailySummaryCheckBox_Changed"
+                                  Unchecked="AutoDailySummaryCheckBox_Changed"/>
+                    </Grid>
+                </Border>
+
                 <!-- 提示音选择 -->
                 <TextBlock Text="🔔 提示音" FontSize="12" FontWeight="SemiBold"
                            Foreground="{StaticResource TextSecondaryBrush}"

@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Threading;
 using Taskato.Models;
 using Taskato.Services;
 using Taskato.Utils;
@@ -106,6 +107,23 @@ namespace Taskato.ViewModels
             set => SetProperty(ref _totalCount, value);
         }
 
+        /// <summary>日期标签文本，绑定到 MainWindow 的 DateLabel</summary>
+        private string _dateLabelText = $"待办与今日 · {DateTime.Today:M月d日}";
+        public string DateLabelText
+        {
+            get => _dateLabelText;
+            set => SetProperty(ref _dateLabelText, value);
+        }
+
+        /// <summary>上次检测的日期，用于跨天判断</summary>
+        private DateTime _lastCheckDate = DateTime.Today;
+
+        /// <summary>跨天检测定时器（30 秒间隔）</summary>
+        private readonly DispatcherTimer _dayChangeTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromSeconds(30)
+        };
+
         // ==================== 番茄钟相关属性 ====================
 
         public ObservableCollection<PomodoroTimerViewModel> AllTimers { get; } = new();
@@ -142,6 +160,9 @@ namespace Taskato.ViewModels
 
         /// <summary>移除附加番茄钟命令</summary>
         public ICommand RemoveAdditionalTimerCommand { get; }
+
+        /// <summary>打开每日总结窗体命令</summary>
+        public ICommand OpenDailySummaryCommand { get; }
 
         // ==================== 构造函数 ====================
 
@@ -232,6 +253,7 @@ namespace Taskato.ViewModels
             // 打开子窗体命令（具体的窗体创建逻辑在 View 层处理）
             OpenHistoryCommand = new RelayCommand(_ => OpenHistoryWindow());
             OpenSettingsCommand = new RelayCommand(_ => OpenSettingsWindow());
+            OpenDailySummaryCommand = new RelayCommand(_ => OpenDailySummaryWindow());
 
             // ---------- 订阅数据库全局变更事件 ----------
             // 当任何地方（如历史界面）删除了任务或修改了内容，主界面自动同步刷新
@@ -242,6 +264,34 @@ namespace Taskato.ViewModels
                     await LoadTodayTasksAsync();
                 });
             };
+
+            // ---------- 跨天检测定时器 ----------
+            _dayChangeTimer.Tick += async (_, _) =>
+            {
+                if (DateTime.Today != _lastCheckDate)
+                {
+                    var yesterdayDate = _lastCheckDate; // 跨天前的日期（即"昨天"）
+                    _lastCheckDate = DateTime.Today;
+                    DateLabelText = $"待办与今日 · {DateTime.Today:M月d日}";
+                    await LoadTodayTasksAsync();
+
+                    if (_settingsService.Config.AutoShowDailySummary)
+                    {
+                        var summaryVM = new DailySummaryViewModel(_dbService)
+                        {
+                            CurrentDate = yesterdayDate
+                        };
+                        await summaryVM.LoadSummaryAsync();
+                        var summaryWindow = new Views.DailySummaryWindow
+                        {
+                            DataContext = summaryVM,
+                            Owner = Application.Current.MainWindow
+                        };
+                        summaryWindow.ShowDialog();
+                    }
+                }
+            };
+            _dayChangeTimer.Start();
         }
 
         // ==================== 任务操作方法 ====================
@@ -364,6 +414,21 @@ namespace Taskato.ViewModels
 
             // 同步多组模式的状态
             OnPropertyChanged(nameof(IsMultiMode));
+        }
+
+        /// <summary>
+        /// 打开每日总结窗体
+        /// </summary>
+        private void OpenDailySummaryWindow()
+        {
+            var summaryVM = new DailySummaryViewModel(_dbService);
+            var summaryWindow = new Views.DailySummaryWindow
+            {
+                DataContext = summaryVM,
+                Owner = Application.Current.MainWindow
+            };
+            summaryWindow.Loaded += async (_, _) => await summaryVM.LoadSummaryAsync();
+            summaryWindow.ShowDialog();
         }
 
         private void AddAdditionalTimer()
