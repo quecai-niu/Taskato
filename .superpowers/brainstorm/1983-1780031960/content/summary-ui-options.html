@@ -1,0 +1,104 @@
+<h2>每日总结 UI — 三种呈现形式</h2>
+<p class="subtitle">同一种内容（方案C的统计+导语），不同呈现方式</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>独立弹窗（推荐）</h3>
+      <p>类似历史查询窗，从主界面按钮打开，顶部有日期切换器可翻看历史总结</p>
+      <div class="mockup">
+        <div class="mockup-header">DailySummaryWindow — 600×500</div>
+        <div class="mockup-body" style="font-family:monospace;font-size:11px;color:#cbd5e1;line-height:1.6">
+┌──────────────────────────────────────┐<br/>
+│ 每日总结          [◀ 05-28] [05-29] [▶]<br/>
+├──────────────────────────────────────┤<br/>
+│                                      │<br/>
+│  今天完成了 3/4 个任务，再接再厉！     │<br/>
+│  ─────────────────────               │<br/>
+│  统计                                │<br/>
+│  总计：4 个  完成：3 个（75%）        │<br/>
+│  高优先级完成：2 个                   │<br/>
+│                                      │<br/>
+│  已完成                              │<br/>
+│  [高] 修复登录Bug                    │<br/>
+│  [高] 重构数据库层                   │<br/>
+│  [中] 写周报                         │<br/>
+│                                      │<br/>
+│  未完成                              │<br/>
+│  [中] 优化首页加载                   │<br/>
+│                                      │<br/>
+├──────────────────────────────────────┤<br/>
+│  [复制总结] [导出文本]               │<br/>
+└──────────────────────────────────────┘
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>主界面内嵌面板</h3>
+      <p>在主窗口底部加可折叠区域，打开就看到今日小结，无需额外窗口，但会挤占任务列表空间</p>
+      <div class="mockup">
+        <div class="mockup-header">MainWindow 底部</div>
+        <div class="mockup-body" style="font-family:monospace;font-size:11px;color:#cbd5e1;line-height:1.6">
+┌──────────────────────────────────────┐<br/>
+│ ...任务列表...                        │<br/>
+│ ┌─── 任务卡片 ───┐                   │<br/>
+│ └────────────────┘                   │<br/>
+│ ┌─── 任务卡片 ───┐                   │<br/>
+│ └────────────────┘                   │<br/>
+├──────────────────────────────────────┤<br/>
+│ 今日小结 ▾  完成 3/4（75%）          │ ← 折叠态<br/>
+├──────────────────────────────────────┤<br/>
+│ or 展开态：                          │<br/>
+│ 今天完成了3/4个任务，再接再厉！       │<br/>
+│ 已完成：[高]修复Bug [高]重构DB       │<br/>
+│ 未完成：[中]优化首页加载             │<br/>
+└──────────────────────────────────────┘
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>自动弹出</h3>
+      <p>跨天或首次打开时自动弹窗展示昨日/今日总结，可设"不再提醒"</p>
+      <div class="mockup">
+        <div class="mockup-header">自动弹出窗口 — 400×380</div>
+        <div class="mockup-body" style="font-family:monospace;font-size:11px;color:#cbd5e1;line-height:1.6">
+┌──────────────────────────────────┐<br/>
+│ 昨日总结 — 05-28                 │<br/>
+├──────────────────────────────────┤<br/>
+│                                  │<br/>
+│  昨天完成了 5/6 个任务，很棒！    │<br/>
+│  ──────────────                  │<br/>
+│  统计                            │<br/>
+│  完成：5 个（83%）               │<br/>
+│  高优先级完成：3 个               │<br/>
+│                                  │<br/>
+│  已完成                          │<br/>
+│  [高] 修复登录Bug                │<br/>
+│  [高] 重构数据库层               │<br/>
+│  [中] 写周报                     │<br/>
+│  ...共 5 个                      │<br/>
+│                                  │<br/>
+├──────────────────────────────────┤<br/>
+│  [不再提醒]         [关闭]       │<br/>
+└──────────────────────────────────┘
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h3 style="margin-top:24px;">我的推荐</h3>
+
+<div class="section">
+  <p><strong>推荐 A + C 组合</strong>：A 作为常设功能（主界面有按钮打开独立窗口，可翻看任意日期），C 作为可选开关（设置里勾选"跨天时自动弹出昨日总结"）。</p>
+  <p>B 方案会挤占主界面本就不大的任务列表区域，且主窗口职责已经很重，不推荐。</p>
+</div>

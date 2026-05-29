@@ -1,0 +1,71 @@
+<h2>每日总结 — 三种生成方式对比</h2>
+<p class="subtitle">同一个假数据："今日完成 3 个任务（修复登录Bug、重构数据库层、写周报），未完成 1 个（优化首页加载）"</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>纯数据统计</h3>
+      <p>就是数据和列表，零加工，一目了然</p>
+      <div class="mockup">
+        <div class="mockup-header">2026-05-29 每日总结</div>
+        <div class="mockup-body" style="font-family:monospace;font-size:12px;color:#cbd5e1;line-height:1.8">
+          📊 完成率：75%（3/4）<br/>
+          ─────────────────<br/>
+          ✅ 已完成（3）<br/>
+          │ 高｜修复登录Bug<br/>
+          │ 高｜重构数据库层<br/>
+          │ 中｜写周报<br/>
+          │<br/>
+          ❌ 未完成（1）<br/>
+          │ 中｜优化首页加载
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>模板化文字</h3>
+      <p>拼成一段自然语言总结，像日记结尾，适合回顾感受</p>
+      <div class="mockup">
+        <div class="mockup-header">2026-05-29 每日总结</div>
+        <div class="mockup-body" style="font-family:monospace;font-size:12px;color:#cbd5e1;line-height:1.8">
+          今天你完成了 3 个任务，完成率 75%。<br/>
+          其中高优先级任务 2 个：修复登录Bug、<br/>
+          重构数据库层，干得漂亮！<br/>
+          还有 1 个任务未完成：优化首页加载，<br/>
+          明天继续加油～
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>数据 + 简短导语（推荐）</h3>
+      <p>顶部一句话概括，主体是清晰的统计+清单，兼顾温度和可读性</p>
+      <div class="mockup">
+        <div class="mockup-header">2026-05-29 每日总结</div>
+        <div class="mockup-body" style="font-family:monospace;font-size:12px;color:#cbd5e1;line-height:1.8">
+          今天完成了 3/4 个任务，再接再厉！<br/>
+          ─────────────────<br/>
+          📊 统计<br/>
+          │ 总计：4 个任务<br/>
+          │ 完成：3 个（75%）<br/>
+          │ 高优完成：2 个<br/>
+          │<br/>
+          ✅ 已完成<br/>
+          │ 高｜修复登录Bug<br/>
+          │ 高｜重构数据库层<br/>
+          │ 中｜写周报<br/>
+          │<br/>
+          ❌ 未完成<br/>
+          │ 中｜优化首页加载
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
