@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Threading;
 using Taskato.Models;
 using Taskato.Services;
 using Taskato.Utils;
@@ -99,6 +100,23 @@ namespace Taskato.ViewModels
             get => _totalCount;
             set => SetProperty(ref _totalCount, value);
         }
+
+        /// <summary>日期标签文本，绑定到 MainWindow 的 DateLabel</summary>
+        private string _dateLabelText = $"待办与今日 · {DateTime.Today:M月d日}";
+        public string DateLabelText
+        {
+            get => _dateLabelText;
+            set => SetProperty(ref _dateLabelText, value);
+        }
+
+        /// <summary>上次检测的日期，用于跨天判断</summary>
+        private DateTime _lastCheckDate = DateTime.Today;
+
+        /// <summary>跨天检测定时器（30 秒间隔）</summary>
+        private readonly DispatcherTimer _dayChangeTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromSeconds(30)
+        };
 
         // ==================== 番茄钟相关属性 ====================
 
@@ -236,6 +254,21 @@ namespace Taskato.ViewModels
                     await LoadTodayTasksAsync();
                 });
             };
+
+            // ---------- 跨天检测定时器 ----------
+            _dayChangeTimer.Tick += (_, _) =>
+            {
+                if (DateTime.Today != _lastCheckDate)
+                {
+                    _lastCheckDate = DateTime.Today;
+                    DateLabelText = $"待办与今日 · {DateTime.Today:M月d日}";
+                    Application.Current.Dispatcher.InvokeAsync(async () =>
+                    {
+                        await LoadTodayTasksAsync();
+                    });
+                }
+            };
+            _dayChangeTimer.Start();
         }
 
         // ==================== 任务操作方法 ====================

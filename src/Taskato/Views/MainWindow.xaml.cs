@@ -24,8 +24,7 @@ namespace Taskato.Views
         {
             InitializeComponent();
 
-            // 设置日期显示（静态文本，不需要绑定）
-            DateLabel.Text = $"待办与今日 · {DateTime.Today:M月d日}";
+            // 日期显示已通过 XAML 绑定到 MainViewModel.DateLabelText，跨天自动刷新
 
             // 绑定 ViewModel 事件 — 番茄钟完成时弹出 Toast 窗口
             Loaded += (s, e) =>
