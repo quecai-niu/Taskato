@@ -1,3 +1,4 @@
+using System.Linq;
 using SQLite;
 using Taskato.Models;
 
@@ -45,6 +46,16 @@ namespace Taskato.Services
         public async Task InitializeAsync()
         {
             await _db.CreateTableAsync<TaskItem>();
+
+            // 数据库迁移：为旧数据库添加 LastModifiedAt 列
+            try
+            {
+                await _db.ExecuteAsync("ALTER TABLE TaskItems ADD COLUMN LastModifiedAt TEXT NOT NULL DEFAULT '0001-01-01 00:00:00'");
+            }
+            catch
+            {
+                // 列已存在则忽略
+            }
         }
 
         /// <summary>
@@ -72,6 +83,8 @@ namespace Taskato.Services
         /// </summary>
         public async Task<int> UpdateTaskAsync(TaskItem task)
         {
+            task.LastModifiedAt = DateTime.Now;
+
             // 使用标准的 ORM 更新方法，避免手写 SQL 可能带来的参数绑定（如 DateTime?, bool）隐患
             var result = await _db.UpdateAsync(task);
             
@@ -112,28 +125,82 @@ namespace Taskato.Services
 
         /// <summary>
         /// 按条件查询历史任务（用于历史查询窗体）
-        /// 同样应用多级排序规则
+        /// 支持状态筛选、多字段排序、等级优先
         /// </summary>
-        public async Task<List<TaskItem>> SearchTasksAsync(DateTime startDate, DateTime endDate, string keyword = "")
+        public async Task<List<TaskItem>> SearchTasksAsync(
+            DateTime startDate, DateTime endDate, string keyword = "",
+            int statusFilter = 0, string sortField = "CreatedAt",
+            bool sortDesc = true, bool priorityFirst = false)
         {
             var endDateTime = endDate.Date.AddDays(1);
 
             var query = _db.Table<TaskItem>()
-                .Where(t => t.CreatedAt >= startDate.Date && t.CreatedAt < endDateTime)
-                .OrderByDescending(t => t.Priority)
-                .ThenBy(t => t.OrderIndex)
-                .ThenByDescending(t => t.CreatedAt);
+                .Where(t => t.CreatedAt >= startDate.Date && t.CreatedAt < endDateTime);
 
             var results = await query.ToListAsync();
 
+            // 关键词筛选
             if (!string.IsNullOrWhiteSpace(keyword))
-            {
-                results = results
-                    .Where(t => t.Title.Contains(keyword, StringComparison.OrdinalIgnoreCase))
-                    .ToList();
-            }
+                results = results.Where(t => t.Title.Contains(keyword, StringComparison.OrdinalIgnoreCase)).ToList();
 
+            // 状态筛选
+            if (statusFilter == 1)
+                results = results.Where(t => !t.IsCompleted).ToList();
+            else if (statusFilter == 2)
+                results = results.Where(t => t.IsCompleted).ToList();
+
+            // 排序
+            results = ApplySort(results, sortField, sortDesc, priorityFirst);
             return results;
+        }
+
+        private static List<TaskItem> ApplySort(List<TaskItem> tasks, string sortField, bool sortDesc, bool priorityFirst)
+        {
+            IOrderedEnumerable<TaskItem> ordered;
+            if (priorityFirst)
+            {
+                ordered = sortDesc
+                    ? tasks.OrderByDescending(t => t.Priority)
+                    : tasks.OrderBy(t => t.Priority);
+                ordered = ThenByField(ordered, sortField, sortDesc);
+            }
+            else
+            {
+                ordered = OrderByField(tasks, sortField, sortDesc);
+            }
+            return ordered.ToList();
+        }
+
+        private static IOrderedEnumerable<TaskItem> OrderByField(IEnumerable<TaskItem> source, string field, bool desc)
+        {
+            return field switch
+            {
+                "CompletedAt" => desc
+                    ? source.OrderByDescending(t => t.CompletedAt ?? DateTime.MinValue)
+                    : source.OrderBy(t => t.CompletedAt ?? DateTime.MinValue),
+                "LastModifiedAt" => desc
+                    ? source.OrderByDescending(t => t.LastModifiedAt)
+                    : source.OrderBy(t => t.LastModifiedAt),
+                _ => desc
+                    ? source.OrderByDescending(t => t.CreatedAt)
+                    : source.OrderBy(t => t.CreatedAt),
+            };
+        }
+
+        private static IOrderedEnumerable<TaskItem> ThenByField(IOrderedEnumerable<TaskItem> source, string field, bool desc)
+        {
+            return field switch
+            {
+                "CompletedAt" => desc
+                    ? source.ThenByDescending(t => t.CompletedAt ?? DateTime.MinValue)
+                    : source.ThenBy(t => t.CompletedAt ?? DateTime.MinValue),
+                "LastModifiedAt" => desc
+                    ? source.ThenByDescending(t => t.LastModifiedAt)
+                    : source.ThenBy(t => t.LastModifiedAt),
+                _ => desc
+                    ? source.ThenByDescending(t => t.CreatedAt)
+                    : source.ThenBy(t => t.CreatedAt),
+            };
         }
 
         /// <summary>

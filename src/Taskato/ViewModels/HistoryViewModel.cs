@@ -52,6 +52,45 @@ namespace Taskato.ViewModels
             set => SetProperty(ref _keyword, value);
         }
 
+        /// <summary>状态筛选：0=全部, 1=未完成, 2=已完成</summary>
+        private int _statusFilter = 0;
+        public int StatusFilter
+        {
+            get => _statusFilter;
+            set => SetProperty(ref _statusFilter, value);
+        }
+
+        /// <summary>排序字段</summary>
+        private string _sortField = "CreatedAt";
+        public string SortField
+        {
+            get => _sortField;
+            set => SetProperty(ref _sortField, value);
+        }
+
+        /// <summary>排序方向：true=降序, false=升序</summary>
+        private bool _sortDesc = true;
+        public bool SortDesc
+        {
+            get => _sortDesc;
+            set
+            {
+                if (SetProperty(ref _sortDesc, value))
+                    OnPropertyChanged(nameof(SortDirectionText));
+            }
+        }
+
+        /// <summary>是否等级优先排序</summary>
+        private bool _priorityFirst = false;
+        public bool PriorityFirst
+        {
+            get => _priorityFirst;
+            set => SetProperty(ref _priorityFirst, value);
+        }
+
+        /// <summary>排序方向按钮文本</summary>
+        public string SortDirectionText => SortDesc ? "↓ 降序" : "↑ 升序";
+
         // ==================== 搜索结果 ====================
 
         /// <summary>
@@ -116,7 +155,9 @@ namespace Taskato.ViewModels
         /// </summary>
         public async Task SearchAsync()
         {
-            var results = await _dbService.SearchTasksAsync(StartDate, EndDate, Keyword);
+            var results = await _dbService.SearchTasksAsync(
+                StartDate, EndDate, Keyword,
+                StatusFilter, SortField, SortDesc, PriorityFirst);
 
             SearchResults.Clear();
             foreach (var task in results)

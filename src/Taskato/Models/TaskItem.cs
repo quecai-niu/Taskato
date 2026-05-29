@@ -34,6 +34,9 @@ namespace Taskato.Models
         private DateTime? _completedAt;
         public DateTime? CompletedAt { get => _completedAt; set => SetProperty(ref _completedAt, value); }
 
+        private DateTime _lastModifiedAt = DateTime.Now;
+        public DateTime LastModifiedAt { get => _lastModifiedAt; set => SetProperty(ref _lastModifiedAt, value); }
+
         private bool _isCompleted = false;
         public bool IsCompleted { get => _isCompleted; set => SetProperty(ref _isCompleted, value); }
 
