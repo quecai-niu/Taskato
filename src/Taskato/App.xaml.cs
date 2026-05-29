@@ -51,6 +51,9 @@ namespace Taskato
             // ---- 0.1 初始化设置服务并应用主题颜色 ----
             _settingsService = new SettingsService();
             ApplySavedTheme();
+
+            // ---- 0.2 初始化飞书通知服务 ----
+            var _feishuService = new FeishuService(_settingsService);
             // ---- 1. 初始化数据库 ----
             _dbService = new DatabaseService();
             await _dbService.InitializeAsync();
@@ -65,7 +68,7 @@ namespace Taskato
             _trayService.Initialize();
 
             // ---- 4. 创建主窗体和 ViewModel ----
-            var mainVM = new MainViewModel(_dbService, _pomodoroService, _settingsService);
+            var mainVM = new MainViewModel(_dbService, _pomodoroService, _settingsService, _feishuService);
             var mainWindow = new MainWindow
             {
                 DataContext = mainVM

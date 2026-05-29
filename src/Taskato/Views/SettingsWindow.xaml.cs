@@ -1,3 +1,4 @@
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -20,6 +21,9 @@ namespace Taskato.Views
 
         /// <summary>用户设置服务，用于持久化</summary>
         private readonly SettingsService _settingsService;
+
+        /// <summary>飞书通知服务，用于测试发送</summary>
+        private readonly FeishuService _feishuService;
 
         /// <summary>当前选中的颜色选项索引</summary>
         private int _selectedColorIndex = 0;
@@ -54,11 +58,12 @@ namespace Taskato.Views
         /// </summary>
         /// <param name="pomodoroService">番茄钟服务实例</param>
         /// <param name="settingsService">设置服务实例</param>
-        public SettingsWindow(PomodoroService pomodoroService, SettingsService settingsService)
+        public SettingsWindow(PomodoroService pomodoroService, SettingsService settingsService, FeishuService feishuService)
         {
             InitializeComponent();
             _pomodoroService = pomodoroService;
             _settingsService = settingsService;
+            _feishuService = feishuService;
 
             // 加载选中的主题索引
             _selectedColorIndex = _settingsService.Config.SelectedColorIndex;
@@ -72,6 +77,12 @@ namespace Taskato.Views
             AutoStartNextCheckBox.IsChecked = _settingsService.Config.AutoStartNextPomodoro;
             ToastTimerCheckBox.IsChecked = _settingsService.Config.EnableToastTimer;
             MultiPomodoroCheckBox.IsChecked = _settingsService.Config.EnableMultiplePomodoros;
+
+            // 加载飞书通知配置
+            FeishuEnabledCheckBox.IsChecked = _settingsService.Config.FeishuEnabled;
+            FeishuWebhookUrlBox.Text = _settingsService.Config.FeishuWebhookUrl;
+            FeishuNotifyWorkCheckBox.IsChecked = _settingsService.Config.FeishuNotifyOnWork;
+            FeishuNotifyRestCheckBox.IsChecked = _settingsService.Config.FeishuNotifyOnRest;
 
             // 初始化提示音选择 — 按配置值勾选对应 RadioButton
             InitSoundRadio(_settingsService.Config.NotificationSoundChoice);
@@ -403,6 +414,48 @@ namespace Taskato.Views
         private void CloseButton_Click(object sender, RoutedEventArgs e)
         {
             Close();
+        }
+
+        // ==================== 飞书通知设置 ====================
+
+        private void FeishuEnabledCheckBox_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_settingsService == null) return;
+            _settingsService.Config.FeishuEnabled = FeishuEnabledCheckBox.IsChecked == true;
+            _settingsService.Save();
+        }
+
+        private void FeishuWebhookUrlBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (_settingsService == null) return;
+            _settingsService.Config.FeishuWebhookUrl = FeishuWebhookUrlBox.Text;
+            _settingsService.Save();
+        }
+
+        private void FeishuNotifyWorkCheckBox_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_settingsService == null) return;
+            _settingsService.Config.FeishuNotifyOnWork = FeishuNotifyWorkCheckBox.IsChecked == true;
+            _settingsService.Save();
+        }
+
+        private void FeishuNotifyRestCheckBox_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_settingsService == null) return;
+            _settingsService.Config.FeishuNotifyOnRest = FeishuNotifyRestCheckBox.IsChecked == true;
+            _settingsService.Save();
+        }
+
+        private async void FeishuTestBtn_Click(object sender, RoutedEventArgs e)
+        {
+            FeishuTestBtn.IsEnabled = false;
+            FeishuTestBtn.Content = "发送中...";
+            var ok = await _feishuService.SendAsync("Taskato 测试消息", "如果你收到这条消息，说明飞书 Webhook 配置成功！");
+            FeishuTestBtn.Content = ok ? "发送成功" : "发送失败";
+            // 2 秒后恢复按钮文字
+            await Task.Delay(2000);
+            FeishuTestBtn.Content = "测试";
+            FeishuTestBtn.IsEnabled = true;
         }
     }
 }

@@ -1,3 +1,4 @@
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using Taskato.ViewModels;
@@ -50,6 +51,13 @@ namespace Taskato.Views
                                     customSoundPath: vm.CustomSoundPath
                                 );
                                 toast.Show();
+                                _ = Task.Run(async () =>
+                                {
+                                    if (vm.FeishuEnabled && vm.FeishuNotifyOnWork)
+                                        await vm.FeishuService.SendAsync(
+                                            $"{capturedSubVm.TimerName} 时间到！",
+                                            "你已完成专注工作，要休息一下吗？");
+                                });
                             };
 
                             capturedSubVm.RestCompleted += () =>
@@ -65,6 +73,13 @@ namespace Taskato.Views
                                     customSoundPath: vm.CustomSoundPath
                                 );
                                 toast.Show();
+                                _ = Task.Run(async () =>
+                                {
+                                    if (vm.FeishuEnabled && vm.FeishuNotifyOnRest)
+                                        await vm.FeishuService.SendAsync(
+                                            $"{capturedSubVm.TimerName} 休息结束！",
+                                            "精力充沛了吗？开始新一轮专注吧！");
+                                });
                             };
                         }
                     };
@@ -85,6 +100,13 @@ namespace Taskato.Views
                                 customSoundPath: vm.CustomSoundPath
                             );
                             toast.Show();
+                            _ = Task.Run(async () =>
+                            {
+                                if (vm.FeishuEnabled && vm.FeishuNotifyOnWork)
+                                    await vm.FeishuService.SendAsync(
+                                        $"{capturedSubVm.TimerName} 时间到！",
+                                        "你已完成专注工作，要休息一下吗？");
+                            });
                         };
 
                         capturedSubVm.RestCompleted += () =>
@@ -100,6 +122,13 @@ namespace Taskato.Views
                                 customSoundPath: vm.CustomSoundPath
                             );
                             toast.Show();
+                            _ = Task.Run(async () =>
+                            {
+                                if (vm.FeishuEnabled && vm.FeishuNotifyOnRest)
+                                    await vm.FeishuService.SendAsync(
+                                        $"{capturedSubVm.TimerName} 休息结束！",
+                                        "精力充沛了吗？开始新一轮专注吧！");
+                            });
                         };
                     }
                 }

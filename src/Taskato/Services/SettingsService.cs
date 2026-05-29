@@ -36,6 +36,18 @@ namespace Taskato.Services
 
         /// <summary>自定义音效文件路径</summary>
         public string CustomSoundPath { get; set; } = string.Empty;
+
+        /// <summary>是否启用飞书通知</summary>
+        public bool FeishuEnabled { get; set; } = false;
+
+        /// <summary>飞书 Webhook URL（环境变量 FEISHU_WEBHOOK_URL 优先）</summary>
+        public string FeishuWebhookUrl { get; set; } = string.Empty;
+
+        /// <summary>工作完成时发送飞书通知</summary>
+        public bool FeishuNotifyOnWork { get; set; } = true;
+
+        /// <summary>休息完成时发送飞书通知</summary>
+        public bool FeishuNotifyOnRest { get; set; } = true;
     }
 
     /// <summary>

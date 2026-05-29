@@ -28,6 +28,10 @@ namespace Taskato.ViewModels
         /// <summary>用户设置服务 — 负责持久化用户配置</summary>
         private readonly SettingsService _settingsService;
 
+        /// <summary>飞书通知服务</summary>
+        private readonly FeishuService _feishuService;
+        public FeishuService FeishuService => _feishuService;
+
         /// <summary>是否开启弹窗计时器（透传配置）</summary>
         public bool EnableToastTimer => _settingsService.Config.EnableToastTimer;
 
@@ -39,6 +43,15 @@ namespace Taskato.ViewModels
 
         /// <summary>自定义提示音路径，透传给 ToastWindow 使用</summary>
         public string CustomSoundPath => _settingsService.Config.CustomSoundPath;
+
+        /// <summary>是否启用飞书通知</summary>
+        public bool FeishuEnabled => _settingsService.Config.FeishuEnabled;
+
+        /// <summary>工作完成时发送飞书通知</summary>
+        public bool FeishuNotifyOnWork => _settingsService.Config.FeishuNotifyOnWork;
+
+        /// <summary>休息完成时发送飞书通知</summary>
+        public bool FeishuNotifyOnRest => _settingsService.Config.FeishuNotifyOnRest;
 
         // ==================== 任务相关属性 ====================
 
@@ -132,11 +145,12 @@ namespace Taskato.ViewModels
         /// <param name="dbService">数据库服务</param>
         /// <param name="pomodoroService">番茄钟服务</param>
         /// <param name="settingsService">设置服务</param>
-        public MainViewModel(DatabaseService dbService, PomodoroService pomodoroService, SettingsService settingsService)
+        public MainViewModel(DatabaseService dbService, PomodoroService pomodoroService, SettingsService settingsService, FeishuService feishuService)
         {
             _dbService = dbService;
             _pomodoroService = pomodoroService;
             _settingsService = settingsService;
+            _feishuService = feishuService;
 
             // 初始化主番茄钟并添加到列表
             var mainTimer = new PomodoroTimerViewModel(_pomodoroService, "主番茄钟", newWorkMinutes => 
@@ -325,7 +339,7 @@ namespace Taskato.ViewModels
         /// </summary>
         private void OpenSettingsWindow()
         {
-            var settingsWindow = new Views.SettingsWindow(_pomodoroService, _settingsService)
+            var settingsWindow = new Views.SettingsWindow(_pomodoroService, _settingsService, _feishuService)
             {
                 Owner = Application.Current.MainWindow
             };
