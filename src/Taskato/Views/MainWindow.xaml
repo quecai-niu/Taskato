@@ -509,6 +509,26 @@
                                                                         </Ellipse.Triggers>
                                                                     </Ellipse>
                                                                     <TextBlock x:Name="TxtName" Text="{Binding TimerName}" FontSize="12" Foreground="#9CA3AF"/>
+                                                                    <!-- 附加组删除按钮（主番茄钟不显示） -->
+                                                                    <TextBlock Text="×" FontSize="14" Foreground="#EF4444"
+                                                                               VerticalAlignment="Center" Cursor="Hand"
+                                                                               Margin="6,0,0,0" Padding="2,0"
+                                                                               MouseLeftButtonDown="RemoveTimerButton_Click"
+                                                                               Tag="{Binding}">
+                                                                        <TextBlock.Style>
+                                                                            <Style TargetType="TextBlock">
+                                                                                <Setter Property="Opacity" Value="0.4"/>
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger Binding="{Binding TimerName}" Value="主番茄钟">
+                                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                                    </DataTrigger>
+                                                                                    <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=Border}, Path=IsMouseOver}" Value="True">
+                                                                                        <Setter Property="Opacity" Value="1.0"/>
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </TextBlock.Style>
+                                                                    </TextBlock>
                                                                 </StackPanel>
                                                             </Border>
                                                             <ControlTemplate.Triggers>

@@ -277,7 +277,7 @@ namespace Taskato.Views
             {
                 var detailWindow = new TaskDetailWindow(task) { Owner = this };
                 detailWindow.ShowDialog();
-                
+
                 // 详情页关闭后，判断用户是否点击了保存
                 if (detailWindow.IsSaved)
                 {
@@ -286,7 +286,7 @@ namespace Taskato.Views
                     task.Priority = detailWindow.EditingTask.Priority;
                     task.IsCompleted = detailWindow.EditingTask.IsCompleted;
                     task.CompletedAt = detailWindow.EditingTask.CompletedAt;
-                    
+
                     if (DataContext is MainViewModel vm)
                     {
                         await vm.SaveTaskEditAsync(task);
@@ -295,6 +295,18 @@ namespace Taskato.Views
 
                 e.Handled = true;
             }
+        }
+
+        /// <summary>
+        /// 附加番茄钟选项卡 × 按钮 → 移除该计时器
+        /// </summary>
+        private void RemoveTimerButton_Click(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is FrameworkElement element && DataContext is MainViewModel vm)
+            {
+                vm.RemoveAdditionalTimerCommand.Execute(element.Tag);
+            }
+            e.Handled = true;
         }
     }
 }
