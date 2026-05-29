@@ -83,6 +83,8 @@ namespace Taskato.Views
             FeishuWebhookUrlBox.Text = _settingsService.Config.FeishuWebhookUrl;
             FeishuNotifyWorkCheckBox.IsChecked = _settingsService.Config.FeishuNotifyOnWork;
             FeishuNotifyRestCheckBox.IsChecked = _settingsService.Config.FeishuNotifyOnRest;
+            FeishuRepeatCheckBox.IsChecked = _settingsService.Config.FeishuRepeatEnabled;
+            FeishuRestHalfwayCheckBox.IsChecked = _settingsService.Config.FeishuRestHalfwayEnabled;
 
             // 初始化提示音选择 — 按配置值勾选对应 RadioButton
             InitSoundRadio(_settingsService.Config.NotificationSoundChoice);
@@ -443,6 +445,20 @@ namespace Taskato.Views
         {
             if (_settingsService == null) return;
             _settingsService.Config.FeishuNotifyOnRest = FeishuNotifyRestCheckBox.IsChecked == true;
+            _settingsService.Save();
+        }
+
+        private void FeishuRepeatCheckBox_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_settingsService == null) return;
+            _settingsService.Config.FeishuRepeatEnabled = FeishuRepeatCheckBox.IsChecked == true;
+            _settingsService.Save();
+        }
+
+        private void FeishuRestHalfwayCheckBox_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_settingsService == null) return;
+            _settingsService.Config.FeishuRestHalfwayEnabled = FeishuRestHalfwayCheckBox.IsChecked == true;
             _settingsService.Save();
         }
 

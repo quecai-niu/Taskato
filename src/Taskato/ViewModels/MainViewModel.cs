@@ -53,6 +53,12 @@ namespace Taskato.ViewModels
         /// <summary>休息完成时发送飞书通知</summary>
         public bool FeishuNotifyOnRest => _settingsService.Config.FeishuNotifyOnRest;
 
+        /// <summary>结束时重复发送飞书消息 3 次</summary>
+        public bool FeishuRepeatEnabled => _settingsService.Config.FeishuRepeatEnabled;
+
+        /// <summary>休息过半时发送飞书提醒</summary>
+        public bool FeishuRestHalfwayEnabled => _settingsService.Config.FeishuRestHalfwayEnabled;
+
         // ==================== 任务相关属性 ====================
 
         /// <summary>

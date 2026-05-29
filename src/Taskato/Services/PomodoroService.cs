@@ -82,6 +82,11 @@ namespace Taskato.Services
         public event Action? RestCompleted;
 
         /// <summary>
+        /// 休息过半时触发 — 用于飞书提醒等
+        /// </summary>
+        public event Action? RestHalfway;
+
+        /// <summary>
         /// 状态变更时触发 — 用于更新 UI 上的状态标签
         /// </summary>
         public event Action<PomodoroState>? StateChanged;
@@ -182,6 +187,12 @@ namespace Taskato.Services
 
             // 通知 UI 更新
             Tick?.Invoke(minutes, seconds, progress);
+
+            // 休息过半检测
+            if (CurrentState == PomodoroState.Resting && _remainingSeconds == _totalSeconds / 2)
+            {
+                RestHalfway?.Invoke();
+            }
 
             // 倒计时结束
             if (_remainingSeconds <= 0)

@@ -54,7 +54,7 @@ namespace Taskato.Views
                                 _ = Task.Run(async () =>
                                 {
                                     if (vm.FeishuEnabled && vm.FeishuNotifyOnWork)
-                                        await vm.FeishuService.SendAsync(
+                                        await vm.FeishuService.NotifyAsync(
                                             $"{capturedSubVm.TimerName} 时间到！",
                                             "你已完成专注工作，要休息一下吗？");
                                 });
@@ -76,9 +76,20 @@ namespace Taskato.Views
                                 _ = Task.Run(async () =>
                                 {
                                     if (vm.FeishuEnabled && vm.FeishuNotifyOnRest)
-                                        await vm.FeishuService.SendAsync(
+                                        await vm.FeishuService.NotifyAsync(
                                             $"{capturedSubVm.TimerName} 休息结束！",
                                             "精力充沛了吗？开始新一轮专注吧！");
+                                });
+                            };
+
+                            capturedSubVm.RestHalfway += () =>
+                            {
+                                _ = Task.Run(async () =>
+                                {
+                                    if (vm.FeishuEnabled && vm.FeishuRestHalfwayEnabled)
+                                        await vm.FeishuService.NotifyAsync(
+                                            $"{capturedSubVm.TimerName} 休息过半",
+                                            "休息时间已过半，准备回到工作状态吧！");
                                 });
                             };
                         }
@@ -103,7 +114,7 @@ namespace Taskato.Views
                             _ = Task.Run(async () =>
                             {
                                 if (vm.FeishuEnabled && vm.FeishuNotifyOnWork)
-                                    await vm.FeishuService.SendAsync(
+                                    await vm.FeishuService.NotifyAsync(
                                         $"{capturedSubVm.TimerName} 时间到！",
                                         "你已完成专注工作，要休息一下吗？");
                             });
@@ -125,9 +136,20 @@ namespace Taskato.Views
                             _ = Task.Run(async () =>
                             {
                                 if (vm.FeishuEnabled && vm.FeishuNotifyOnRest)
-                                    await vm.FeishuService.SendAsync(
+                                    await vm.FeishuService.NotifyAsync(
                                         $"{capturedSubVm.TimerName} 休息结束！",
                                         "精力充沛了吗？开始新一轮专注吧！");
+                            });
+                        };
+
+                        capturedSubVm.RestHalfway += () =>
+                        {
+                            _ = Task.Run(async () =>
+                            {
+                                if (vm.FeishuEnabled && vm.FeishuRestHalfwayEnabled)
+                                    await vm.FeishuService.NotifyAsync(
+                                        $"{capturedSubVm.TimerName} 休息过半",
+                                        "休息时间已过半，准备回到工作状态吧！");
                             });
                         };
                     }

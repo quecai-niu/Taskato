@@ -330,6 +330,26 @@
                                   Unchecked="FeishuNotifyWorkCheckBox_Changed"/>
                     </Grid>
                 </Border>
+                <Border Background="#0AFFFFFF" CornerRadius="10" Padding="16,12" Margin="0,0,0,8">
+                    <Grid>
+                        <TextBlock Text="结束时重复发送 3 次（间隔 3 秒）" FontSize="14"
+                                   Foreground="#CCCCCC" VerticalAlignment="Center"/>
+                        <CheckBox x:Name="FeishuRepeatCheckBox"
+                                  HorizontalAlignment="Right" VerticalAlignment="Center"
+                                  Checked="FeishuRepeatCheckBox_Changed"
+                                  Unchecked="FeishuRepeatCheckBox_Changed"/>
+                    </Grid>
+                </Border>
+                <Border Background="#0AFFFFFF" CornerRadius="10" Padding="16,12" Margin="0,0,0,8">
+                    <Grid>
+                        <TextBlock Text="休息过半时提醒" FontSize="14"
+                                   Foreground="#CCCCCC" VerticalAlignment="Center"/>
+                        <CheckBox x:Name="FeishuRestHalfwayCheckBox"
+                                  HorizontalAlignment="Right" VerticalAlignment="Center"
+                                  Checked="FeishuRestHalfwayCheckBox_Changed"
+                                  Unchecked="FeishuRestHalfwayCheckBox_Changed"/>
+                    </Grid>
+                </Border>
                 <Border Background="#0AFFFFFF" CornerRadius="10" Padding="16,12" Margin="0,0,0,24">
                     <Grid>
                         <TextBlock Text="休息完成时通知" FontSize="14"

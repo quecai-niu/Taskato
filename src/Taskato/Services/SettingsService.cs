@@ -48,6 +48,12 @@ namespace Taskato.Services
 
         /// <summary>休息完成时发送飞书通知</summary>
         public bool FeishuNotifyOnRest { get; set; } = true;
+
+        /// <summary>结束时重复发送飞书消息 3 次（间隔 3 秒）</summary>
+        public bool FeishuRepeatEnabled { get; set; } = true;
+
+        /// <summary>休息过半时发送飞书提醒</summary>
+        public bool FeishuRestHalfwayEnabled { get; set; } = true;
     }
 
     /// <summary>

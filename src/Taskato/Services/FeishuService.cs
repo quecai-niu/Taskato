@@ -79,5 +79,31 @@ namespace Taskato.Services
                 return false;
             }
         }
+
+        /// <summary>
+        /// 根据配置发送飞书通知（自动判断是否重复发送）
+        /// </summary>
+        public async Task NotifyAsync(string title, string content)
+        {
+            if (_settings.Config.FeishuRepeatEnabled)
+                await SendRepeatedAsync(title, content);
+            else
+                await SendAsync(title, content);
+        }
+
+        /// <summary>
+        /// 间隔重复发送飞书消息
+        /// </summary>
+        /// <param name="count">发送次数，默认 3</param>
+        /// <param name="intervalSeconds">间隔秒数，默认 3</param>
+        public async Task SendRepeatedAsync(string title, string content, int count = 3, int intervalSeconds = 3)
+        {
+            for (int i = 0; i < count; i++)
+            {
+                await SendAsync(title, content);
+                if (i < count - 1)
+                    await Task.Delay(intervalSeconds * 1000);
+            }
+        }
     }
 }

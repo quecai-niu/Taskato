@@ -1,0 +1,63 @@
+<h2>HistoryWindow 筛选排序区 — 两种布局方案</h2>
+<p class="subtitle">新增控件：状态筛选 + 排序字段 + 升/降序 + 等级优先勾选。请选择你觉得顺眼的布局</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>单行紧凑型</h3>
+      <p>所有筛选排序控件放在关键词行下方，与搜索结果计数同行，节省垂直空间</p>
+      <div class="mockup">
+        <div class="mockup-body" style="font-size:12px;font-family:monospace;color:#a5b4fc;line-height:2">
+          ┌──────────────────────────────────────────────┐<br/>
+          │ 开始日期 [____] 至 [____]                      │<br/>
+          │ 关键词  [____________] [🔍搜索] [⬇导出]        │<br/>
+          │ 状态:[全部▾] 排序:[发布时间▾] [↑] ☑等级优先     │ ← 新行<br/>
+          │ 找到 12 条记录                                 │<br/>
+          ├──────────────────────────────────────────────┤<br/>
+          │ (任务列表...)                                  │<br/>
+          └──────────────────────────────────────────────┘
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>双行展开型</h3>
+      <p>搜索按钮移到最右侧，筛选排序独占一行，视觉分组更清晰，适合小屏或密集操作</p>
+      <div class="mockup">
+        <div class="mockup-body" style="font-size:12px;font-family:monospace;color:#a5b4fc;line-height:2">
+          ┌──────────────────────────────────────────────┐<br/>
+          │ 开始日期 [____] 至 [____]                      │<br/>
+          │ 关键词  [____________] [🔍搜索] [⬇导出]        │<br/>
+          │──────────────────────────────────────────────│ ← 分隔线<br/>
+          │ 筛选: ○全部 ○未完成 ○已完成                    │<br/>
+          │ 排序: [发布时间 ▾] 方向:[↑升序] ☑ 等级优先      │<br/>
+          │ 找到 12 条记录                                 │<br/>
+          ├──────────────────────────────────────────────┤<br/>
+          │ (任务列表...)                                  │<br/>
+          └──────────────────────────────────────────────┘
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h3 style="margin-top:24px;">控件说明</h3>
+
+<div class="section">
+  <p><strong>状态筛选</strong> — 三个 RadioButton：全部 / 未完成 / 已完成，默认"全部"</p>
+  <p><strong>排序字段</strong> — ComboBox：发布时间 / 完成时间 / 最后修改时间，默认"发布时间"</p>
+  <p><strong>排序方向</strong> — 切换按钮，点击在升序 ↑ / 降序 ↓ 之间切换，默认降序</p>
+  <p><strong>等级优先</strong> — CheckBox，勾选后第一级按优先级降序，同等级内部尊重上面选的排序字段+方向</p>
+</div>
+
+<h3 style="margin-top:24px;">配套改动</h3>
+
+<div class="section">
+  <p>1. <strong>TaskItem 新增 LastModifiedAt 字段</strong> — 每次 UpdateTaskAsync 自动更新</p>
+  <p>2. <strong>SearchTasksAsync 签名扩展</strong> — 接收 status/sortField/sortDesc/priorityFirst 参数，在 SQLite 层完成排序（非内存排序）</p>
+  <p>3. <strong>排序字段映射</strong>：发布时间→CreatedAt，完成时间→CompletedAt，最后修改时间→LastModifiedAt</p>
+</div>

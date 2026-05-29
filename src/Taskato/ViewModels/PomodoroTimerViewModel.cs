@@ -81,6 +81,7 @@ namespace Taskato.ViewModels
         // 事件转发
         public event Action? WorkCompleted;
         public event Action? RestCompleted;
+        public event Action? RestHalfway;
 
         public ICommand StartWorkCommand { get; }
         public ICommand PauseCommand { get; }
@@ -121,6 +122,7 @@ namespace Taskato.ViewModels
 
             _pomodoroService.WorkCompleted += () => WorkCompleted?.Invoke();
             _pomodoroService.RestCompleted += () => RestCompleted?.Invoke();
+            _pomodoroService.RestHalfway += () => RestHalfway?.Invoke();
 
             StartWorkCommand = new RelayCommand(_ => _pomodoroService.StartWork(), _ => CurrentState == PomodoroService.PomodoroState.Idle || CurrentState == PomodoroService.PomodoroState.Paused);
             PauseCommand = new RelayCommand(_ => _pomodoroService.TogglePause(), _ => IsStarted);
