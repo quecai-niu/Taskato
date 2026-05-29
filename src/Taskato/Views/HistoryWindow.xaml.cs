@@ -128,7 +128,6 @@ namespace Taskato.Views
             if (DataContext is ViewModels.HistoryViewModel vm)
             {
                 vm.SortDesc = !vm.SortDesc;
-                SortDirectionBtn.Content = vm.SortDirectionText;
             }
         }
 

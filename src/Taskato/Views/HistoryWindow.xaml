@@ -281,8 +281,8 @@
                     </ComboBox>
 
                     <Button Grid.Column="2"
-                            x:Name="SortDirectionBtn"
-                            Content="↓ 降序" FontSize="12" Padding="10,6" Margin="10,0"
+                            Content="{Binding SortDirectionText}"
+                            FontSize="12" Padding="10,6" Margin="10,0"
                             Cursor="Hand" Style="{StaticResource SecondaryButton}"
                             Click="SortDirectionBtn_Click"/>
 

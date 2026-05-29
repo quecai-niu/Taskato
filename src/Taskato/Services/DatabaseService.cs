@@ -48,13 +48,11 @@ namespace Taskato.Services
             await _db.CreateTableAsync<TaskItem>();
 
             // 数据库迁移：为旧数据库添加 LastModifiedAt 列
-            try
+            var colCheck = await _db.ExecuteScalarAsync<int>(
+                "SELECT COUNT(*) FROM pragma_table_info('TaskItems') WHERE name='LastModifiedAt'");
+            if (colCheck == 0)
             {
                 await _db.ExecuteAsync("ALTER TABLE TaskItems ADD COLUMN LastModifiedAt TEXT NOT NULL DEFAULT '0001-01-01 00:00:00'");
-            }
-            catch
-            {
-                // 列已存在则忽略
             }
         }
 
