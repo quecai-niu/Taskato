@@ -133,23 +133,21 @@ namespace Taskato.ViewModels
 
         /// <summary>
         /// 加载当前日期的任务数据并刷新统计
+        /// 已完成按 CompletedAt 查询（不限创建日期），未完成按 CreatedAt ≤ 今天查询
         /// </summary>
         public async Task LoadSummaryAsync()
         {
-            var dayStart = CurrentDate.Date;
-            var tasks = await _dbService.SearchTasksAsync(dayStart, dayStart);
+            var completed = await _dbService.GetTasksCompletedOnAsync(CurrentDate);
+            var uncompleted = await _dbService.GetUncompletedCreatedUpToAsync(CurrentDate);
 
-            var completed = tasks.Where(t => t.IsCompleted).ToList();
-            var uncompleted = tasks.Where(t => !t.IsCompleted).ToList();
-
-            TotalCount = tasks.Count;
+            TotalCount = completed.Count + uncompleted.Count;
             CompletedCount = completed.Count;
             CompletionRate = TotalCount > 0 ? $"{(double)CompletedCount / TotalCount:P0}" : "N/A";
             HighPriorityCompleted = completed.Count(t => t.Priority >= 2);
 
             if (TotalCount == 0)
                 SummaryLine = "今天没有任务记录。";
-            else if (CompletedCount == TotalCount)
+            else if (uncompleted.Count == 0)
                 SummaryLine = $"今天完成了全部 {TotalCount} 个任务，太棒了！";
             else
                 SummaryLine = $"今天完成了 {CompletedCount}/{TotalCount} 个任务，再接再厉！";

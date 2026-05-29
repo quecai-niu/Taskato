@@ -152,6 +152,29 @@ namespace Taskato.Services
             return results;
         }
 
+        /// <summary>
+        /// 查询指定日期内完成的所有任务（不限创建日期）
+        /// </summary>
+        public async Task<List<TaskItem>> GetTasksCompletedOnAsync(DateTime date)
+        {
+            var dayStart = date.Date;
+            var dayEnd = dayStart.AddDays(1);
+            return await _db.Table<TaskItem>()
+                .Where(t => t.CompletedAt >= dayStart && t.CompletedAt < dayEnd)
+                .ToListAsync();
+        }
+
+        /// <summary>
+        /// 查询指定日期及之前创建的未完成任务
+        /// </summary>
+        public async Task<List<TaskItem>> GetUncompletedCreatedUpToAsync(DateTime date)
+        {
+            var dayEnd = date.Date.AddDays(1);
+            return await _db.Table<TaskItem>()
+                .Where(t => t.CreatedAt < dayEnd && !t.IsCompleted)
+                .ToListAsync();
+        }
+
         private static List<TaskItem> ApplySort(List<TaskItem> tasks, string sortField, bool sortDesc, bool priorityFirst)
         {
             IOrderedEnumerable<TaskItem> ordered;
