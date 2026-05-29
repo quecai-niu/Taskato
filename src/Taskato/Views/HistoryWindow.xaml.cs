@@ -94,33 +94,6 @@ namespace Taskato.Views
         }
 
         /// <summary>
-        /// 状态筛选 RadioButton 点击
-        /// </summary>
-        private void StatusFilter_Click(object sender, RoutedEventArgs e)
-        {
-            if (sender is System.Windows.Controls.RadioButton rb && rb.Tag is string tagStr &&
-                int.TryParse(tagStr, out int val) &&
-                DataContext is ViewModels.HistoryViewModel vm)
-            {
-                vm.StatusFilter = val;
-            }
-        }
-
-        /// <summary>
-        /// 排序字段 ComboBox 选择变更
-        /// </summary>
-        private void SortFieldCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
-        {
-            if (sender is System.Windows.Controls.ComboBox combo &&
-                combo.SelectedItem is System.Windows.Controls.ComboBoxItem item &&
-                item.Tag is string field &&
-                DataContext is ViewModels.HistoryViewModel vm)
-            {
-                vm.SortField = field;
-            }
-        }
-
-        /// <summary>
         /// 排序方向按钮点击（切换升降序）
         /// </summary>
         private void SortDirectionBtn_Click(object sender, RoutedEventArgs e)
