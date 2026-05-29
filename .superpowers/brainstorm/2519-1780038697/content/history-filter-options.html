@@ -1,0 +1,40 @@
+<h2>历史查询筛选UI — ComboBox 下拉项颜色问题</h2>
+<p class="subtitle">当前 ComboBox 在 HistoryWindow.xaml:273-281</p>
+
+<div class="section">
+  <h3>现状：ComboBox 下拉弹出时的效果</h3>
+  <div class="mockup">
+    <div class="mockup-header">WPF 默认 ComboBox 下拉 — 浅色背景 + 接近白色字体</div>
+    <div class="mockup-body" style="padding:20px;background:#1E1E2E;border-radius:8px;">
+      <p style="color:#EF4444;font-size:13px;margin-bottom:12px;">问题：WPF 默认 Popup 背景是系统白色(#FFF)，下拉项字体沿用 ComboBox 的 Foreground（浅色），导致白底浅字，完全不可读</p>
+      <div style="background:#1A6366F1;border:1px solid #666366F1;border-radius:8px;padding:6px 10px;display:inline-block;color:#E0E0E0;font-size:12px;">发布时间 ▾</div>
+      <div style="margin-top:4px;background:white;border:1px solid #CCC;border-radius:4px;padding:4px 0;width:150px;">
+        <div style="padding:4px 10px;color:#999;font-size:12px;">发布时间</div>
+        <div style="padding:4px 10px;color:#999;font-size:12px;">完成时间</div>
+        <div style="padding:4px 10px;color:#999;font-size:12px;">最后修改时间</div>
+      </div>
+      <p style="color:#9CA3AF;font-size:11px;margin-top:12px;">⬆ 模拟效果：浅色背景 + 浅色字体 = 看不清</p>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>修复方向</h3>
+  <div class="options">
+    <div class="option" data-choice="a" onclick="toggleSelect(this)">
+      <div class="letter">A</div>
+      <div class="content">
+        <h3>纯样式修复</h3>
+        <p>给 ComboBox 加完整深色模板：下拉 Popup 深色背景 + 浅色字体 + 选中高亮，让下拉项清晰可读。RadioButton 样式微调对齐。</p>
+      </div>
+    </div>
+    <div class="option" data-choice="b" onclick="toggleSelect(this)">
+      <div class="letter">B</div>
+      <div class="content">
+        <h3>替换为风格一致的组件</h3>
+        <p>状态筛选的 RadioButton → 改成主窗口同款 chip/pill 按钮组；排序 ComboBox → 深色主题完整重绘；整体筛选区视觉与主窗口统一。</p>
+      </div>
+    </div>
+  </div>
+  <p style="color:#9CA3AF;font-size:12px;margin-top:12px;">A 改动小、修核心问题；B 改动大、风格彻底统一。可点击选项选择，也可直接终端回复。</p>
+</div>

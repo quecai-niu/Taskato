@@ -1,0 +1,96 @@
+<h2>v2.06 四项增强 — 3项待优化问题</h2>
+<p class="subtitle">以下是我在代码中定位到的具体情况，请确认理解是否准确</p>
+
+<div class="section">
+  <h3>问题 ①：番茄钟 × 删除按钮不居中</h3>
+  <div class="split">
+    <div class="mockup">
+      <div class="mockup-header">现状 — MainWindow.xaml:513</div>
+      <div class="mockup-body" style="padding:20px;background:#1E1E2E;border-radius:8px;">
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#252540;border-radius:6px;border:1px solid #6366F1;">
+          <span style="width:6px;height:6px;background:#6366F1;border-radius:50%;"></span>
+          <span style="color:#9CA3AF;font-size:12px;">番茄钟 #2</span>
+          <span style="color:#EF4444;font-size:14px;margin-left:auto;padding:2px 0;cursor:pointer;">×</span>
+        </div>
+        <p style="color:#EF4444;font-size:11px;margin-top:12px;">⚠ Padding="2,0" — 垂直方向无内边距，字符偏上</p>
+      </div>
+    </div>
+    <div class="mockup">
+      <div class="mockup-header">对照：任务卡片删除按钮（正常居中）</div>
+      <div class="mockup-body" style="padding:20px;background:#1E1E2E;border-radius:8px;">
+        <div style="display:flex;align-items:center;gap:8px;padding:12px 16px;background:#252540;border-radius:10px;border:1px solid #333;">
+          <span style="color:#FBBF24;font-size:11px;background:#26F59E0B;padding:4px 10px;border-radius:20px;">未完成</span>
+          <span style="color:white;font-size:14px;">优化WPF样式</span>
+          <span style="color:#EF4444;font-size:16px;margin-left:auto;padding:8px;cursor:pointer;opacity:0.4;">✕</span>
+        </div>
+        <p style="color:#4ADE80;font-size:11px;margin-top:12px;">✓ Padding="8" 均匀，VerticalAlignment="Center" 生效</p>
+      </div>
+    </div>
+  </div>
+  <p style="color:#9CA3AF;font-size:12px;margin-top:8px;">根因：× 按钮的 <code>Padding="2,0"</code> 水平只给了2px，垂直为0；而同文件另外两处删除按钮分别用 <code>Padding="8"</code> 和 <code>Padding="4"</code></p>
+</div>
+
+<div class="section">
+  <h3>问题 ②：每日总结按创建日期筛选，遗漏跨天完成的任务</h3>
+  <div class="split">
+    <div class="mockup">
+      <div class="mockup-header">现状 — DatabaseService.SearchTasksAsync:136</div>
+      <div class="mockup-body" style="padding:20px;background:#1E1E2E;border-radius:8px;">
+        <pre style="color:#A78BFA;font-size:12px;background:#111;padding:12px;border-radius:6px;overflow-x:auto;"><code>.Where(t => t.CreatedAt >= startDate
+     && t.CreatedAt < endDateTime)</code></pre>
+        <p style="color:#FBBF24;font-size:11px;margin-top:12px;">
+          场景：昨天创建的任务，今天完成 → <strong>不会</strong> 出现在今天的总结里
+        </p>
+      </div>
+    </div>
+    <div class="mockup">
+      <div class="mockup-header">用户期望</div>
+      <div class="mockup-body" style="padding:20px;background:#1E1E2E;border-radius:8px;">
+        <p style="color:white;font-size:13px;">"只要是今日完成的，不管是哪个创建的，也都应该记录在册"</p>
+        <p style="color:#4ADE80;font-size:11px;margin-top:12px;">
+          期望：昨天创建 + 今天完成 → <strong>出现在</strong> 今天的总结里
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>问题 ③：历史查询筛选UI风格不一致</h3>
+  <div class="split">
+    <div class="mockup">
+      <div class="mockup-header">现状 — HistoryWindow.xaml:246-295</div>
+      <div class="mockup-body" style="padding:20px;background:#1E1E2E;border-radius:8px;">
+        <p style="color:#9CA3AF;font-size:11px;margin-bottom:8px;">RadioButton 筛选行：</p>
+        <div style="display:flex;gap:8px;align-items:center;padding:8px;background:#252540;border-radius:6px;">
+          <span style="color:#9CA3AF;font-size:12px;">筛选</span>
+          <label style="color:white;font-size:12px;"><input type="radio" name="s" checked> 全部</label>
+          <label style="color:white;font-size:12px;"><input type="radio" name="s"> 未完成</label>
+          <label style="color:white;font-size:12px;"><input type="radio" name="s"> 已完成</label>
+        </div>
+        <p style="color:#9CA3AF;font-size:11px;margin-top:12px;margin-bottom:8px;">ComboBox 下拉（默认样式）：</p>
+        <div style="padding:6px 10px;background:#1A6366F1;border:1px solid #666366F1;border-radius:8px;display:flex;justify-content:space-between;align-items:center;">
+          <span style="color:#E0E0E0;font-size:12px;">发布时间 ▾</span>
+        </div>
+        <p style="color:#EF4444;font-size:11px;margin-top:12px;">
+          ⚠ RadioButton：纯默认样式，与深色主题不搭<br>
+          ⚠ ComboBox 下拉项：背景色与字体色几乎一致，用户看不清选项
+        </p>
+      </div>
+    </div>
+    <div class="mockup">
+      <div class="mockup-header">对照：主窗口现有组件风格</div>
+      <div class="mockup-body" style="padding:20px;background:#1E1E2E;border-radius:8px;">
+        <p style="color:#9CA3AF;font-size:11px;margin-bottom:8px;">主题风格特征：</p>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <span style="background:#6366F1;color:white;padding:4px 12px;border-radius:6px;font-size:11px;">PrimaryButton</span>
+          <span style="background:#252540;color:#E0E0E0;padding:4px 12px;border-radius:6px;font-size:11px;border:1px solid #444;">SecondaryButton</span>
+          <span style="background:#1A6366F1;color:#E0E0E0;padding:4px 12px;border-radius:8px;font-size:11px;border:1px solid #666366F1;">DarkTextBox</span>
+        </div>
+        <p style="color:#4ADE80;font-size:11px;margin-top:12px;">
+          应有风格：深色背景 + 紫调边框 + 圆角8px + 发光阴影
+        </p>
+      </div>
+    </div>
+  </div>
+</div>

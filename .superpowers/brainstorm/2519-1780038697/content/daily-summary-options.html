@@ -1,0 +1,46 @@
+<h2>每日总结范围 — 两种方案举例</h2>
+<p class="subtitle">假设今天是 5月29日，你有以下任务：</p>
+
+<div style="background:#1E1E2E;border-radius:10px;padding:20px;margin:16px 0;">
+  <table style="width:100%;color:white;font-size:13px;border-collapse:collapse;">
+    <tr style="color:#9CA3AF;font-size:11px;text-align:left;">
+      <th style="padding:8px;">任务</th><th style="padding:8px;">创建日期</th><th style="padding:8px;">完成日期</th><th style="padding:8px;">状态</th>
+    </tr>
+    <tr style="border-top:1px solid #333;">
+      <td style="padding:8px;">写周报</td><td style="padding:8px;color:#A78BFA;">5/28</td><td style="padding:8px;color:#4ADE80;">5/29 ✓</td><td style="padding:8px;"><span style="background:#2622C55E;color:#4ADE80;padding:2px 8px;border-radius:12px;font-size:11px;">已完成</span></td>
+    </tr>
+    <tr>
+      <td style="padding:8px;">修Bug</td><td style="padding:8px;color:#A78BFA;">5/29</td><td style="padding:8px;color:#4ADE80;">5/29 ✓</td><td style="padding:8px;"><span style="background:#2622C55E;color:#4ADE80;padding:2px 8px;border-radius:12px;font-size:11px;">已完成</span></td>
+    </tr>
+    <tr>
+      <td style="padding:8px;">重构代码</td><td style="padding:8px;color:#A78BFA;">5/29</td><td style="padding:8px;color:#9CA3AF;">—</td><td style="padding:8px;"><span style="background:#26F59E0B;color:#FBBF24;padding:2px 8px;border-radius:12px;font-size:11px;">未完成</span></td>
+    </tr>
+  </table>
+</div>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">方案 A：混合口径（推荐）</div>
+    <div class="mockup-body" style="padding:16px;background:#1E1E2E;border-radius:8px;">
+      <p style="color:#4ADE80;font-size:13px;margin-bottom:8px;">已完成（2条）</p>
+      <div style="background:#0A22C55E;padding:8px 12px;border-radius:6px;margin-bottom:4px;color:white;font-size:12px;">写周报 <span style="color:#9CA3AF;font-size:10px;">5/28创建</span></div>
+      <div style="background:#0A22C55E;padding:8px 12px;border-radius:6px;margin-bottom:4px;color:white;font-size:12px;">修Bug <span style="color:#9CA3AF;font-size:10px;">5/29创建</span></div>
+      <p style="color:#FBBF24;font-size:13px;margin:12px 0 8px;">未完成（1条）</p>
+      <div style="background:#0AF59E0B;padding:8px 12px;border-radius:6px;color:white;font-size:12px;">重构代码 <span style="color:#9CA3AF;font-size:10px;">5/29创建</span></div>
+      <p style="color:#4ADE80;font-size:11px;margin-top:12px;">已完成 → 按完成日期 | 未完成 → 按创建日期</p>
+    </div>
+  </div>
+  <div class="mockup">
+    <div class="mockup-header">方案 B：纯完成口径</div>
+    <div class="mockup-body" style="padding:16px;background:#1E1E2E;border-radius:8px;">
+      <p style="color:#4ADE80;font-size:13px;margin-bottom:8px;">今日成果（2条）</p>
+      <div style="background:#0A22C55E;padding:8px 12px;border-radius:6px;margin-bottom:4px;color:white;font-size:12px;">写周报</div>
+      <div style="background:#0A22C55E;padding:8px 12px;border-radius:6px;margin-bottom:4px;color:white;font-size:12px;">修Bug</div>
+      <p style="color:#FBBF24;font-size:11px;margin-top:12px;background:#111;padding:8px;border-radius:6px;">⚠ 重构代码（5/29创建未完成）→ <strong>不显示</strong>，因为没有"未完成日期"这个概念</p>
+    </div>
+  </div>
+</div>
+
+<p style="margin-top:16px;color:white;font-size:14px;">
+  <strong>核心区别：</strong> 方案A保留"未完成"列表（方便追踪烂尾任务），方案B只看成果不关注遗留。
+</p>
