@@ -552,6 +552,7 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
                     </Grid.ColumnDefinitions>
 
                     <Button Grid.Column="0" Style="{StaticResource SecondaryButton}"
@@ -560,6 +561,11 @@
                             HorizontalAlignment="Left"/>
 
                     <Button Grid.Column="1" Style="{StaticResource SecondaryButton}"
+                            Content="📊 每日总结"
+                            Command="{Binding OpenDailySummaryCommand}"
+                            HorizontalAlignment="Center"/>
+
+                    <Button Grid.Column="2" Style="{StaticResource SecondaryButton}"
                             Content="⚙ 设置 / 主题"
                             Command="{Binding OpenSettingsCommand}"
                             HorizontalAlignment="Right"/>

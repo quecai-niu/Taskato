@@ -155,6 +155,9 @@ namespace Taskato.ViewModels
         /// <summary>移除附加番茄钟命令</summary>
         public ICommand RemoveAdditionalTimerCommand { get; }
 
+        /// <summary>打开每日总结窗体命令</summary>
+        public ICommand OpenDailySummaryCommand { get; }
+
         // ==================== 构造函数 ====================
 
         /// <summary>
@@ -244,6 +247,7 @@ namespace Taskato.ViewModels
             // 打开子窗体命令（具体的窗体创建逻辑在 View 层处理）
             OpenHistoryCommand = new RelayCommand(_ => OpenHistoryWindow());
             OpenSettingsCommand = new RelayCommand(_ => OpenSettingsWindow());
+            OpenDailySummaryCommand = new RelayCommand(_ => OpenDailySummaryWindow());
 
             // ---------- 订阅数据库全局变更事件 ----------
             // 当任何地方（如历史界面）删除了任务或修改了内容，主界面自动同步刷新
@@ -260,9 +264,25 @@ namespace Taskato.ViewModels
             {
                 if (DateTime.Today != _lastCheckDate)
                 {
+                    var yesterdayDate = _lastCheckDate; // 跨天前的日期（即"昨天"）
                     _lastCheckDate = DateTime.Today;
                     DateLabelText = $"待办与今日 · {DateTime.Today:M月d日}";
                     await LoadTodayTasksAsync();
+
+                    if (_settingsService.Config.AutoShowDailySummary)
+                    {
+                        var summaryVM = new DailySummaryViewModel(_dbService)
+                        {
+                            CurrentDate = yesterdayDate
+                        };
+                        await summaryVM.LoadSummaryAsync();
+                        var summaryWindow = new Views.DailySummaryWindow
+                        {
+                            DataContext = summaryVM,
+                            Owner = Application.Current.MainWindow
+                        };
+                        summaryWindow.ShowDialog();
+                    }
                 }
             };
             _dayChangeTimer.Start();
@@ -388,6 +408,21 @@ namespace Taskato.ViewModels
 
             // 同步多组模式的状态
             OnPropertyChanged(nameof(IsMultiMode));
+        }
+
+        /// <summary>
+        /// 打开每日总结窗体
+        /// </summary>
+        private void OpenDailySummaryWindow()
+        {
+            var summaryVM = new DailySummaryViewModel(_dbService);
+            var summaryWindow = new Views.DailySummaryWindow
+            {
+                DataContext = summaryVM,
+                Owner = Application.Current.MainWindow
+            };
+            summaryWindow.Loaded += async (_, _) => await summaryVM.LoadSummaryAsync();
+            summaryWindow.ShowDialog();
         }
 
         private void AddAdditionalTimer()

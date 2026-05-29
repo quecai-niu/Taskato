@@ -48,6 +48,9 @@ namespace Taskato.Services
 
         /// <summary>休息完成时发送飞书通知</summary>
         public bool FeishuNotifyOnRest { get; set; } = true;
+
+        /// <summary>跨天时自动弹出昨日总结</summary>
+        public bool AutoShowDailySummary { get; set; } = false;
     }
 
     /// <summary>

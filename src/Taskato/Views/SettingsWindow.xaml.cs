@@ -83,6 +83,7 @@ namespace Taskato.Views
             FeishuWebhookUrlBox.Text = _settingsService.Config.FeishuWebhookUrl;
             FeishuNotifyWorkCheckBox.IsChecked = _settingsService.Config.FeishuNotifyOnWork;
             FeishuNotifyRestCheckBox.IsChecked = _settingsService.Config.FeishuNotifyOnRest;
+            AutoDailySummaryCheckBox.IsChecked = _settingsService.Config.AutoShowDailySummary;
 
             // 初始化提示音选择 — 按配置值勾选对应 RadioButton
             InitSoundRadio(_settingsService.Config.NotificationSoundChoice);
@@ -456,6 +457,16 @@ namespace Taskato.Views
             await Task.Delay(2000);
             FeishuTestBtn.Content = "测试";
             FeishuTestBtn.IsEnabled = true;
+        }
+
+        /// <summary>
+        /// 每日自动总结开关变更
+        /// </summary>
+        private void AutoDailySummaryCheckBox_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_settingsService == null) return;
+            _settingsService.Config.AutoShowDailySummary = AutoDailySummaryCheckBox.IsChecked == true;
+            _settingsService.Save();
         }
     }
 }
