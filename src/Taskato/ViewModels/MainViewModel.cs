@@ -256,16 +256,13 @@ namespace Taskato.ViewModels
             };
 
             // ---------- 跨天检测定时器 ----------
-            _dayChangeTimer.Tick += (_, _) =>
+            _dayChangeTimer.Tick += async (_, _) =>
             {
                 if (DateTime.Today != _lastCheckDate)
                 {
                     _lastCheckDate = DateTime.Today;
                     DateLabelText = $"待办与今日 · {DateTime.Today:M月d日}";
-                    Application.Current.Dispatcher.InvokeAsync(async () =>
-                    {
-                        await LoadTodayTasksAsync();
-                    });
+                    await LoadTodayTasksAsync();
                 }
             };
             _dayChangeTimer.Start();
