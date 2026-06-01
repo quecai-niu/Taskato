@@ -67,10 +67,8 @@
                     <TextBlock FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"
                                Margin="0,0,0,8">
                         <TextBlock.Text>
-                            <MultiBinding StringFormat="统计：总计 {0} | 完成 {1}（{2}）| 高优先级完成 {3}">
-                                <Binding Path="TotalCount"/>
+                            <MultiBinding StringFormat="统计：完成 {0} | 高优先级完成 {1}">
                                 <Binding Path="CompletedCount"/>
-                                <Binding Path="CompletionRate"/>
                                 <Binding Path="HighPriorityCompleted"/>
                             </MultiBinding>
                         </TextBlock.Text>
@@ -96,25 +94,6 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
-                    <TextBlock Text="未完成" FontSize="13" FontWeight="SemiBold"
-                               Foreground="#FBBF24" Margin="0,16,0,6"/>
-                    <ItemsControl ItemsSource="{Binding UncompletedTasks}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Border Background="#0AF59E0B" CornerRadius="6"
-                                        Padding="10,6" Margin="0,0,0,4">
-                                    <TextBlock FontSize="13" Foreground="{StaticResource TextPrimaryBrush}">
-                                        <TextBlock.Text>
-                                            <MultiBinding StringFormat="{}{0}  {1}">
-                                                <Binding Path="Priority" Converter="{StaticResource PriorityToLabelConverter}"/>
-                                                <Binding Path="Title"/>
-                                            </MultiBinding>
-                                        </TextBlock.Text>
-                                    </TextBlock>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
                 </StackPanel>
             </ScrollViewer>
 

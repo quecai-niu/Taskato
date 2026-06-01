@@ -510,9 +510,11 @@
                                                                     </Ellipse>
                                                                     <TextBlock x:Name="TxtName" Text="{Binding TimerName}" FontSize="12" Foreground="#9CA3AF"/>
                                                                     <!-- 附加组删除按钮（主番茄钟不显示） -->
-                                                                    <TextBlock Text="×" FontSize="14" Foreground="#EF4444"
+                                                                    <TextBlock Text="×" FontSize="13" FontWeight="SemiBold" Foreground="#EF4444"
+                                                                               Width="18" Height="18"
+                                                                               TextAlignment="Center" LineHeight="18"
                                                                                VerticalAlignment="Center" Cursor="Hand"
-                                                                               Margin="6,0,0,0" Padding="4,2"
+                                                                               Margin="6,0,0,0" Padding="0"
                                                                                MouseLeftButtonDown="RemoveTimerButton_Click"
                                                                                Tag="{Binding}">
                                                                         <TextBlock.Style>

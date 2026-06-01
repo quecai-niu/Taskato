@@ -132,33 +132,27 @@ namespace Taskato.ViewModels
         }
 
         /// <summary>
-        /// 加载当前日期的任务数据并刷新统计
-        /// 已完成按 CompletedAt 查询（不限创建日期），未完成按 CreatedAt ≤ 今天查询
+        /// 加载当前日期的已完成任务数据并刷新统计
         /// </summary>
         public async Task LoadSummaryAsync()
         {
             var completed = await _dbService.GetTasksCompletedOnAsync(CurrentDate);
-            var uncompleted = await _dbService.GetUncompletedCreatedUpToAsync(CurrentDate);
 
-            TotalCount = completed.Count + uncompleted.Count;
+            TotalCount = completed.Count;
             CompletedCount = completed.Count;
-            CompletionRate = TotalCount > 0 ? $"{(double)CompletedCount / TotalCount:P0}" : "N/A";
+            CompletionRate = CompletedCount > 0 ? "100%" : "N/A";
             HighPriorityCompleted = completed.Count(t => t.Priority >= 2);
 
-            if (TotalCount == 0)
-                SummaryLine = "今天没有任务记录。";
-            else if (uncompleted.Count == 0)
-                SummaryLine = $"今天完成了全部 {TotalCount} 个任务，太棒了！";
+            if (CompletedCount == 0)
+                SummaryLine = "今天没有完成任务记录。";
             else
-                SummaryLine = $"今天完成了 {CompletedCount}/{TotalCount} 个任务，再接再厉！";
+                SummaryLine = $"今天完成了 {CompletedCount} 个任务，太棒了！";
 
             CompletedTasks.Clear();
             foreach (var t in completed.OrderByDescending(t => t.Priority))
                 CompletedTasks.Add(t);
 
             UncompletedTasks.Clear();
-            foreach (var t in uncompleted.OrderByDescending(t => t.Priority))
-                UncompletedTasks.Add(t);
         }
 
         /// <summary>
@@ -172,17 +166,10 @@ namespace Taskato.ViewModels
             sb.AppendLine();
             sb.AppendLine(SummaryLine);
             sb.AppendLine();
-            sb.AppendLine($"统计：总计 {TotalCount} | 完成 {CompletedCount}（{CompletionRate}）| 高优先级完成 {HighPriorityCompleted}");
+            sb.AppendLine($"统计：完成 {CompletedCount} | 高优先级完成 {HighPriorityCompleted}");
             sb.AppendLine();
             sb.AppendLine("[已完成]：");
             foreach (var t in CompletedTasks)
-            {
-                var pLabel = t.Priority switch { 3 => "[紧急]", 2 => "[高]", 1 => "[中]", _ => "" };
-                sb.AppendLine($"  {pLabel} {t.Title}");
-            }
-            sb.AppendLine();
-            sb.AppendLine("[未完成]：");
-            foreach (var t in UncompletedTasks)
             {
                 var pLabel = t.Priority switch { 3 => "[紧急]", 2 => "[高]", 1 => "[中]", _ => "" };
                 sb.AppendLine($"  {pLabel} {t.Title}");
