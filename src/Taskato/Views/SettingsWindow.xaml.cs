@@ -5,6 +5,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using Taskato.Services;
+using Taskato.Utils;
 using WpfButton = System.Windows.Controls.Button;
 
 namespace Taskato.Views
@@ -76,6 +77,8 @@ namespace Taskato.Views
         public SettingsWindow(PomodoroService pomodoroService, SettingsService settingsService, FeishuService feishuService, SettingsSection? initialSection = null)
         {
             InitializeComponent();
+            VisualEffects.Initialize(this);
+
             _pomodoroService = pomodoroService;
             _settingsService = settingsService;
             _feishuService = feishuService;
@@ -527,7 +530,7 @@ namespace Taskato.Views
 
         private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            DragMove();
+            VisualEffects.RunWithTemporaryReduction(this, DragMove);
         }
 
         private void MinimizeButton_Click(object sender, RoutedEventArgs e)
@@ -537,7 +540,10 @@ namespace Taskato.Views
 
         private void MaximizeButton_Click(object sender, RoutedEventArgs e)
         {
-            WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+            VisualEffects.RunWithTemporaryReduction(this, () =>
+            {
+                WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+            });
         }
 
         /// <summary>

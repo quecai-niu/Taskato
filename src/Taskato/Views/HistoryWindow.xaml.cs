@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Input;
+using Taskato.Utils;
 using Taskato.ViewModels;
 
 namespace Taskato.Views
@@ -12,6 +13,7 @@ namespace Taskato.Views
         public HistoryWindow()
         {
             InitializeComponent();
+            VisualEffects.Initialize(this);
 
             // 窗体加载后自动执行一次搜索，显示默认范围内的任务
             Loaded += async (s, e) =>
@@ -28,7 +30,7 @@ namespace Taskato.Views
         /// </summary>
         private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            DragMove();
+            VisualEffects.RunWithTemporaryReduction(this, DragMove);
         }
 
         private void MinimizeButton_Click(object sender, RoutedEventArgs e)
@@ -38,7 +40,10 @@ namespace Taskato.Views
 
         private void MaximizeButton_Click(object sender, RoutedEventArgs e)
         {
-            WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+            VisualEffects.RunWithTemporaryReduction(this, () =>
+            {
+                WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+            });
         }
 
         /// <summary>

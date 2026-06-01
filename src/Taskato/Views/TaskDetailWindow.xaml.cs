@@ -1,6 +1,7 @@
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media.Animation;
+using Taskato.Utils;
 
 namespace Taskato.Views
 {
@@ -21,6 +22,8 @@ namespace Taskato.Views
         public TaskDetailWindow(Models.TaskItem task)
         {
             InitializeComponent();
+            VisualEffects.Initialize(this);
+
             OriginalTask = task;
             
             // 创建一个替身用于绑定和编辑，避免污染原数据
@@ -49,7 +52,7 @@ namespace Taskato.Views
 
         private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
-            DragMove();
+            VisualEffects.RunWithTemporaryReduction(this, DragMove);
         }
 
         private void SaveButton_Click(object sender, RoutedEventArgs e)
@@ -71,7 +74,10 @@ namespace Taskato.Views
 
         private void MaximizeButton_Click(object sender, RoutedEventArgs e)
         {
-            WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+            VisualEffects.RunWithTemporaryReduction(this, () =>
+            {
+                WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+            });
         }
 
         /// <summary>

@@ -2,6 +2,7 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:converters="clr-namespace:Taskato.Converters"
+             xmlns:utils="clr-namespace:Taskato.Utils"
              Startup="Application_Startup"
              ShutdownMode="OnExplicitShutdown">
     <!--
@@ -514,6 +515,9 @@
                                         </Setter.Value>
                                     </Setter>
                                 </Trigger>
+                                <DataTrigger Binding="{Binding Path=(utils:VisualEffects.IsReducingEffects), RelativeSource={RelativeSource AncestorType={x:Type Window}}}" Value="True">
+                                    <Setter TargetName="dot" Property="Effect" Value="{x:Null}"/>
+                                </DataTrigger>
                                 <Trigger Property="IsMouseOver" Value="True">
                                     <Setter TargetName="dot" Property="Opacity" Value="0.7"/>
                                 </Trigger>
@@ -558,6 +562,9 @@
                                         </BeginStoryboard>
                                     </Trigger.EnterActions>
                                 </Trigger>
+                                <DataTrigger Binding="{Binding Path=(utils:VisualEffects.IsReducingEffects), RelativeSource={RelativeSource AncestorType={x:Type Window}}}" Value="True">
+                                    <Setter TargetName="bg" Property="Effect" Value="{x:Null}"/>
+                                </DataTrigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>
                     </Setter.Value>
@@ -597,6 +604,11 @@
                         <DropShadowEffect Color="{DynamicResource ThemePrimaryColor}" BlurRadius="50" ShadowDepth="0" Opacity="0.5" RenderingBias="Quality"/>
                     </Setter.Value>
                 </Setter>
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding Path=(utils:VisualEffects.IsReducingEffects), RelativeSource={RelativeSource AncestorType={x:Type Window}}}" Value="True">
+                        <Setter Property="Effect" Value="{x:Null}"/>
+                    </DataTrigger>
+                </Style.Triggers>
             </Style>
 
             <!-- 
@@ -619,12 +631,8 @@
                     </Setter.Value>
                 </Setter>
                 <Style.Triggers>
-                    <DataTrigger Binding="{Binding IsReducingEffects, RelativeSource={RelativeSource AncestorType={x:Type Window}}}" Value="True">
-                        <Setter Property="Effect">
-                            <Setter.Value>
-                                <DropShadowEffect Color="{DynamicResource ThemePrimaryColor}" BlurRadius="18" ShadowDepth="0" Opacity="0.18" RenderingBias="Performance"/>
-                            </Setter.Value>
-                        </Setter>
+                    <DataTrigger Binding="{Binding Path=(utils:VisualEffects.IsReducingEffects), RelativeSource={RelativeSource AncestorType={x:Type Window}}}" Value="True">
+                        <Setter Property="Effect" Value="{x:Null}"/>
                     </DataTrigger>
                 </Style.Triggers>
             </Style>
@@ -750,7 +758,7 @@
                             </Grid>
                             <ControlTemplate.Triggers>
                                 <EventTrigger RoutedEvent="Loaded">
-                                    <BeginStoryboard>
+                                    <BeginStoryboard x:Name="PomodoroPulseLoaded_Begin">
                                         <Storyboard RepeatBehavior="Forever">
                                             <!-- 水波扩散动画 -->
                                             <DoubleAnimation Storyboard.TargetName="rippleScale" Storyboard.TargetProperty="ScaleX" From="1" To="1.6" Duration="0:0:2.5">
@@ -769,6 +777,31 @@
                                         </Storyboard>
                                     </BeginStoryboard>
                                 </EventTrigger>
+                                <DataTrigger Binding="{Binding Path=(utils:VisualEffects.IsReducingEffects), RelativeSource={RelativeSource AncestorType={x:Type Window}}}" Value="True">
+                                    <DataTrigger.EnterActions>
+                                        <StopStoryboard BeginStoryboardName="PomodoroPulseLoaded_Begin"/>
+                                        <StopStoryboard BeginStoryboardName="PomodoroPulseResume_Begin"/>
+                                    </DataTrigger.EnterActions>
+                                    <DataTrigger.ExitActions>
+                                        <BeginStoryboard x:Name="PomodoroPulseResume_Begin">
+                                            <Storyboard RepeatBehavior="Forever">
+                                                <DoubleAnimation Storyboard.TargetName="rippleScale" Storyboard.TargetProperty="ScaleX" From="1" To="1.6" Duration="0:0:2.5">
+                                                    <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                                </DoubleAnimation>
+                                                <DoubleAnimation Storyboard.TargetName="rippleScale" Storyboard.TargetProperty="ScaleY" From="1" To="1.6" Duration="0:0:2.5">
+                                                    <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                                </DoubleAnimation>
+                                                <DoubleAnimation Storyboard.TargetName="ripple" Storyboard.TargetProperty="Opacity" From="0.7" To="0" Duration="0:0:2.5">
+                                                    <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseOut"/></DoubleAnimation.EasingFunction>
+                                                </DoubleAnimation>
+                                                <DoubleAnimation Storyboard.TargetName="mainBd" Storyboard.TargetProperty="(UIElement.Effect).Opacity"
+                                                                 From="0.6" To="0.3" Duration="0:0:1.25" AutoReverse="True"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </DataTrigger.ExitActions>
+                                    <Setter TargetName="ripple" Property="Opacity" Value="0"/>
+                                    <Setter TargetName="mainBd" Property="Effect" Value="{x:Null}"/>
+                                </DataTrigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>
                     </Setter.Value>
@@ -937,6 +970,10 @@
                                         <StopStoryboard BeginStoryboardName="HoverOn_Begin"/>
                                     </Trigger.ExitActions>
                                 </Trigger>
+
+                                <DataTrigger Binding="{Binding Path=(utils:VisualEffects.IsReducingEffects), RelativeSource={RelativeSource AncestorType={x:Type Window}}}" Value="True">
+                                    <Setter TargetName="bd" Property="Effect" Value="{x:Null}"/>
+                                </DataTrigger>
 
                                 <!-- 点击按下：产生按压感 -->
                                 <Trigger Property="IsPressed" Value="True">

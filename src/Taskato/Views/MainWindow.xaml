@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:converters="clr-namespace:Taskato.Converters"
         xmlns:sys="clr-namespace:System;assembly=mscorlib"
+        xmlns:utils="clr-namespace:Taskato.Utils"
         Title="Taskato"
         Icon="/Assets/icon.png"
         Width="560" Height="780"
@@ -222,7 +223,7 @@
                                                      <DataTrigger Binding="{Binding Priority}" Value="3">
                                                          <Setter Property="Fill" Value="{StaticResource Pri3Brush}"/>
                                                      </DataTrigger>
-                                                     <DataTrigger Binding="{Binding IsReducingEffects, RelativeSource={RelativeSource AncestorType={x:Type Window}}}" Value="True">
+                                                     <DataTrigger Binding="{Binding Path=(utils:VisualEffects.IsReducingEffects), RelativeSource={RelativeSource AncestorType={x:Type Window}}}" Value="True">
                                                          <Setter Property="Effect" Value="{x:Null}"/>
                                                      </DataTrigger>
                                                  </Style.Triggers>
@@ -569,7 +570,7 @@
                                                                 <DataTrigger Binding="{Binding IsStarted}" Value="True">
                                                                     <Setter TargetName="RunningDot" Property="Visibility" Value="Visible"/>
                                                                 </DataTrigger>
-                                                                <DataTrigger Binding="{Binding IsReducingEffects, RelativeSource={RelativeSource AncestorType={x:Type Window}}}" Value="True">
+                                                                <DataTrigger Binding="{Binding Path=(utils:VisualEffects.IsReducingEffects), RelativeSource={RelativeSource AncestorType={x:Type Window}}}" Value="True">
                                                                     <Setter TargetName="RunningDot" Property="Visibility" Value="Collapsed"/>
                                                                 </DataTrigger>
                                                                 <Trigger Property="IsSelected" Value="True">
