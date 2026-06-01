@@ -1,0 +1,115 @@
+<Window x:Class="Taskato.Views.FeishuGuideWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="配置飞书通知"
+        Width="500"
+        MinHeight="340"
+        SizeToContent="Height"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False"
+        ResizeMode="NoResize">
+
+    <Border Style="{StaticResource SubWindowBorderStyle}">
+        <Grid Margin="28">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <StackPanel Grid.Row="0"
+                        VerticalAlignment="Top">
+                <Border Width="52" Height="52" CornerRadius="14"
+                        Background="{DynamicResource JellyBaseBrush}"
+                        HorizontalAlignment="Center"
+                        Margin="0,0,0,16">
+                    <TextBlock Text="🔗" FontSize="24" FontFamily="Segoe UI Emoji"
+                               Foreground="{DynamicResource TextPrimaryBrush}"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"/>
+                </Border>
+
+                <TextBlock Text="配置飞书通知"
+                           FontSize="18"
+                           FontWeight="Bold"
+                           Foreground="{StaticResource TextPrimaryBrush}"
+                           HorizontalAlignment="Center"
+                           TextWrapping="NoWrap"
+                           Margin="0,0,0,8"/>
+
+                <TextBlock MaxWidth="410"
+                           Text="Taskato 可以把工作完成、休息提醒发送到飞书群。只需要准备一个群机器人 Webhook URL，就能在设置里启用。"
+                           FontSize="13.5"
+                           Foreground="{StaticResource TextSecondaryBrush}"
+                           TextWrapping="Wrap"
+                           TextAlignment="Center"
+                           LineHeight="22"
+                           MinHeight="66"
+                           HorizontalAlignment="Center"
+                           Margin="4,0,4,0"/>
+            </StackPanel>
+
+            <Grid Grid.Row="1" Margin="0,24,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="12"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <Button Grid.Column="0"
+                        Content="稍后再说"
+                        Height="44"
+                        Click="LaterButton_Click"
+                        Foreground="#94A3B8"
+                        FontSize="14"
+                        FontWeight="SemiBold"
+                        Cursor="Hand">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="bg"
+                                    CornerRadius="12"
+                                    Background="#0DFFFFFF"
+                                    BorderBrush="#14FFFFFF"
+                                    BorderThickness="1">
+                                <ContentPresenter HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="bg" Property="Background" Value="#14FFFFFF"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+
+                <Button Grid.Column="2"
+                        Content="现在配置"
+                        Height="44"
+                        Click="ConfigureButton_Click"
+                        Foreground="White"
+                        FontSize="14"
+                        FontWeight="SemiBold"
+                        Cursor="Hand">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="bg"
+                                    CornerRadius="12"
+                                    Background="{DynamicResource ThemeGradientBrush}">
+                                <ContentPresenter HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="bg" Property="Opacity" Value="0.9"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>

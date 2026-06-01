@@ -5,9 +5,20 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using Taskato.Services;
+using WpfButton = System.Windows.Controls.Button;
 
 namespace Taskato.Views
 {
+    public enum SettingsSection
+    {
+        Theme,
+        Pomodoro,
+        System,
+        Summary,
+        Sound,
+        Feishu
+    }
+
     /// <summary>
     /// 设置窗体的代码后台
     /// 
@@ -27,6 +38,10 @@ namespace Taskato.Views
 
         /// <summary>当前选中的颜色选项索引</summary>
         private int _selectedColorIndex = 0;
+
+        private readonly SettingsSection? _initialSection;
+        private bool _isProgrammaticScroll;
+        private SettingsSection _activeSection = SettingsSection.Theme;
 
         /// <summary>
         /// 可选的主题颜色列表（渐变色的起止色对）
@@ -58,12 +73,13 @@ namespace Taskato.Views
         /// </summary>
         /// <param name="pomodoroService">番茄钟服务实例</param>
         /// <param name="settingsService">设置服务实例</param>
-        public SettingsWindow(PomodoroService pomodoroService, SettingsService settingsService, FeishuService feishuService)
+        public SettingsWindow(PomodoroService pomodoroService, SettingsService settingsService, FeishuService feishuService, SettingsSection? initialSection = null)
         {
             InitializeComponent();
             _pomodoroService = pomodoroService;
             _settingsService = settingsService;
             _feishuService = feishuService;
+            _initialSection = initialSection;
 
             // 加载选中的主题索引
             _selectedColorIndex = _settingsService.Config.SelectedColorIndex;
@@ -92,6 +108,119 @@ namespace Taskato.Views
 
             // 构建颜色选择面板
             BuildColorPalette();
+
+            Loaded += SettingsWindow_Loaded;
+        }
+
+        private void SettingsWindow_Loaded(object sender, RoutedEventArgs e)
+        {
+            UpdateActiveSection(SettingsSection.Theme);
+
+            if (_initialSection.HasValue)
+            {
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    ScrollToSection(_initialSection.Value);
+                }), System.Windows.Threading.DispatcherPriority.ContextIdle);
+            }
+        }
+
+        // ==================== 设置目录导航 ====================
+
+        private void SectionNavButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is WpfButton button &&
+                button.Tag is string tag &&
+                Enum.TryParse(tag, out SettingsSection section))
+            {
+                ScrollToSection(section);
+            }
+        }
+
+        private void SettingsScrollViewer_ScrollChanged(object sender, ScrollChangedEventArgs e)
+        {
+            if (_isProgrammaticScroll) return;
+
+            var currentOffset = SettingsScrollViewer.VerticalOffset + 18;
+            var activeSection = SettingsSection.Theme;
+
+            foreach (var (section, element) in GetSectionElements())
+            {
+                var y = element.TransformToAncestor(SettingsContentPanel).Transform(new System.Windows.Point(0, 0)).Y;
+                if (y <= currentOffset)
+                {
+                    activeSection = section;
+                }
+            }
+
+            UpdateActiveSection(activeSection);
+        }
+
+        private void ScrollToSection(SettingsSection section)
+        {
+            var element = GetSectionElement(section);
+            var y = element.TransformToAncestor(SettingsContentPanel).Transform(new System.Windows.Point(0, 0)).Y;
+
+            _isProgrammaticScroll = true;
+            SettingsScrollViewer.ScrollToVerticalOffset(Math.Max(0, y));
+            UpdateActiveSection(section);
+
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                _isProgrammaticScroll = false;
+            }), System.Windows.Threading.DispatcherPriority.Background);
+        }
+
+        private FrameworkElement GetSectionElement(SettingsSection section)
+        {
+            return section switch
+            {
+                SettingsSection.Theme => ThemeSection,
+                SettingsSection.Pomodoro => PomodoroSection,
+                SettingsSection.System => SystemSection,
+                SettingsSection.Summary => SummarySection,
+                SettingsSection.Sound => SoundSection,
+                SettingsSection.Feishu => FeishuSection,
+                _ => ThemeSection
+            };
+        }
+
+        private IEnumerable<(SettingsSection Section, FrameworkElement Element)> GetSectionElements()
+        {
+            yield return (SettingsSection.Theme, ThemeSection);
+            yield return (SettingsSection.Pomodoro, PomodoroSection);
+            yield return (SettingsSection.System, SystemSection);
+            yield return (SettingsSection.Summary, SummarySection);
+            yield return (SettingsSection.Sound, SoundSection);
+            yield return (SettingsSection.Feishu, FeishuSection);
+        }
+
+        private IEnumerable<(SettingsSection Section, WpfButton Button)> GetNavButtons()
+        {
+            yield return (SettingsSection.Theme, NavThemeButton);
+            yield return (SettingsSection.Pomodoro, NavPomodoroButton);
+            yield return (SettingsSection.System, NavSystemButton);
+            yield return (SettingsSection.Summary, NavSummaryButton);
+            yield return (SettingsSection.Sound, NavSoundButton);
+            yield return (SettingsSection.Feishu, NavFeishuButton);
+        }
+
+        private void UpdateActiveSection(SettingsSection section)
+        {
+            _activeSection = section;
+
+            var secondaryBrush = FindResource("TextSecondaryBrush") as System.Windows.Media.Brush ?? Brushes.Gray;
+            var primaryBrush = FindResource("TextPrimaryBrush") as System.Windows.Media.Brush ?? Brushes.White;
+            var activeBackground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#18FFFFFF"));
+            var activeBorder = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#36FFFFFF"));
+
+            foreach (var (buttonSection, button) in GetNavButtons())
+            {
+                var isActive = buttonSection == section;
+                button.Background = isActive ? activeBackground : Brushes.Transparent;
+                button.BorderBrush = isActive ? activeBorder : Brushes.Transparent;
+                button.Foreground = isActive ? primaryBrush : secondaryBrush;
+            }
         }
 
         // ==================== 主题颜色选择 ====================
@@ -433,6 +562,29 @@ namespace Taskato.Views
             if (_settingsService == null) return;
             _settingsService.Config.FeishuWebhookUrl = FeishuWebhookUrlBox.Text;
             _settingsService.Save();
+        }
+
+        private void FeishuHelpButton_Click(object sender, RoutedEventArgs e)
+        {
+            var isVisible = FeishuHelpPanel.Visibility == Visibility.Visible;
+            FeishuHelpPanel.Visibility = isVisible ? Visibility.Collapsed : Visibility.Visible;
+            FeishuHelpButton.Content = isVisible ? "如何获取 Webhook？" : "收起获取方式";
+        }
+
+        private void FeishuGuidePreviewButton_Click(object sender, RoutedEventArgs e)
+        {
+            var guideWindow = new FeishuGuideWindow
+            {
+                Owner = this
+            };
+            guideWindow.ShowDialog();
+
+            if (guideWindow.ShouldConfigure)
+            {
+                FeishuHelpPanel.Visibility = Visibility.Visible;
+                FeishuHelpButton.Content = "收起获取方式";
+                FeishuWebhookUrlBox.Focus();
+            }
         }
 
         private void FeishuNotifyWorkCheckBox_Changed(object sender, RoutedEventArgs e)

@@ -102,6 +102,23 @@ namespace Taskato
             // ---- 6. 加载今日任务并显示窗口 ----
             await mainVM.LoadTodayTasksAsync();
             mainWindow.Show();
+
+            if (!_settingsService.Config.HasSeenFeishuGuide)
+            {
+                var guideWindow = new FeishuGuideWindow
+                {
+                    Owner = mainWindow
+                };
+                guideWindow.ShowDialog();
+
+                _settingsService.Config.HasSeenFeishuGuide = true;
+                _settingsService.Save();
+
+                if (guideWindow.ShouldConfigure)
+                {
+                    mainVM.OpenFeishuSettings();
+                }
+            }
         }
 
         /// <summary>

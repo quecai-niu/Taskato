@@ -393,15 +393,17 @@ namespace Taskato.ViewModels
         /// <summary>
         /// 打开设置窗体
         /// </summary>
-        private void OpenSettingsWindow()
+        private void OpenSettingsWindow(Views.SettingsSection? initialSection = null)
         {
-            var settingsWindow = new Views.SettingsWindow(_pomodoroService, _settingsService, _feishuService)
+            var settingsWindow = new Views.SettingsWindow(_pomodoroService, _settingsService, _feishuService, initialSection)
             {
                 Owner = Application.Current.MainWindow
             };
             settingsWindow.ShowDialog();
 
-            if (_pomodoroService.CurrentState == PomodoroService.PomodoroState.Idle && CurrentActiveTimer == AllTimers.FirstOrDefault())
+            if (_pomodoroService.CurrentState == PomodoroService.PomodoroState.Idle &&
+                CurrentActiveTimer is not null &&
+                CurrentActiveTimer == AllTimers.FirstOrDefault())
             {
                 CurrentActiveTimer.WorkMinutes = _pomodoroService.WorkMinutes;
             }
@@ -414,6 +416,14 @@ namespace Taskato.ViewModels
 
             // 同步多组模式的状态
             OnPropertyChanged(nameof(IsMultiMode));
+        }
+
+        /// <summary>
+        /// 打开设置并定位到飞书通知配置。
+        /// </summary>
+        public void OpenFeishuSettings()
+        {
+            OpenSettingsWindow(Views.SettingsSection.Feishu);
         }
 
         /// <summary>

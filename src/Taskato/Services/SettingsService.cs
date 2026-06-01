@@ -55,6 +55,9 @@ namespace Taskato.Services
         /// <summary>休息过半时发送飞书提醒</summary>
         public bool FeishuRestHalfwayEnabled { get; set; } = true;
 
+        /// <summary>是否已处理首次启动的飞书通知引导</summary>
+        public bool HasSeenFeishuGuide { get; set; } = false;
+
         /// <summary>跨天时自动弹出昨日总结</summary>
         public bool AutoShowDailySummary { get; set; } = false;
     }
@@ -65,7 +68,7 @@ namespace Taskato.Services
     public class SettingsService
     {
         private readonly string _configPath;
-        public SettingsConfig Config { get; private set; }
+        public SettingsConfig Config { get; private set; } = new SettingsConfig();
 
         public SettingsService()
         {
