@@ -618,6 +618,15 @@
                         <DropShadowEffect Color="{DynamicResource ThemePrimaryColor}" BlurRadius="60" ShadowDepth="0" Opacity="0.4" RenderingBias="Quality"/>
                     </Setter.Value>
                 </Setter>
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding IsReducingEffects, RelativeSource={RelativeSource AncestorType={x:Type Window}}}" Value="True">
+                        <Setter Property="Effect">
+                            <Setter.Value>
+                                <DropShadowEffect Color="{DynamicResource ThemePrimaryColor}" BlurRadius="18" ShadowDepth="0" Opacity="0.18" RenderingBias="Performance"/>
+                            </Setter.Value>
+                        </Setter>
+                    </DataTrigger>
+                </Style.Triggers>
             </Style>
 
             <Style x:Key="JellyWinBtn" TargetType="Button">

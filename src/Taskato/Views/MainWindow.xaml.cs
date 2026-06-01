@@ -1,6 +1,9 @@
+using System;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Threading;
 using Taskato.ViewModels;
 
 namespace Taskato.Views
@@ -20,9 +23,41 @@ namespace Taskato.Views
         /// </summary>
         public bool IsAppShuttingDown { get; set; } = false;
 
+        public static readonly DependencyProperty IsReducingEffectsProperty =
+            DependencyProperty.Register(
+                nameof(IsReducingEffects),
+                typeof(bool),
+                typeof(MainWindow),
+                new PropertyMetadata(false));
+
+        /// <summary>
+        /// 用户正在滚动、拖动或缩放时临时降低高成本视觉效果。
+        /// </summary>
+        public bool IsReducingEffects
+        {
+            get => (bool)GetValue(IsReducingEffectsProperty);
+            set => SetValue(IsReducingEffectsProperty, value);
+        }
+
+        private readonly DispatcherTimer _visualEffectsRestoreTimer = new()
+        {
+            Interval = TimeSpan.FromMilliseconds(220)
+        };
+
         public MainWindow()
         {
             InitializeComponent();
+
+            TaskList.AddHandler(
+                ScrollViewer.ScrollChangedEvent,
+                new ScrollChangedEventHandler(TaskListScrollViewer_ScrollChanged));
+
+            SizeChanged += MainWindow_SizeChanged;
+            _visualEffectsRestoreTimer.Tick += (_, _) =>
+            {
+                _visualEffectsRestoreTimer.Stop();
+                IsReducingEffects = false;
+            };
 
             // 日期显示已通过 XAML 绑定到 MainViewModel.DateLabelText，跨天自动刷新
 
@@ -166,11 +201,21 @@ namespace Taskato.Views
             if (e.ClickCount == 2)
             {
                 // 双击标题栏 → 最大化/还原
+                BeginTemporaryEffectReduction();
                 ToggleMaximize();
+                ScheduleEffectRestore();
             }
             else
             {
-                DragMove();
+                BeginTemporaryEffectReduction();
+                try
+                {
+                    DragMove();
+                }
+                finally
+                {
+                    ScheduleEffectRestore();
+                }
             }
         }
 
@@ -206,6 +251,36 @@ namespace Taskato.Views
             WindowState = WindowState == WindowState.Maximized
                 ? WindowState.Normal
                 : WindowState.Maximized;
+        }
+
+        private void MainWindow_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            if (!IsLoaded || WindowState == WindowState.Minimized)
+                return;
+
+            BeginTemporaryEffectReduction();
+            ScheduleEffectRestore();
+        }
+
+        private void TaskListScrollViewer_ScrollChanged(object sender, ScrollChangedEventArgs e)
+        {
+            if (e.VerticalChange == 0 && e.HorizontalChange == 0)
+                return;
+
+            BeginTemporaryEffectReduction();
+            ScheduleEffectRestore();
+        }
+
+        private void BeginTemporaryEffectReduction()
+        {
+            _visualEffectsRestoreTimer.Stop();
+            IsReducingEffects = true;
+        }
+
+        private void ScheduleEffectRestore()
+        {
+            _visualEffectsRestoreTimer.Stop();
+            _visualEffectsRestoreTimer.Start();
         }
 
         /// <summary>
