@@ -11,6 +11,13 @@
         WindowStartupLocation="CenterOwner"
         Loaded="Window_Loaded">
 
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="0"
+                      ResizeBorderThickness="40"
+                      GlassFrameThickness="0"
+                      CornerRadius="0"/>
+    </WindowChrome.WindowChrome>
+
     <Window.Resources>
         <!-- 弹窗进场动画 -->
         <Storyboard x:Key="PopInAnimation">
