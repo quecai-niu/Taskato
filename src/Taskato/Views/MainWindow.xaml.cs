@@ -1,6 +1,7 @@
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
+using Taskato.Utils;
 using Taskato.ViewModels;
 
 namespace Taskato.Views
@@ -23,6 +24,8 @@ namespace Taskato.Views
         public MainWindow()
         {
             InitializeComponent();
+
+            VisualEffects.Initialize(this);
 
             // 日期显示已通过 XAML 绑定到 MainViewModel.DateLabelText，跨天自动刷新
 
@@ -166,11 +169,11 @@ namespace Taskato.Views
             if (e.ClickCount == 2)
             {
                 // 双击标题栏 → 最大化/还原
-                ToggleMaximize();
+                VisualEffects.RunWithTemporaryReduction(this, ToggleMaximize);
             }
             else
             {
-                DragMove();
+                VisualEffects.RunWithTemporaryReduction(this, DragMove);
             }
         }
 
@@ -187,7 +190,7 @@ namespace Taskato.Views
         /// </summary>
         private void MaximizeButton_Click(object sender, RoutedEventArgs e)
         {
-            ToggleMaximize();
+            VisualEffects.RunWithTemporaryReduction(this, ToggleMaximize);
         }
 
         /// <summary>

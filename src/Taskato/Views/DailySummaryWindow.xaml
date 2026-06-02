@@ -11,7 +11,7 @@
         ResizeMode="CanResize">
 
     <WindowChrome.WindowChrome>
-        <WindowChrome CaptionHeight="80" ResizeBorderThickness="40" GlassFrameThickness="0" CornerRadius="0"/>
+        <WindowChrome CaptionHeight="0" ResizeBorderThickness="40" GlassFrameThickness="0" CornerRadius="0"/>
     </WindowChrome.WindowChrome>
 
     <Window.Resources>

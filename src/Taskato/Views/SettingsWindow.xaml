@@ -8,6 +8,13 @@
         Background="Transparent"
         WindowStartupLocation="CenterOwner">
 
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="0"
+                      ResizeBorderThickness="40"
+                      GlassFrameThickness="0"
+                      CornerRadius="0"/>
+    </WindowChrome.WindowChrome>
+
     <Window.Resources>
         <Style x:Key="SettingsNavButtonStyle" TargetType="Button">
             <Setter Property="Height" Value="34"/>

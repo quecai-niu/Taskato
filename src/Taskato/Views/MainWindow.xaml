@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:converters="clr-namespace:Taskato.Converters"
         xmlns:sys="clr-namespace:System;assembly=mscorlib"
+        xmlns:utils="clr-namespace:Taskato.Utils"
         Title="Taskato"
         Icon="/Assets/icon.png"
         Width="560" Height="780"
@@ -159,10 +160,38 @@
             </StackPanel>
 
             <!-- ========== Row 3: 任务列表（可滚动） ========== -->
-            <ScrollViewer Grid.Row="3" Margin="20,0" VerticalScrollBarVisibility="Auto"
-                          Padding="0,0,4,0">
-                <ItemsControl ItemsSource="{Binding TodayTasks}">
-                    <ItemsControl.ItemTemplate>
+            <ListBox x:Name="TaskList"
+                     Grid.Row="3"
+                     Margin="20,0"
+                     Background="Transparent"
+                     BorderThickness="0"
+                     Focusable="False"
+                     ItemsSource="{Binding TodayTasks}"
+                     ScrollViewer.VerticalScrollBarVisibility="Auto"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     ScrollViewer.CanContentScroll="True"
+                     VirtualizingPanel.IsVirtualizing="True"
+                     VirtualizingPanel.VirtualizationMode="Recycling"
+                     VirtualizingPanel.ScrollUnit="Pixel"
+                     VirtualizingPanel.CacheLength="1"
+                     VirtualizingPanel.CacheLengthUnit="Page">
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem">
+                        <Setter Property="Background" Value="Transparent"/>
+                        <Setter Property="BorderThickness" Value="0"/>
+                        <Setter Property="Padding" Value="0"/>
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                        <Setter Property="Focusable" Value="False"/>
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="ListBoxItem">
+                                    <ContentPresenter/>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </ListBox.ItemContainerStyle>
+                <ListBox.ItemTemplate>
                         <DataTemplate>
                             <!-- 单个任务卡片容器 -->
                             <Border x:Name="taskCard"
@@ -175,13 +204,15 @@
                                     <!-- 左侧优先级色条 -->
                                      <Rectangle Width="4" RadiusX="2" RadiusY="2" Margin="14,14,0,14" 
                                                 HorizontalAlignment="Left" VerticalAlignment="Stretch">
-                                         <Rectangle.Effect>
-                                             <DropShadowEffect BlurRadius="12" ShadowDepth="0" Opacity="0.3"
-                                                               Color="{Binding Path=Fill.Color, RelativeSource={RelativeSource Self}}"/>
-                                         </Rectangle.Effect>
                                          <Rectangle.Style>
                                              <Style TargetType="Rectangle">
                                                  <Setter Property="Fill" Value="{StaticResource Pri0Brush}"/>
+                                                 <Setter Property="Effect">
+                                                     <Setter.Value>
+                                                         <DropShadowEffect BlurRadius="12" ShadowDepth="0" Opacity="0.3"
+                                                                           Color="{Binding Path=Fill.Color, RelativeSource={RelativeSource Self}}"/>
+                                                     </Setter.Value>
+                                                 </Setter>
                                                  <Style.Triggers>
                                                      <DataTrigger Binding="{Binding Priority}" Value="1">
                                                          <Setter Property="Fill" Value="{StaticResource Pri1Brush}"/>
@@ -191,6 +222,9 @@
                                                      </DataTrigger>
                                                      <DataTrigger Binding="{Binding Priority}" Value="3">
                                                          <Setter Property="Fill" Value="{StaticResource Pri3Brush}"/>
+                                                     </DataTrigger>
+                                                     <DataTrigger Binding="{Binding Path=(utils:VisualEffects.IsReducingEffects), RelativeSource={RelativeSource AncestorType={x:Type Window}}}" Value="True">
+                                                         <Setter Property="Effect" Value="{x:Null}"/>
                                                      </DataTrigger>
                                                  </Style.Triggers>
                                              </Style>
@@ -300,9 +334,8 @@
                                 </Grid>
                             </Border>
                         </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </ScrollViewer>
+                </ListBox.ItemTemplate>
+            </ListBox>
 
             <!-- ========== Row 4: 番茄钟区域 ========== -->
             <Border Grid.Row="4" Margin="20,6" Padding="14,10"
@@ -536,6 +569,9 @@
                                                             <ControlTemplate.Triggers>
                                                                 <DataTrigger Binding="{Binding IsStarted}" Value="True">
                                                                     <Setter TargetName="RunningDot" Property="Visibility" Value="Visible"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding Path=(utils:VisualEffects.IsReducingEffects), RelativeSource={RelativeSource AncestorType={x:Type Window}}}" Value="True">
+                                                                    <Setter TargetName="RunningDot" Property="Visibility" Value="Collapsed"/>
                                                                 </DataTrigger>
                                                                 <Trigger Property="IsSelected" Value="True">
                                                                     <Setter TargetName="Bd" Property="Background" Value="#266366F1"/>
