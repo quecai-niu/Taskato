@@ -311,6 +311,7 @@ namespace Taskato.Views
                     task.Priority = detailWindow.EditingTask.Priority;
                     task.IsCompleted = detailWindow.EditingTask.IsCompleted;
                     task.CompletedAt = detailWindow.EditingTask.CompletedAt;
+                    task.CompletionDurationMinutes = detailWindow.EditingTask.CompletionDurationMinutes;
 
                     if (DataContext is MainViewModel vm)
                     {

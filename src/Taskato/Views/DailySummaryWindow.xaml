@@ -67,9 +67,10 @@
                     <TextBlock FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"
                                Margin="0,0,0,8">
                         <TextBlock.Text>
-                            <MultiBinding StringFormat="统计：完成 {0} | 高优先级完成 {1}">
+                            <MultiBinding StringFormat="统计：完成 {0} | 高优先级完成 {1} | 耗时 {2}">
                                 <Binding Path="CompletedCount"/>
                                 <Binding Path="HighPriorityCompleted"/>
+                                <Binding Path="TotalDurationDisplay"/>
                             </MultiBinding>
                         </TextBlock.Text>
                     </TextBlock>
@@ -80,15 +81,32 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <Border Background="#0A22C55E" CornerRadius="6"
-                                        Padding="10,6" Margin="0,0,0,4">
-                                    <TextBlock FontSize="13" Foreground="{StaticResource TextPrimaryBrush}">
-                                        <TextBlock.Text>
-                                            <MultiBinding StringFormat="{}{0}  {1}">
-                                                <Binding Path="Priority" Converter="{StaticResource PriorityToLabelConverter}"/>
-                                                <Binding Path="Title"/>
-                                            </MultiBinding>
-                                        </TextBlock.Text>
-                                    </TextBlock>
+                                        Padding="10,6" Margin="0,0,0,4"
+                                        Cursor="Hand"
+                                        MouseLeftButtonDown="CompletedTaskCard_MouseLeftButtonDown">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0"
+                                                   FontSize="13"
+                                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                                   TextTrimming="CharacterEllipsis">
+                                            <TextBlock.Text>
+                                                <MultiBinding StringFormat="{}{0}  {1}">
+                                                    <Binding Path="Priority" Converter="{StaticResource PriorityToLabelConverter}"/>
+                                                    <Binding Path="Title"/>
+                                                </MultiBinding>
+                                            </TextBlock.Text>
+                                        </TextBlock>
+                                        <TextBlock Grid.Column="1"
+                                                   Text="{Binding CompletionDurationDisplay, Mode=OneWay}"
+                                                   FontSize="12"
+                                                   Foreground="{StaticResource TextMutedBrush}"
+                                                   Margin="12,0,0,0"
+                                                   Visibility="{Binding HasCompletionDuration, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                    </Grid>
                                 </Border>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
@@ -101,6 +119,8 @@
             <Border Grid.Row="2" BorderBrush="{StaticResource SeparatorBrush}"
                     BorderThickness="0,1,0,0" CornerRadius="0,0,16,16">
                 <StackPanel Orientation="Horizontal" Margin="20,14" HorizontalAlignment="Right">
+                    <Button Content="补录完成" Style="{StaticResource SecondaryButton}"
+                            Command="{Binding BackfillTaskCommand}" Padding="16,8" Margin="0,0,10,0"/>
                     <Button Content="复制总结" Style="{StaticResource SecondaryButton}"
                             Command="{Binding CopyCommand}" Padding="16,8" Margin="0,0,10,0"/>
                     <Button Content="导出文本" Style="{StaticResource PrimaryButton}"

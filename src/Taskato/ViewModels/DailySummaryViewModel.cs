@@ -33,7 +33,7 @@ namespace Taskato.ViewModels
         }
 
         /// <summary>格式化日期显示文本</summary>
-        public string DateDisplay => $"{CurrentDate:yyyy-MM-dd} 每日总结";
+        public string DateDisplay => $"{CurrentDate:yyyy-MM-dd} {GetWeekdayText(CurrentDate)} 每日总结";
 
         private string _summaryLine = string.Empty;
         /// <summary>一句话总结导语</summary>
@@ -75,6 +75,20 @@ namespace Taskato.ViewModels
             set => SetProperty(ref _highPriorityCompleted, value);
         }
 
+        private int _totalDurationMinutes;
+        /// <summary>当天记录的完成耗时合计（分钟）</summary>
+        public int TotalDurationMinutes
+        {
+            get => _totalDurationMinutes;
+            set
+            {
+                if (SetProperty(ref _totalDurationMinutes, value))
+                    OnPropertyChanged(nameof(TotalDurationDisplay));
+            }
+        }
+
+        public string TotalDurationDisplay => FormatDuration(TotalDurationMinutes);
+
         /// <summary>已完成任务列表</summary>
         public ObservableCollection<TaskItem> CompletedTasks { get; } = new();
 
@@ -94,6 +108,9 @@ namespace Taskato.ViewModels
 
         /// <summary>导出总结为文本文件</summary>
         public ICommand ExportCommand { get; }
+
+        /// <summary>补录当前日期完成的任务</summary>
+        public ICommand BackfillTaskCommand { get; }
 
         public DailySummaryViewModel(DatabaseService dbService)
         {
@@ -129,6 +146,8 @@ namespace Taskato.ViewModels
                         new UTF8Encoding(true));
                 }
             });
+
+            BackfillTaskCommand = new RelayCommand(async _ => await BackfillTaskAsync());
         }
 
         /// <summary>
@@ -142,11 +161,13 @@ namespace Taskato.ViewModels
             CompletedCount = completed.Count;
             CompletionRate = CompletedCount > 0 ? "100%" : "N/A";
             HighPriorityCompleted = completed.Count(t => t.Priority >= 2);
+            TotalDurationMinutes = completed.Sum(t => t.CompletionDurationMinutes ?? 0);
 
+            var dayLabel = CurrentDate.Date == DateTime.Today ? "今天" : "这一天";
             if (CompletedCount == 0)
-                SummaryLine = "今天没有完成任务记录。";
+                SummaryLine = $"{dayLabel}没有完成任务记录。";
             else
-                SummaryLine = $"今天完成了 {CompletedCount} 个任务，太棒了！";
+                SummaryLine = $"{dayLabel}完成了 {CompletedCount} 个任务，太棒了！";
 
             CompletedTasks.Clear();
             foreach (var t in completed.OrderByDescending(t => t.Priority))
@@ -155,26 +176,106 @@ namespace Taskato.ViewModels
             UncompletedTasks.Clear();
         }
 
+        private async Task BackfillTaskAsync()
+        {
+            var completionDate = CurrentDate.Date;
+            if (completionDate > DateTime.Today)
+            {
+                MessageBox.Show(GetOwnerWindow(), "不能补录未来日期的任务。", "补录完成任务",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var candidates = await _dbService.GetUncompletedTasksAsync();
+            if (candidates.Count == 0)
+            {
+                MessageBox.Show(GetOwnerWindow(), "当前没有可补录的未完成任务。", "补录完成任务",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var owner = GetOwnerWindow();
+            if (!Views.TaskCompletionDialog.TryShowForBackfill(
+                    owner, completionDate, candidates, out var selectedTask, out var durationMinutes) ||
+                selectedTask is null)
+            {
+                return;
+            }
+
+            await _dbService.CompleteTaskAsync(
+                selectedTask,
+                BuildCompletionTime(completionDate),
+                durationMinutes);
+            await LoadSummaryAsync();
+        }
+
+        public async Task SaveTaskEditAsync(TaskItem task)
+        {
+            await _dbService.UpdateTaskAsync(task);
+            await LoadSummaryAsync();
+        }
+
         /// <summary>
         /// 构建纯文本格式的总结内容，供剪贴板复制和文件导出使用
         /// </summary>
         private string BuildSummaryText()
         {
             var sb = new StringBuilder();
-            sb.AppendLine($"{CurrentDate:yyyy-MM-dd} 每日总结");
+            sb.AppendLine($"{CurrentDate:yyyy-MM-dd} {GetWeekdayText(CurrentDate)} 每日总结");
             sb.AppendLine(new string('-', 30));
             sb.AppendLine();
             sb.AppendLine(SummaryLine);
             sb.AppendLine();
-            sb.AppendLine($"统计：完成 {CompletedCount} | 高优先级完成 {HighPriorityCompleted}");
+            sb.AppendLine($"统计：完成 {CompletedCount} | 高优先级完成 {HighPriorityCompleted} | 耗时 {TotalDurationDisplay}");
             sb.AppendLine();
             sb.AppendLine("[已完成]：");
             foreach (var t in CompletedTasks)
             {
                 var pLabel = t.Priority switch { 3 => "[紧急]", 2 => "[高]", 1 => "[中]", _ => "" };
-                sb.AppendLine($"  {pLabel} {t.Title}");
+                var duration = t.HasCompletionDuration ? $"（耗时 {t.CompletionDurationDisplay}）" : "";
+                sb.AppendLine($"  {pLabel} {t.Title}{duration}");
             }
             return sb.ToString();
+        }
+
+        private static DateTime BuildCompletionTime(DateTime completionDate)
+        {
+            return completionDate.Date == DateTime.Today
+                ? DateTime.Now
+                : completionDate.Date.Add(DateTime.Now.TimeOfDay);
+        }
+
+        private static Window? GetOwnerWindow()
+        {
+            return Application.Current?.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive)
+                ?? Application.Current?.MainWindow;
+        }
+
+        private static string GetWeekdayText(DateTime date)
+        {
+            return date.DayOfWeek switch
+            {
+                DayOfWeek.Monday => "星期一",
+                DayOfWeek.Tuesday => "星期二",
+                DayOfWeek.Wednesday => "星期三",
+                DayOfWeek.Thursday => "星期四",
+                DayOfWeek.Friday => "星期五",
+                DayOfWeek.Saturday => "星期六",
+                DayOfWeek.Sunday => "星期日",
+                _ => string.Empty
+            };
+        }
+
+        private static string FormatDuration(int durationMinutes)
+        {
+            if (durationMinutes <= 0) return "0分钟";
+
+            var hours = durationMinutes / 60;
+            var minutes = durationMinutes % 60;
+
+            if (hours > 0 && minutes > 0) return $"{hours}小时{minutes}分钟";
+            if (hours > 0) return $"{hours}小时";
+            return $"{minutes}分钟";
         }
     }
 }

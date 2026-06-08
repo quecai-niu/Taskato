@@ -339,10 +339,20 @@ namespace Taskato.ViewModels
         /// </summary>
         private async Task ToggleTaskAsync(TaskItem task)
         {
-            task.IsCompleted = !task.IsCompleted;
-            task.CompletedAt = task.IsCompleted ? DateTime.Now : null;
+            if (!task.IsCompleted)
+            {
+                var owner = Application.Current?.MainWindow;
+                if (!Views.TaskCompletionDialog.TryShowForCompletion(owner, task, out var durationMinutes))
+                    return;
+
+                await _dbService.CompleteTaskAsync(task, DateTime.Now, durationMinutes);
+                return;
+            }
+
+            task.IsCompleted = false;
+            task.CompletedAt = null;
+            task.CompletionDurationMinutes = null;
             await _dbService.UpdateTaskAsync(task);
-            await LoadTodayTasksAsync(); // 刷新列表以更新 UI
         }
 
         /// <summary>

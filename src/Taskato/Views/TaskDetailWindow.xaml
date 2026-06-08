@@ -160,6 +160,20 @@
                             <Run Text="✅ 完成时间：" Foreground="{StaticResource TextMutedBrush}" />
                             <Run Text="{Binding CompletedAt, StringFormat='{}{0:yyyy-MM-dd HH:mm}'}" Foreground="{StaticResource TextMutedBrush}" />
                         </TextBlock>
+                        <TextBlock FontSize="12" Margin="0,4,0,0">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding HasCompletionDuration}" Value="True">
+                                            <Setter Property="Visibility" Value="Visible"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                            <Run Text="耗时：" Foreground="{StaticResource TextMutedBrush}" />
+                            <Run Text="{Binding CompletionDurationDisplay, Mode=OneWay}" Foreground="{StaticResource TextMutedBrush}" />
+                        </TextBlock>
                     </StackPanel>
 
                     <!-- 状态印章徽章 -->

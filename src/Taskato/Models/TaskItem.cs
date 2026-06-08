@@ -34,6 +34,23 @@ namespace Taskato.Models
         private DateTime? _completedAt;
         public DateTime? CompletedAt { get => _completedAt; set => SetProperty(ref _completedAt, value); }
 
+        /// <summary>
+        /// 完成时记录的实际耗时（分钟），为空表示未记录。
+        /// </summary>
+        private int? _completionDurationMinutes;
+        public int? CompletionDurationMinutes
+        {
+            get => _completionDurationMinutes;
+            set
+            {
+                if (SetProperty(ref _completionDurationMinutes, value))
+                {
+                    OnPropertyChanged(nameof(HasCompletionDuration));
+                    OnPropertyChanged(nameof(CompletionDurationDisplay));
+                }
+            }
+        }
+
         private DateTime _lastModifiedAt = DateTime.Now;
         public DateTime LastModifiedAt { get => _lastModifiedAt; set => SetProperty(ref _lastModifiedAt, value); }
 
@@ -86,6 +103,24 @@ namespace Taskato.Models
                 if (string.IsNullOrEmpty(Title)) return string.Empty;
                 var titles = Title.Split(' ').Where(p => !p.StartsWith("#"));
                 return string.Join(" ", titles);
+            }
+        }
+
+        [Ignore]
+        public bool HasCompletionDuration => CompletionDurationMinutes is > 0;
+
+        [Ignore]
+        public string CompletionDurationDisplay
+        {
+            get
+            {
+                if (CompletionDurationMinutes is not > 0) return string.Empty;
+                var hours = CompletionDurationMinutes.Value / 60;
+                var minutes = CompletionDurationMinutes.Value % 60;
+
+                if (hours > 0 && minutes > 0) return $"{hours}小时{minutes}分钟";
+                if (hours > 0) return $"{hours}小时";
+                return $"{minutes}分钟";
             }
         }
     }

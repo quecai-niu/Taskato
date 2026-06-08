@@ -595,6 +595,7 @@
                                                 <MultiBinding Converter="{StaticResource TaskTimeDisplayConverter}">
                                                     <Binding Path="CreatedAt" StringFormat="{}{0:yyyy-MM-dd · }"/>
                                                     <Binding Path="CompletedAt"/>
+                                                    <Binding Path="CompletionDurationMinutes"/>
                                                 </MultiBinding>
                                             </TextBlock.Text>
                                         </TextBlock>

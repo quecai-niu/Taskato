@@ -35,6 +35,7 @@ namespace Taskato.Views
                 IsCompleted = task.IsCompleted, 
                 CreatedAt = task.CreatedAt, 
                 CompletedAt = task.CompletedAt, 
+                CompletionDurationMinutes = task.CompletionDurationMinutes,
                 OrderIndex = task.OrderIndex 
             };
             
@@ -102,8 +103,25 @@ namespace Taskato.Views
 
         private void StatusBadge_Click(object sender, MouseButtonEventArgs e)
         {
-            EditingTask.IsCompleted = !EditingTask.IsCompleted;
-            EditingTask.CompletedAt = EditingTask.IsCompleted ? DateTime.Now : null;
+            if (!EditingTask.IsCompleted)
+            {
+                if (!TaskCompletionDialog.TryShowForCompletion(this, EditingTask, out var durationMinutes))
+                {
+                    e.Handled = true;
+                    return;
+                }
+
+                EditingTask.IsCompleted = true;
+                EditingTask.CompletedAt = DateTime.Now;
+                EditingTask.CompletionDurationMinutes = durationMinutes;
+            }
+            else
+            {
+                EditingTask.IsCompleted = false;
+                EditingTask.CompletedAt = null;
+                EditingTask.CompletionDurationMinutes = null;
+            }
+
             e.Handled = true;
         }
     }

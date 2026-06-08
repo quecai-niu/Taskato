@@ -1,6 +1,8 @@
 using System.Windows;
 using System.Windows.Input;
+using Taskato.Models;
 using Taskato.Utils;
+using Taskato.ViewModels;
 
 namespace Taskato.Views
 {
@@ -35,5 +37,32 @@ namespace Taskato.Views
             });
 
         private void CloseButton_Click(object sender, RoutedEventArgs e) => Close();
+
+        private async void CompletedTaskCard_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ClickCount != 2 ||
+                sender is not FrameworkElement element ||
+                element.DataContext is not TaskItem task)
+            {
+                return;
+            }
+
+            var detailWindow = new TaskDetailWindow(task) { Owner = this };
+            detailWindow.ShowDialog();
+
+            if (detailWindow.IsSaved)
+            {
+                task.Title = detailWindow.EditingTask.Title;
+                task.Priority = detailWindow.EditingTask.Priority;
+                task.IsCompleted = detailWindow.EditingTask.IsCompleted;
+                task.CompletedAt = detailWindow.EditingTask.CompletedAt;
+                task.CompletionDurationMinutes = detailWindow.EditingTask.CompletionDurationMinutes;
+
+                if (DataContext is DailySummaryViewModel vm)
+                    await vm.SaveTaskEditAsync(task);
+            }
+
+            e.Handled = true;
+        }
     }
 }

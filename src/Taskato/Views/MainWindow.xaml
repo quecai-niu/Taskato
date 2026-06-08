@@ -306,7 +306,9 @@
                                             <TextBlock FontSize="11" Foreground="{StaticResource TextMutedBrush}" Margin="0,3,0,0">
                                                 <TextBlock.Text>
                                                     <MultiBinding Converter="{StaticResource TaskTimeDisplayConverter}">
-                                                        <Binding Path="CreatedAt"/><Binding Path="CompletedAt"/>
+                                                        <Binding Path="CreatedAt"/>
+                                                        <Binding Path="CompletedAt"/>
+                                                        <Binding Path="CompletionDurationMinutes"/>
                                                     </MultiBinding>
                                                 </TextBlock.Text>
                                             </TextBlock>

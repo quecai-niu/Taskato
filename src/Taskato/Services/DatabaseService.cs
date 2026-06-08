@@ -54,6 +54,13 @@ namespace Taskato.Services
             {
                 await _db.ExecuteAsync("ALTER TABLE TaskItems ADD COLUMN LastModifiedAt TEXT NOT NULL DEFAULT '0001-01-01 00:00:00'");
             }
+
+            var durationColCheck = await _db.ExecuteScalarAsync<int>(
+                "SELECT COUNT(*) FROM pragma_table_info('TaskItems') WHERE name='CompletionDurationMinutes'");
+            if (durationColCheck == 0)
+            {
+                await _db.ExecuteAsync("ALTER TABLE TaskItems ADD COLUMN CompletionDurationMinutes INTEGER");
+            }
         }
 
         /// <summary>
@@ -88,6 +95,17 @@ namespace Taskato.Services
             
             if (result > 0) OnDataChanged?.Invoke(); // 触发全局刷新通知
             return result;
+        }
+
+        /// <summary>
+        /// 标记任务完成，并记录完成时间与可选耗时。
+        /// </summary>
+        public async Task<int> CompleteTaskAsync(TaskItem task, DateTime completedAt, int? durationMinutes)
+        {
+            task.IsCompleted = true;
+            task.CompletedAt = completedAt;
+            task.CompletionDurationMinutes = durationMinutes is > 0 ? durationMinutes : null;
+            return await UpdateTaskAsync(task);
         }
 
         /// <summary>
@@ -165,13 +183,12 @@ namespace Taskato.Services
         }
 
         /// <summary>
-        /// 查询指定日期及之前创建的未完成任务
+        /// 查询所有未完成任务（用于每日总结补录，不限制创建日期）
         /// </summary>
-        public async Task<List<TaskItem>> GetUncompletedCreatedUpToAsync(DateTime date)
+        public async Task<List<TaskItem>> GetUncompletedTasksAsync()
         {
-            var dayEnd = date.Date.AddDays(1);
             return await _db.Table<TaskItem>()
-                .Where(t => t.CreatedAt < dayEnd && !t.IsCompleted)
+                .Where(t => !t.IsCompleted)
                 .ToListAsync();
         }
 

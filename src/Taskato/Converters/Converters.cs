@@ -64,6 +64,7 @@ namespace Taskato.Converters
 
             // values[0] = CreatedAt (DateTime)
             // values[1] = CompletedAt (DateTime? 可空)
+            // values[2] = CompletionDurationMinutes (int? 可空，可选)
             if (values[0] is DateTime createdAt)
             {
                 string GetDatePrefix(DateTime dt)
@@ -80,10 +81,25 @@ namespace Taskato.Converters
                     result += $" · {GetDatePrefix(completedAt)}{completedAt:HH:mm} 完成";
                 }
 
+                if (values.Length >= 3 && values[2] is int durationMinutes && durationMinutes > 0)
+                {
+                    result += $" · 耗时 {FormatDuration(durationMinutes)}";
+                }
+
                 return result;
             }
 
             return string.Empty;
+        }
+
+        private static string FormatDuration(int durationMinutes)
+        {
+            var hours = durationMinutes / 60;
+            var minutes = durationMinutes % 60;
+
+            if (hours > 0 && minutes > 0) return $"{hours}小时{minutes}分钟";
+            if (hours > 0) return $"{hours}小时";
+            return $"{minutes}分钟";
         }
 
         public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
