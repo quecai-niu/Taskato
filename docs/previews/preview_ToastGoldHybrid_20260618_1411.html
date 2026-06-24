@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Taskato Toast 熔金闪卡合并预览</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      font-family: "Microsoft YaHei UI", "Segoe UI", sans-serif;
+      letter-spacing: 0;
+      color: #eeeef6;
+      background:
+        radial-gradient(circle at 18% 18%, rgba(245, 184, 61, 0.14), transparent 26%),
+        radial-gradient(circle at 82% 24%, rgba(168, 85, 247, 0.12), transparent 30%),
+        linear-gradient(135deg, #151522 0%, #10101d 52%, #1a1424 100%);
+    }
+
+    .page {
+      width: min(980px, calc(100% - 48px));
+      padding: 44px 0;
+    }
+
+    .header {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 28px;
+      margin-bottom: 30px;
+    }
+
+    h1 {
+      margin: 0 0 9px;
+      font-size: 25px;
+      line-height: 1.22;
+    }
+
+    .desc {
+      margin: 0;
+      color: #aaaabd;
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .state-switch {
+      display: flex;
+      gap: 8px;
+      padding: 5px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.055);
+      flex-shrink: 0;
+    }
+
+    .state-switch button {
+      border: 0;
+      border-radius: 8px;
+      padding: 9px 13px;
+      background: transparent;
+      color: #aaaabd;
+      font: inherit;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .state-switch button.active {
+      color: #1a1207;
+      background: linear-gradient(135deg, #fff0aa, #d89a2d 55%, #aa6414);
+      box-shadow: 0 10px 22px rgba(216, 154, 45, 0.24);
+    }
+
+    .preview {
+      display: grid;
+      grid-template-columns: minmax(340px, 1fr) 280px;
+      gap: 38px;
+      align-items: center;
+      padding: 44px;
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      border-radius: 18px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.025)),
+        repeating-linear-gradient(135deg, rgba(255,255,255,0.018) 0 1px, transparent 1px 13px);
+    }
+
+    .stage {
+      display: grid;
+      place-items: center;
+      min-height: 390px;
+    }
+
+    .toast-wrap {
+      width: 334px;
+      max-width: 100%;
+      position: relative;
+      padding: 3px;
+      border-radius: 23px;
+      background: linear-gradient(115deg, #5c3309, #d5851d, #fff1aa, #f1b23c, #805114, #ffd76f, #5c3309);
+      background-size: 280% 280%;
+      box-shadow:
+        0 0 0 1px rgba(255, 242, 170, 0.32),
+        0 0 48px rgba(245, 184, 61, 0.35),
+        0 22px 58px rgba(0, 0, 0, 0.48);
+      animation: goldFlow 4.4s ease-in-out infinite;
+    }
+
+    .toast-wrap::before {
+      content: "";
+      position: absolute;
+      inset: 2px;
+      border-radius: 20px;
+      pointer-events: none;
+      z-index: 3;
+      background: linear-gradient(112deg, transparent 18%, rgba(255, 247, 196, 0.88) 44%, rgba(255, 255, 255, 0.4) 49%, transparent 66%);
+      mix-blend-mode: screen;
+      filter: blur(0.2px);
+      transform: translateX(-96%);
+      animation: cardSheen 3.9s ease-in-out infinite;
+    }
+
+    .toast-wrap::after {
+      content: "";
+      position: absolute;
+      inset: -12px;
+      border-radius: 31px;
+      z-index: -1;
+      background: radial-gradient(circle at 50% 8%, rgba(255, 223, 111, 0.42), transparent 58%);
+      filter: blur(12px);
+      opacity: 0.7;
+      animation: glowPulse 1.9s ease-in-out infinite alternate;
+    }
+
+    .toast {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid rgba(255, 232, 146, 0.24);
+      border-radius: 18px;
+      padding: 28px 28px 29px;
+      text-align: center;
+      background:
+        linear-gradient(135deg, rgba(28, 28, 48, 0.96), rgba(20, 20, 36, 0.99)),
+        radial-gradient(circle at 50% 0%, rgba(255, 215, 111, 0.08), transparent 42%);
+    }
+
+    .toast::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.055), transparent 42%),
+        radial-gradient(circle at 50% 0%, rgba(255, 226, 130, 0.1), transparent 54%);
+    }
+
+    .icon {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      place-items: center;
+      height: 62px;
+      margin-bottom: 12px;
+      font-family: "Segoe UI Emoji", "Microsoft YaHei UI", sans-serif;
+      font-size: 48px;
+      animation: bob 1.25s ease-in-out infinite alternate;
+    }
+
+    .toast h2 {
+      position: relative;
+      z-index: 1;
+      margin: 0 0 8px;
+      font-size: 20px;
+      line-height: 1.25;
+      font-weight: 800;
+    }
+
+    .toast p {
+      position: relative;
+      z-index: 1;
+      margin: 0 0 9px;
+      color: #9090a3;
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .delay {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      place-items: center;
+      min-height: 28px;
+      margin: 2px 0 12px;
+      color: #f5cc67;
+      font-size: 12px;
+      font-weight: 700;
+      transition: opacity 160ms ease, transform 160ms ease;
+    }
+
+    body.ready .delay {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+
+    .actions {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      min-height: 40px;
+    }
+
+    .actions button {
+      border: 0;
+      border-radius: 10px;
+      padding: 10px 19px;
+      color: white;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 160ms ease, filter 160ms ease, transform 160ms ease;
+    }
+
+    .primary {
+      color: #1f1508 !important;
+      background: linear-gradient(135deg, #fff0a8, #d79a2d 58%, #a86213);
+      box-shadow: 0 10px 22px rgba(216, 151, 34, 0.26);
+    }
+
+    .secondary {
+      border: 1px solid rgba(255, 255, 255, 0.16) !important;
+      color: #dfdfec !important;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    body.locked .actions button {
+      opacity: 0.48;
+      filter: saturate(0.72);
+      cursor: default;
+    }
+
+    body.ready .actions button:hover {
+      transform: translateY(-1px);
+    }
+
+    .notes {
+      border-left: 1px solid rgba(255, 215, 111, 0.34);
+      padding-left: 18px;
+    }
+
+    .notes h3 {
+      margin: 0 0 12px;
+      font-size: 16px;
+    }
+
+    .notes p {
+      margin: 0 0 13px;
+      color: #aaaabd;
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      height: 28px;
+      margin: 0 8px 8px 0;
+      padding: 0 10px;
+      border: 1px solid rgba(255, 215, 111, 0.24);
+      border-radius: 999px;
+      color: #f1d27a;
+      background: rgba(255, 215, 111, 0.08);
+      font-size: 12px;
+    }
+
+    @keyframes goldFlow {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    @keyframes cardSheen {
+      0%, 22% { transform: translateX(-98%); opacity: 0; }
+      38% { opacity: 1; }
+      68%, 100% { transform: translateX(98%); opacity: 0; }
+    }
+
+    @keyframes glowPulse {
+      from { opacity: 0.45; transform: scale(0.98); }
+      to { opacity: 0.82; transform: scale(1.02); }
+    }
+
+    @keyframes bob {
+      from { transform: translateY(0); }
+      to { transform: translateY(-6px); }
+    }
+
+    @media (max-width: 860px) {
+      .header,
+      .preview {
+        grid-template-columns: 1fr;
+      }
+
+      .header {
+        align-items: start;
+        flex-direction: column;
+      }
+
+      .preview {
+        padding: 28px 18px;
+      }
+    }
+  </style>
+</head>
+<body class="locked">
+  <main class="page">
+    <header class="header">
+      <div>
+        <h1>熔金闪卡合并版</h1>
+        <p class="desc">保留 2 的熔金流动主边框，叠加 1 的斜向闪光卡扫光。正式代码未修改。</p>
+      </div>
+      <div class="state-switch" aria-label="预览状态">
+        <button id="lockedBtn" class="active" type="button">延迟态</button>
+        <button id="readyBtn" type="button">可操作态</button>
+      </div>
+    </header>
+
+    <section class="preview">
+      <div class="stage">
+        <div class="toast-wrap">
+          <div class="toast">
+            <div class="icon">🍅</div>
+            <h2>主番茄钟 时间到！</h2>
+            <p>你已完成专注工作，要休息一下吗？</p>
+            <div class="delay">请先看一眼 · 1.5 秒后可操作</div>
+            <div class="actions">
+              <button class="primary" type="button">休息一下</button>
+              <button class="secondary" type="button">继续工作</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <aside class="notes">
+        <h3>组合策略</h3>
+        <p>主边框用熔金流动，负责“醒目”；斜向高光扫过，负责“闪光卡”的惊喜感。</p>
+        <p>落到 WPF 时建议只保留边框流动和扫光，不加过重浮雕，避免番茄钟弹窗显得太吵。</p>
+        <span class="pill">熔金边框</span>
+        <span class="pill">闪卡扫光</span>
+        <span class="pill">深色毛玻璃</span>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    const lockedBtn = document.querySelector("#lockedBtn");
+    const readyBtn = document.querySelector("#readyBtn");
+
+    function setState(state) {
+      document.body.classList.toggle("locked", state === "locked");
+      document.body.classList.toggle("ready", state === "ready");
+      lockedBtn.classList.toggle("active", state === "locked");
+      readyBtn.classList.toggle("active", state === "ready");
+    }
+
+    lockedBtn.addEventListener("click", () => setState("locked"));
+    readyBtn.addEventListener("click", () => setState("ready"));
+  </script>
+</body>
+</html>

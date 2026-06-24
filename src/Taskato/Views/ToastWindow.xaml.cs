@@ -3,7 +3,7 @@ using System.Windows;
 namespace Taskato.Views
 {
     /// <summary>
-    /// 番茄钟完成弹窗 — 在屏幕右下角置顶显示
+    /// 番茄钟完成弹窗 — 在屏幕四角轮换置顶显示
     /// 
     /// 两种使用场景：
     /// 1. 工作完成：显示"休息一下"和"继续工作"按钮
@@ -11,6 +11,28 @@ namespace Taskato.Views
     /// </summary>
     public partial class ToastWindow : Window
     {
+        private const double ScreenMargin = 20;
+        private const double MinActionDelaySeconds = 0.0;
+        private const double MaxActionDelaySeconds = 5.0;
+        private static readonly object PlacementLock = new();
+        private static int s_nextPlacementIndex = 0;
+
+        private enum ToastPlacement
+        {
+            BottomRight,
+            BottomLeft,
+            TopRight,
+            TopLeft
+        }
+
+        private static readonly ToastPlacement[] PlacementRotation =
+        {
+            ToastPlacement.BottomRight,
+            ToastPlacement.BottomLeft,
+            ToastPlacement.TopRight,
+            ToastPlacement.TopLeft
+        };
+
         /// <summary>"休息一下"按钮的回调委托</summary>
         private readonly Action? _onRest;
 
@@ -20,6 +42,11 @@ namespace Taskato.Views
         /// <summary>弹窗计时器</summary>
         private System.Windows.Threading.DispatcherTimer? _elapsedTimer;
         private int _secondsElapsed = 0;
+
+        /// <summary>操作按钮延迟启用计时器</summary>
+        private System.Windows.Threading.DispatcherTimer? _actionDelayTimer;
+        private DateTime _actionUnlockAt;
+        private readonly double _actionDelaySeconds;
 
         /// <summary>提示音方案(0=无声,1=Notify,2=Ding,3=Background,4=Chimes,5=Custom)</summary>
         private readonly int _soundChoice;
@@ -44,10 +71,12 @@ namespace Taskato.Views
         /// <param name="onContinue">点击"继续"的回调</param>
         /// <param name="showTimer">是否显示弹窗已持续时长的计时器</param>
         /// <param name="isRestComplete">是否为"休息结束"场景</param>
+        /// <param name="actionDelaySeconds">操作按钮延迟启用秒数</param>
         /// <param name="soundChoice">提示音方案(0=无声,1=Notify,2=Ding,3=Background,4=Chimes,5=Custom)</param>
         /// <param name="customSoundPath">自定义音效路径</param>
         public ToastWindow(string title, string subtitle,
-            Action? onRest, Action? onContinue, bool showTimer = false, bool isRestComplete = false, int soundChoice = 3, string customSoundPath = "")
+            Action? onRest, Action? onContinue, bool showTimer = false, bool isRestComplete = false,
+            double actionDelaySeconds = 1.5, int soundChoice = 3, string customSoundPath = "")
         {
             InitializeComponent();
 
@@ -59,6 +88,7 @@ namespace Taskato.Views
             _onContinue = onContinue;
             _soundChoice = soundChoice; // 记录音效方案，供 PlayNotificationSound 使用
             _customSoundPath = customSoundPath;
+            _actionDelaySeconds = Math.Clamp(actionDelaySeconds, MinActionDelaySeconds, MaxActionDelaySeconds);
 
             // 如果启用了计时器，则初始化并启动
             if (showTimer)
@@ -142,16 +172,93 @@ namespace Taskato.Views
         }
 
         /// <summary>
-        /// 窗体加载完成后 → 定位到屏幕右下角
+        /// 窗体加载完成后 → 按顺序轮换到屏幕四角
         /// </summary>
         private void Window_Loaded(object sender, RoutedEventArgs e)
         {
             // 获取工作区大小（排除任务栏）
             var workArea = SystemParameters.WorkArea;
+            var placement = GetNextPlacement();
 
-            // 定位到右下角，留 20px 边距
-            Left = workArea.Right - ActualWidth - 20;
-            Top = workArea.Bottom - ActualHeight - 20;
+            switch (placement)
+            {
+                case ToastPlacement.BottomLeft:
+                    Left = workArea.Left + ScreenMargin;
+                    Top = workArea.Bottom - ActualHeight - ScreenMargin;
+                    break;
+                case ToastPlacement.TopRight:
+                    Left = workArea.Right - ActualWidth - ScreenMargin;
+                    Top = workArea.Top + ScreenMargin;
+                    break;
+                case ToastPlacement.TopLeft:
+                    Left = workArea.Left + ScreenMargin;
+                    Top = workArea.Top + ScreenMargin;
+                    break;
+                case ToastPlacement.BottomRight:
+                default:
+                    Left = workArea.Right - ActualWidth - ScreenMargin;
+                    Top = workArea.Bottom - ActualHeight - ScreenMargin;
+                    break;
+            }
+
+            StartActionDelay();
+        }
+
+        private static ToastPlacement GetNextPlacement()
+        {
+            lock (PlacementLock)
+            {
+                var placement = PlacementRotation[s_nextPlacementIndex];
+                s_nextPlacementIndex = (s_nextPlacementIndex + 1) % PlacementRotation.Length;
+                return placement;
+            }
+        }
+
+        private void StartActionDelay()
+        {
+            if (_actionDelaySeconds <= 0)
+            {
+                SetActionButtonsEnabled(true);
+                ActionDelayText.Visibility = Visibility.Collapsed;
+                return;
+            }
+
+            _actionUnlockAt = DateTime.Now.AddSeconds(_actionDelaySeconds);
+            SetActionButtonsEnabled(false);
+            ActionDelayText.Visibility = Visibility.Visible;
+            UpdateActionDelayText();
+
+            _actionDelayTimer = new System.Windows.Threading.DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(100)
+            };
+            _actionDelayTimer.Tick += (_, _) =>
+            {
+                if ((_actionUnlockAt - DateTime.Now).TotalMilliseconds <= 0)
+                {
+                    StopActionDelay();
+                    SetActionButtonsEnabled(true);
+                    ActionDelayText.Visibility = Visibility.Collapsed;
+                    return;
+                }
+
+                UpdateActionDelayText();
+            };
+            _actionDelayTimer.Start();
+        }
+
+        private void UpdateActionDelayText()
+        {
+            var remainingSeconds = Math.Max(0, (_actionUnlockAt - DateTime.Now).TotalSeconds);
+            ActionDelayText.Text = $"请先看一眼 · {remainingSeconds:0.0} 秒后可操作";
+        }
+
+        private void SetActionButtonsEnabled(bool isEnabled)
+        {
+            RestButton.IsEnabled = isEnabled;
+            ContinueButton.IsEnabled = isEnabled;
+            RestButton.Opacity = isEnabled ? 1.0 : 0.55;
+            ContinueButton.Opacity = isEnabled ? 1.0 : 0.55;
         }
 
         /// <summary>
@@ -159,6 +266,8 @@ namespace Taskato.Views
         /// </summary>
         private void RestButton_Click(object sender, RoutedEventArgs e)
         {
+            if (!RestButton.IsEnabled) return;
+
             _onRest?.Invoke();
             Close();
         }
@@ -168,6 +277,8 @@ namespace Taskato.Views
         /// </summary>
         private void ContinueButton_Click(object sender, RoutedEventArgs e)
         {
+            if (!ContinueButton.IsEnabled) return;
+
             StopTimer();
             _onContinue?.Invoke();
             Close();
@@ -182,12 +293,22 @@ namespace Taskato.Views
             }
         }
 
+        private void StopActionDelay()
+        {
+            if (_actionDelayTimer != null)
+            {
+                _actionDelayTimer.Stop();
+                _actionDelayTimer = null;
+            }
+        }
+
         /// <summary>
         /// 确保关闭窗口时停止计时器
         /// </summary>
         protected override void OnClosed(EventArgs e)
         {
             StopTimer();
+            StopActionDelay();
             base.OnClosed(e);
         }
     }

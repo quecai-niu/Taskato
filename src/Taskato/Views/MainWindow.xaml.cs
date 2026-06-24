@@ -49,6 +49,7 @@ namespace Taskato.Views
                                     onRest: () => capturedSubVm.StartRest(),
                                     onContinue: () => capturedSubVm.StartWork(),
                                     showTimer: vm.EnableToastTimer,
+                                    actionDelaySeconds: vm.ToastActionDelaySeconds,
                                     soundChoice: vm.NotificationSoundChoice,
                                     customSoundPath: vm.CustomSoundPath
                                 );
@@ -71,6 +72,7 @@ namespace Taskato.Views
                                     onContinue: () => capturedSubVm.StartWork(),
                                     showTimer: vm.EnableToastTimer,
                                     isRestComplete: true,
+                                    actionDelaySeconds: vm.ToastActionDelaySeconds,
                                     soundChoice: vm.NotificationSoundChoice,
                                     customSoundPath: vm.CustomSoundPath
                                 );
@@ -109,6 +111,7 @@ namespace Taskato.Views
                                 onRest: () => capturedSubVm.StartRest(),
                                 onContinue: () => capturedSubVm.StartWork(),
                                 showTimer: vm.EnableToastTimer,
+                                actionDelaySeconds: vm.ToastActionDelaySeconds,
                                 soundChoice: vm.NotificationSoundChoice,
                                 customSoundPath: vm.CustomSoundPath
                             );
@@ -131,6 +134,7 @@ namespace Taskato.Views
                                 onContinue: () => capturedSubVm.StartWork(),
                                 showTimer: vm.EnableToastTimer,
                                 isRestComplete: true,
+                                actionDelaySeconds: vm.ToastActionDelaySeconds,
                                 soundChoice: vm.NotificationSoundChoice,
                                 customSoundPath: vm.CustomSoundPath
                             );

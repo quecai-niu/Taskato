@@ -22,6 +22,9 @@ namespace Taskato.Services
         /// <summary>是否在弹窗中显示计时器（记录弹窗出现了多久）</summary>
         public bool EnableToastTimer { get; set; } = false;
 
+        /// <summary>提醒弹窗出现后，操作按钮延迟启用的秒数</summary>
+        public double ToastActionDelaySeconds { get; set; } = 1.5;
+
         /// <summary>是否开启多组番茄钟功能</summary>
         public bool EnableMultiplePomodoros { get; set; } = false;
 

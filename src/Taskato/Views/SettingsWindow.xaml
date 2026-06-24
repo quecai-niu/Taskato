@@ -291,6 +291,65 @@
                     </Grid>
                 </Border>
 
+                <!-- 弹窗操作按钮延迟 -->
+                <Border Background="#0AFFFFFF" CornerRadius="10" Padding="16,12" Margin="0,0,0,8">
+                    <Grid>
+                        <TextBlock Text="提醒弹窗按钮延迟启用" FontSize="14"
+                                   Foreground="#CCCCCC" VerticalAlignment="Center"/>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                            <Button Content="−" Width="28" Height="28" FontSize="16" Cursor="Hand"
+                                    Click="DecToastDelay_Click">
+                                <Button.Style>
+                                    <Style TargetType="Button">
+                                        <Setter Property="Background" Value="#0FFFFFFF"/>
+                                        <Setter Property="Foreground" Value="#CCCCCC"/>
+                                        <Setter Property="BorderBrush" Value="#26FFFFFF"/>
+                                        <Setter Property="BorderThickness" Value="1"/>
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border Background="{TemplateBinding Background}"
+                                                            BorderBrush="{TemplateBinding BorderBrush}"
+                                                            BorderThickness="{TemplateBinding BorderThickness}"
+                                                            CornerRadius="6">
+                                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                    </Border>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
+                            <TextBlock x:Name="ToastDelayText" Text="1.5 秒" FontSize="16" FontWeight="SemiBold"
+                                       Foreground="#E0E0E0" MinWidth="65" TextAlignment="Center"
+                                       VerticalAlignment="Center" Margin="8,0"/>
+                            <Button Content="+" Width="28" Height="28" FontSize="16" Cursor="Hand"
+                                    Click="IncToastDelay_Click">
+                                <Button.Style>
+                                    <Style TargetType="Button">
+                                        <Setter Property="Background" Value="#0FFFFFFF"/>
+                                        <Setter Property="Foreground" Value="#CCCCCC"/>
+                                        <Setter Property="BorderBrush" Value="#26FFFFFF"/>
+                                        <Setter Property="BorderThickness" Value="1"/>
+                                        <Setter Property="Template">
+                                            <Setter.Value>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border Background="{TemplateBinding Background}"
+                                                            BorderBrush="{TemplateBinding BorderBrush}"
+                                                            BorderThickness="{TemplateBinding BorderThickness}"
+                                                            CornerRadius="6">
+                                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                    </Border>
+                                                </ControlTemplate>
+                                            </Setter.Value>
+                                        </Setter>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
                 <!-- 多组番茄钟开关 -->
                 <Border Background="#0AFFFFFF" CornerRadius="10" Padding="16,12" Margin="0,0,0,8">
                     <Grid>

@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Taskato 番茄钟附加组删除按钮预览</title>
+  <style>
+    :root {
+      --bg: #1a1a2e;
+      --panel: #201f39;
+      --panel-2: #24233d;
+      --stroke: rgba(255, 255, 255, 0.10);
+      --stroke-strong: #6366f1;
+      --text: #f6f4ff;
+      --muted: #a6a3c5;
+      --soft: #8380a6;
+      --danger: #ef4444;
+      --danger-soft: rgba(239, 68, 68, 0.14);
+      --primary-soft: rgba(99, 102, 241, 0.16);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(circle at 18% 10%, rgba(99, 102, 241, 0.18), transparent 30%),
+        linear-gradient(135deg, #17172a 0%, #1f1b36 100%);
+      color: var(--text);
+      font-family: "Microsoft YaHei UI", "Segoe UI", sans-serif;
+    }
+
+    main {
+      width: min(860px, calc(100vw - 40px));
+      padding: 28px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 18px;
+      background: rgba(16, 16, 31, 0.72);
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.34);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    .sub {
+      margin: 0 0 24px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .card {
+      min-height: 142px;
+      padding: 18px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.035);
+    }
+
+    .label {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .label strong {
+      color: var(--text);
+      font-size: 13px;
+    }
+
+    .bar {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 44px;
+      padding: 8px;
+      border-radius: 24px;
+      background: rgba(10, 9, 22, 0.28);
+    }
+
+    .tab {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      height: 36px;
+      padding: 0 18px;
+      border: 1px solid var(--stroke);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--muted);
+      font-size: 15px;
+      font-weight: 600;
+      white-space: nowrap;
+      transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+    }
+
+    .tab.primary {
+      border-color: var(--stroke-strong);
+      background: var(--primary-soft);
+      color: #fff;
+      font-weight: 700;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: var(--stroke-strong);
+      opacity: 0.9;
+    }
+
+    .name {
+      transform: translateY(-0.5px);
+    }
+
+    .delete-current {
+      width: 18px;
+      height: 18px;
+      display: grid;
+      place-items: center;
+      margin-left: 2px;
+      color: var(--danger);
+      font-size: 16px;
+      font-weight: 700;
+      line-height: 1;
+      opacity: 0.72;
+    }
+
+    .delete-soft {
+      width: 18px;
+      height: 18px;
+      display: grid;
+      place-items: center;
+      margin-left: 2px;
+      border-radius: 999px;
+      color: var(--soft);
+      font-size: 15px;
+      font-weight: 700;
+      line-height: 1;
+      opacity: 0.72;
+      transition: background 160ms ease, color 160ms ease, opacity 160ms ease, transform 160ms ease;
+    }
+
+    .tab:hover .delete-soft,
+    .tab.hover .delete-soft {
+      background: var(--danger-soft);
+      color: #ff7a7a;
+      opacity: 1;
+      transform: scale(1.04);
+    }
+
+    .delete-muted {
+      width: 20px;
+      height: 20px;
+      display: grid;
+      place-items: center;
+      margin-left: 2px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      color: #918eb2;
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1;
+      opacity: 0.62;
+      transition: background 160ms ease, border-color 160ms ease, color 160ms ease, opacity 160ms ease;
+    }
+
+    .tab:hover .delete-muted,
+    .tab.hover .delete-muted {
+      border-color: rgba(239, 68, 68, 0.24);
+      background: rgba(239, 68, 68, 0.10);
+      color: #ff8a8a;
+      opacity: 1;
+    }
+
+    .delete-quiet {
+      width: 18px;
+      height: 18px;
+      display: grid;
+      place-items: center;
+      margin-left: -2px;
+      border-radius: 999px;
+      color: #aaa6c8;
+      font-size: 15px;
+      font-weight: 700;
+      line-height: 1;
+      opacity: 0;
+      transform: translateX(-3px);
+      transition: background 160ms ease, color 160ms ease, opacity 160ms ease, transform 160ms ease;
+    }
+
+    .tab:hover .delete-quiet,
+    .tab.hover .delete-quiet {
+      background: var(--danger-soft);
+      color: #ff7a7a;
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    .note {
+      margin: 16px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.65;
+    }
+
+    .pick {
+      margin-top: 22px;
+      padding: 14px 16px;
+      border: 1px solid rgba(99, 102, 241, 0.30);
+      border-radius: 12px;
+      background: rgba(99, 102, 241, 0.10);
+      color: #d8d6ff;
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    @media (max-width: 720px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      main {
+        padding: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>番茄钟附加组删除按钮预览</h1>
+    <p class="sub">目标：保留主番茄钟的漂亮高亮，让附加组的删除入口变轻、变稳，不破坏胶囊的均衡感。</p>
+
+    <section class="grid" aria-label="删除按钮方案预览">
+      <article class="card">
+        <div class="label"><strong>当前观感</strong><span>红色裸叉较抢眼</span></div>
+        <div class="bar">
+          <div class="tab primary"><span class="dot"></span><span class="name">主番茄钟</span></div>
+          <div class="tab"><span class="name">附加组 1</span><span class="delete-current">×</span></div>
+        </div>
+        <p class="note">问题是删除符号颜色过强，视觉重心偏右。</p>
+      </article>
+
+      <article class="card">
+        <div class="label"><strong>方案 A：灰紫轻叉</strong><span>推荐默认态</span></div>
+        <div class="bar">
+          <div class="tab primary"><span class="dot"></span><span class="name">主番茄钟</span></div>
+          <div class="tab"><span class="name">附加组 1</span><span class="delete-soft">×</span></div>
+        </div>
+        <p class="note">默认融入胶囊，hover 才变红并出现轻圆底。</p>
+      </article>
+
+      <article class="card">
+        <div class="label"><strong>方案 B：固定圆形命中区</strong><span>最稳重</span></div>
+        <div class="bar">
+          <div class="tab primary"><span class="dot"></span><span class="name">主番茄钟</span></div>
+          <div class="tab hover"><span class="name">附加组 1</span><span class="delete-muted">×</span></div>
+        </div>
+        <p class="note">展示 hover 状态：删除入口清楚，但不会像裸红字那样突兀。</p>
+      </article>
+
+      <article class="card">
+        <div class="label"><strong>方案 C：平时隐藏</strong><span>最干净</span></div>
+        <div class="bar">
+          <div class="tab primary"><span class="dot"></span><span class="name">主番茄钟</span></div>
+          <div class="tab hover"><span class="name">附加组 1</span><span class="delete-quiet">×</span></div>
+        </div>
+        <p class="note">平时几乎没有删除干扰，鼠标靠近附加组时再出现。</p>
+      </article>
+    </section>
+
+    <div class="pick">我建议落地方案 A 或 B：A 更轻，B 更稳。按你说的“不匀称”，B 的固定 20×20 命中区最容易在 WPF 里做得规整。</div>
+  </main>
+</body>
+</html>

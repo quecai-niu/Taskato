@@ -44,6 +44,10 @@ namespace Taskato.Views
         private bool _isProgrammaticScroll;
         private SettingsSection _activeSection = SettingsSection.Theme;
 
+        private const double MinToastActionDelaySeconds = 0.0;
+        private const double MaxToastActionDelaySeconds = 5.0;
+        private const double ToastActionDelayStepSeconds = 0.5;
+
         /// <summary>
         /// 可选的主题颜色列表（渐变色的起止色对）
         /// </summary>
@@ -95,6 +99,7 @@ namespace Taskato.Views
             AutoStartCheckBox.IsChecked = AutoStartService.IsAutoStartEnabled();
             AutoStartNextCheckBox.IsChecked = _settingsService.Config.AutoStartNextPomodoro;
             ToastTimerCheckBox.IsChecked = _settingsService.Config.EnableToastTimer;
+            UpdateToastActionDelayText();
             MultiPomodoroCheckBox.IsChecked = _settingsService.Config.EnableMultiplePomodoros;
 
             // 加载飞书通知配置
@@ -396,6 +401,41 @@ namespace Taskato.Views
                 _settingsService.Config.EnableToastTimer = ToastTimerCheckBox.IsChecked == true;
                 _settingsService.Save();
             }
+        }
+
+        private void DecToastDelay_Click(object sender, RoutedEventArgs e)
+        {
+            SetToastActionDelay(_settingsService.Config.ToastActionDelaySeconds - ToastActionDelayStepSeconds);
+        }
+
+        private void IncToastDelay_Click(object sender, RoutedEventArgs e)
+        {
+            SetToastActionDelay(_settingsService.Config.ToastActionDelaySeconds + ToastActionDelayStepSeconds);
+        }
+
+        private void SetToastActionDelay(double seconds)
+        {
+            if (_settingsService == null) return;
+
+            var clampedSeconds = Math.Clamp(seconds, MinToastActionDelaySeconds, MaxToastActionDelaySeconds);
+            var snappedSeconds = Math.Round(
+                clampedSeconds / ToastActionDelayStepSeconds,
+                MidpointRounding.AwayFromZero) * ToastActionDelayStepSeconds;
+
+            _settingsService.Config.ToastActionDelaySeconds = snappedSeconds;
+            _settingsService.Save();
+            UpdateToastActionDelayText();
+        }
+
+        private void UpdateToastActionDelayText()
+        {
+            if (_settingsService == null || ToastDelayText == null) return;
+
+            var seconds = Math.Clamp(
+                _settingsService.Config.ToastActionDelaySeconds,
+                MinToastActionDelaySeconds,
+                MaxToastActionDelaySeconds);
+            ToastDelayText.Text = $"{seconds:0.0} 秒";
         }
 
         /// <summary>

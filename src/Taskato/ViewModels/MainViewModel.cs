@@ -36,6 +36,9 @@ namespace Taskato.ViewModels
         /// <summary>是否开启弹窗计时器（透传配置）</summary>
         public bool EnableToastTimer => _settingsService.Config.EnableToastTimer;
 
+        /// <summary>提醒弹窗操作按钮延迟启用秒数（透传配置）</summary>
+        public double ToastActionDelaySeconds => _settingsService.Config.ToastActionDelaySeconds;
+
         /// <summary>是否开启多组番茄钟模式</summary>
         public bool IsMultiMode => _settingsService.Config.EnableMultiplePomodoros;
 
