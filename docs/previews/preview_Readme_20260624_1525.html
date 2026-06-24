@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Taskato README 预览</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #0d1117;
+      --paper: #0d1117;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --border: #30363d;
+      --soft: #161b22;
+      --link: #58a6ff;
+      --accent: #f59e0b;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei UI", sans-serif;
+      line-height: 1.6;
+      letter-spacing: 0;
+    }
+
+    .shell {
+      width: min(1040px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 28px 0 52px;
+    }
+
+    .chrome {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 18px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .chrome strong {
+      color: var(--text);
+    }
+
+    .markdown-body {
+      padding: 32px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--paper);
+    }
+
+    .markdown-body > :first-child {
+      margin-top: 0;
+    }
+
+    .markdown-body h1,
+    .markdown-body h2,
+    .markdown-body h3 {
+      line-height: 1.25;
+      font-weight: 700;
+    }
+
+    .markdown-body h1 {
+      margin: 0 0 16px;
+      padding-bottom: 0.3em;
+      border-bottom: 1px solid var(--border);
+      font-size: 2em;
+    }
+
+    .markdown-body h2 {
+      margin: 28px 0 14px;
+      padding-bottom: 0.3em;
+      border-bottom: 1px solid var(--border);
+      font-size: 1.5em;
+    }
+
+    .markdown-body h3 {
+      margin: 22px 0 10px;
+      font-size: 1.18em;
+    }
+
+    .markdown-body p,
+    .markdown-body ul,
+    .markdown-body ol,
+    .markdown-body table,
+    .markdown-body pre {
+      margin-top: 0;
+      margin-bottom: 16px;
+    }
+
+    .markdown-body a {
+      color: var(--link);
+      text-decoration: none;
+    }
+
+    .markdown-body a:hover {
+      text-decoration: underline;
+    }
+
+    .markdown-body img {
+      max-width: 100%;
+      height: auto;
+      vertical-align: middle;
+    }
+
+    .markdown-body code {
+      padding: 0.2em 0.4em;
+      border-radius: 6px;
+      background: rgba(110, 118, 129, 0.4);
+      font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+      font-size: 85%;
+    }
+
+    .markdown-body pre {
+      padding: 16px;
+      overflow: auto;
+      border-radius: 8px;
+      background: var(--soft);
+    }
+
+    .markdown-body pre code {
+      padding: 0;
+      background: transparent;
+      font-size: 100%;
+    }
+
+    .markdown-body table {
+      width: 100%;
+      border-spacing: 0;
+      border-collapse: collapse;
+      display: block;
+      overflow: auto;
+    }
+
+    .markdown-body th,
+    .markdown-body td {
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+    }
+
+    .markdown-body tr:nth-child(2n) {
+      background: var(--soft);
+    }
+
+    .markdown-body hr {
+      height: 0.25em;
+      margin: 24px 0;
+      border: 0;
+      background: var(--border);
+    }
+
+    .markdown-body .center {
+      text-align: center;
+    }
+
+    .markdown-body .lead {
+      color: var(--muted);
+      font-size: 1.15em;
+      font-weight: 600;
+    }
+
+    .markdown-body .badge-row img {
+      margin: 4px 2px;
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f6f8fa;
+        --paper: #ffffff;
+        --text: #1f2328;
+        --muted: #656d76;
+        --border: #d0d7de;
+        --soft: #f6f8fa;
+        --link: #0969da;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .markdown-body {
+        padding: 22px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <div class="chrome">
+      <span><strong>README.md</strong> 本地预览</span>
+      <span>接近 GitHub Markdown 风格</span>
+    </div>
+
+    <article class="markdown-body">
+      <h1>Taskato</h1>
+
+      <p class="center">
+        <img src="../../src/Taskato/Assets/icon.png" alt="Taskato" width="96" />
+      </p>
+
+      <h3 class="center lead">把番茄钟、今日任务、历史复盘放在一个安静好看的 Windows 桌面应用里</h3>
+
+      <p class="center">
+        <a href="#快速开始">快速开始</a>
+        ·
+        <a href="#功能亮点">功能亮点</a>
+        ·
+        <a href="#界面预览">界面预览</a>
+        ·
+        <a href="#项目结构">项目结构</a>
+      </p>
+
+      <p class="center badge-row">
+        <img alt=".NET" src="https://img.shields.io/badge/.NET-8.0-512BD4?style=for-the-badge&amp;logo=dotnet&amp;logoColor=white" />
+        <img alt="WPF" src="https://img.shields.io/badge/WPF-Windows%20Desktop-0078D4?style=for-the-badge&amp;logo=windows&amp;logoColor=white" />
+        <img alt="SQLite" src="https://img.shields.io/badge/SQLite-local%20storage-003B57?style=for-the-badge&amp;logo=sqlite&amp;logoColor=white" />
+        <img alt="Version" src="https://img.shields.io/badge/version-v2.13-f59e0b?style=for-the-badge" />
+      </p>
+
+      <hr />
+
+      <h2>这是什么</h2>
+
+      <p>Taskato 是一个基于 <strong>.NET 8 + WPF</strong> 的番茄钟与任务管理桌面应用。它不是简单的计时器，而是围绕一天的工作流做了几件事：</p>
+
+      <ul>
+        <li>专注前，把今天要做的事放进任务列表。</li>
+        <li>专注中，用番茄钟保持节奏，支持多组并行计时。</li>
+        <li>专注后，通过提醒弹窗、提示音、飞书通知把状态拉回来。</li>
+        <li>一天结束，用每日总结和历史查询回看完成情况。</li>
+      </ul>
+
+      <h2>界面预览</h2>
+
+      <p class="center">
+        <img src="screenshots/taskato-main-20260624.png" alt="Taskato 主界面预览" width="760" />
+      </p>
+
+      <p>更多交互预览：</p>
+
+      <ul>
+        <li><a href="preview_PomodoroTabDelete_20260618_1407.html">番茄钟附加组删除按钮预览</a></li>
+        <li><a href="preview_ToastGoldBorder_20260618_1406.html">番茄钟完成弹窗鎏金边框预览</a></li>
+        <li><a href="preview_ToastGoldHybrid_20260618_1411.html">番茄钟完成弹窗熔金闪卡预览</a></li>
+      </ul>
+
+      <h2>功能亮点</h2>
+
+      <table>
+        <thead>
+          <tr><th>模块</th><th>能力</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>番茄钟</td><td>工作/休息循环、暂停、跳过、提前休息、实时进度条、状态动画</td></tr>
+          <tr><td>多组计时</td><td>主番茄钟 + 附加番茄钟，选项卡切换，附加组支持删除</td></tr>
+          <tr><td>任务管理</td><td>今日任务、4 级优先级、<code>#标签</code> 自动解析、详情编辑、完成耗时记录</td></tr>
+          <tr><td>提醒弹窗</td><td>四角轮换出现、鎏金边框、按钮延迟启用、显示已出现时长</td></tr>
+          <tr><td>提示音</td><td>无声、Windows Notify、Ding、Background、Chimes、自定义音效</td></tr>
+          <tr><td>飞书通知</td><td>工作完成、休息完成、休息过半、重复提醒均可配置</td></tr>
+          <tr><td>每日总结</td><td>日期切换、统计数据、复制/导出文本、补录已完成任务</td></tr>
+          <tr><td>历史查询</td><td>日期范围、关键词、完成状态筛选、多字段排序、CSV 导出</td></tr>
+          <tr><td>系统集成</td><td>托盘常驻、最小化后台运行、开机自启、单例运行</td></tr>
+        </tbody>
+      </table>
+
+      <h2 id="快速开始">快速开始</h2>
+
+      <h3>环境要求</h3>
+
+      <ul>
+        <li>Windows 10/11</li>
+        <li><a href="https://dotnet.microsoft.com/download/dotnet/8.0">.NET 8 SDK</a></li>
+      </ul>
+
+      <h3>克隆与运行</h3>
+
+      <pre><code>git clone https://github.com/quecai-niu/Taskato.git
+cd Taskato
+dotnet run --project src/Taskato/Taskato.csproj</code></pre>
+
+      <h3>构建</h3>
+
+      <pre><code>dotnet build Taskato.sln</code></pre>
+
+      <h2>使用方式</h2>
+
+      <ol>
+        <li>在主界面添加今日任务，可用 <code>#标签</code> 做轻量分类。</li>
+        <li>设置工作/休息时长，启动番茄钟。</li>
+        <li>番茄钟结束后，根据弹窗选择休息或继续工作。</li>
+        <li>打开历史查询或每日总结，回看任务完成情况。</li>
+        <li>如需远程提醒，在设置中配置飞书 Webhook。</li>
+      </ol>
+
+      <h2>技术栈</h2>
+
+      <table>
+        <thead>
+          <tr><th>层级</th><th>技术</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>UI</td><td>WPF, XAML, WindowChrome</td></tr>
+          <tr><td>架构</td><td>MVVM</td></tr>
+          <tr><td>运行时</td><td>.NET 8, C#</td></tr>
+          <tr><td>存储</td><td>SQLite, sqlite-net-pcl</td></tr>
+          <tr><td>系统集成</td><td>Windows Forms NotifyIcon, HKCU Run</td></tr>
+          <tr><td>通知</td><td>ToastWindow, MediaPlayer/SoundPlayer, Feishu Webhook</td></tr>
+        </tbody>
+      </table>
+
+      <h2>项目结构</h2>
+
+      <pre><code>Taskato/
+├─ src/
+│  ├─ Taskato/
+│  │  ├─ Assets/          # 图标与图片资源
+│  │  ├─ Converters/      # XAML 值转换器
+│  │  ├─ Models/          # 任务等数据模型
+│  │  ├─ Services/        # 数据库、计时器、设置、托盘、飞书通知
+│  │  ├─ Utils/           # RelayCommand、视觉效果等工具
+│  │  ├─ ViewModels/      # Main、Pomodoro、History、DailySummary
+│  │  └─ Views/           # 主窗体、设置、历史、详情、弹窗
+│  └─ TestProject/
+├─ docs/
+│  └─ previews/           # UI 预览与截图
+├─ Taskato.sln
+└─ README.md</code></pre>
+
+      <h2>配置与数据</h2>
+
+      <p>应用会在运行目录下维护本地数据与设置：</p>
+
+      <ul>
+        <li><code>Data/settings.json</code>：主题、番茄钟、提示音、通知等偏好设置。</li>
+        <li>SQLite 数据库：任务、历史和每日总结依赖的本地持久化数据。</li>
+      </ul>
+
+      <p>这些数据默认留在本机，不需要云端账号。</p>
+
+      <h2>当前版本</h2>
+
+      <p><code>v2.13</code></p>
+
+      <ul>
+        <li>优化番茄钟完成弹窗四角轮换、鎏金边框和按钮延迟。</li>
+        <li>新增设置页提醒弹窗按钮延迟时长配置。</li>
+        <li>优化附加番茄钟删除按钮悬浮显示效果。</li>
+        <li>新增番茄钟弹窗和附加组删除按钮预览文件及截图。</li>
+      </ul>
+    </article>
+  </main>
+</body>
+</html>
