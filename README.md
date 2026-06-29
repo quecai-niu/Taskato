@@ -17,10 +17,10 @@
 </p>
 
 <p align="center">
-  <img alt=".NET" src="https://img.shields.io/badge/.NET-8.0-512BD4?style=for-the-badge&logo=dotnet&logoColor=white" />
-  <img alt="WPF" src="https://img.shields.io/badge/WPF-Windows%20Desktop-0078D4?style=for-the-badge&logo=windows&logoColor=white" />
-  <img alt="SQLite" src="https://img.shields.io/badge/SQLite-local%20storage-003B57?style=for-the-badge&logo=sqlite&logoColor=white" />
-  <img alt="Version" src="https://img.shields.io/badge/version-v2.13-f59e0b?style=for-the-badge" />
+  <a href="https://github.com/quecai-niu/Taskato/commits/master"><img src="https://img.shields.io/github/last-commit/quecai-niu/Taskato?logo=github&label=last%20commit" alt="Last commit" /></a>
+  <a href="https://github.com/quecai-niu/Taskato/stargazers"><img src="https://img.shields.io/github/stars/quecai-niu/Taskato?logo=github&label=stars" alt="GitHub stars" /></a>
+  <a href="https://github.com/quecai-niu/Taskato/issues"><img src="https://img.shields.io/github/issues/quecai-niu/Taskato?logo=github&label=issues" alt="GitHub issues" /></a>
+  <a href="https://github.com/quecai-niu/Taskato"><img src="https://img.shields.io/github/repo-size/quecai-niu/Taskato?logo=github&label=repo%20size" alt="Repository size" /></a>
 </p>
 
 ---
