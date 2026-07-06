@@ -116,6 +116,9 @@
                                  Foreground="White" CaretBrush="White"
                                  FontSize="15" VerticalContentAlignment="Center"
                                  Padding="24,0,10,0"
+                                 AcceptsReturn="True"
+                                 TextWrapping="Wrap"
+                                 VerticalScrollBarVisibility="Auto"
                                  Style="{x:Null}"
                                  KeyDown="TaskInput_KeyDown"/>
                     </Grid>

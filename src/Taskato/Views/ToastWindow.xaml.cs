@@ -262,6 +262,14 @@ namespace Taskato.Views
         }
 
         /// <summary>
+        /// 将提醒窗口收进任务栏，保留当前计时与操作状态。
+        /// </summary>
+        private void MinimizeButton_Click(object sender, RoutedEventArgs e)
+        {
+            WindowState = WindowState.Minimized;
+        }
+
+        /// <summary>
         /// 点击"休息一下"
         /// </summary>
         private void RestButton_Click(object sender, RoutedEventArgs e)

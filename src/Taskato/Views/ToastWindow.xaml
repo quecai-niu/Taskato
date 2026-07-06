@@ -7,12 +7,12 @@
         AllowsTransparency="True"
         Background="Transparent"
         Topmost="True"
-        ShowInTaskbar="False"
+        ShowInTaskbar="True"
         WindowStartupLocation="Manual"
         Loaded="Window_Loaded">
     <!--
         Topmost="True": 始终显示在最前面（即使用户在使用其他程序）
-        ShowInTaskbar="False": 不在任务栏显示
+        ShowInTaskbar="True": 最小化后可从任务栏重新打开
         WindowStartupLocation="Manual": 手动轮换定位到屏幕四角
     -->
 
@@ -35,9 +35,6 @@
                     <GradientStop Color="#5C3309" Offset="1.00"/>
                 </LinearGradientBrush>
             </Border.BorderBrush>
-            <Border.Effect>
-                <DropShadowEffect Color="#F5B83D" BlurRadius="42" ShadowDepth="0" Opacity="0.36"/>
-            </Border.Effect>
             <Border.Triggers>
                 <EventTrigger RoutedEvent="Loaded">
                     <BeginStoryboard>
@@ -160,5 +157,14 @@
                 </Border>
             </Grid>
         </Border>
+
+        <!-- 提醒可暂时收进任务栏，稍后再恢复处理。 -->
+        <Button Style="{StaticResource JellyWinMinBtn}"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Top"
+                Margin="0,10,10,0"
+                Panel.ZIndex="1"
+                ToolTip="最小化"
+                Click="MinimizeButton_Click"/>
     </Grid>
 </Window>

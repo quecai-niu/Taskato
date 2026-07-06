@@ -237,12 +237,18 @@ namespace Taskato.Views
         // ==================== 任务列表操作 ====================
 
         /// <summary>
-        /// 输入框按 Enter 键添加任务
+        /// 输入框按 Enter 键添加任务，Shift+Enter 插入换行
         /// </summary>
         private void TaskInput_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
         {
             if (e.Key == Key.Enter && DataContext is MainViewModel vm)
             {
+                // Shift+Enter 交给 TextBox 处理，用于录入多行任务标题。
+                if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
+                    return;
+
+                // 普通 Enter 只负责提交，避免同时向输入框写入换行。
+                e.Handled = true;
                 if (vm.AddTaskCommand.CanExecute(null))
                     vm.AddTaskCommand.Execute(null);
             }
