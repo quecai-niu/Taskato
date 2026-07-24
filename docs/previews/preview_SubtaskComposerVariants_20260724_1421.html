@@ -1,0 +1,809 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Taskato 子任务新增 UI · 四方案对比</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #08090d;
+      --surface: #111219;
+      --card: #171821;
+      --card-2: #1b1c26;
+      --line: rgba(255,255,255,.075);
+      --line-strong: rgba(255,255,255,.13);
+      --text: #f4f2f8;
+      --text-2: #c5c2ce;
+      --muted: #767481;
+      --accent: #9b7be7;
+      --accent-2: #6f64d9;
+      --accent-soft: rgba(155,123,231,.12);
+      --green: #65cf9b;
+      --orange: #eca960;
+      --red: #ee7c86;
+      --shadow: 0 30px 90px rgba(0,0,0,.45);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      font-family: "Segoe UI", "Microsoft YaHei UI", sans-serif;
+      background:
+        radial-gradient(circle at 12% 0%, rgba(111,100,217,.16), transparent 31rem),
+        radial-gradient(circle at 92% 100%, rgba(52,80,140,.11), transparent 28rem),
+        var(--bg);
+      padding: 40px 28px 60px;
+    }
+
+    button, input { font: inherit; }
+    button { border: 0; color: inherit; cursor: pointer; }
+
+    .page {
+      width: min(1180px, 100%);
+      margin: 0 auto;
+    }
+
+    .hero {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 30px;
+      margin-bottom: 26px;
+    }
+
+    .kicker {
+      color: #a999d1;
+      font-size: 11px;
+      font-weight: 750;
+      letter-spacing: 1.8px;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 7px 0 8px;
+      font-size: clamp(25px, 4vw, 38px);
+      line-height: 1.14;
+      letter-spacing: -.8px;
+    }
+
+    .hero p {
+      margin: 0;
+      max-width: 620px;
+      color: #85828f;
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .legend {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .legend span {
+      padding: 6px 9px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: #92909c;
+      background: rgba(255,255,255,.025);
+      font-size: 10px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .concept {
+      min-width: 0;
+      padding: 17px;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: linear-gradient(145deg, rgba(22,23,31,.96), rgba(14,15,21,.96));
+      box-shadow: 0 18px 45px rgba(0,0,0,.22);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .concept::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: linear-gradient(135deg, rgba(255,255,255,.025), transparent 30%);
+    }
+
+    .concept-head {
+      min-height: 56px;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 10px;
+      align-items: start;
+      padding: 0 2px 13px;
+    }
+
+    .concept-id {
+      width: 28px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      border-radius: 9px;
+      color: #dcd2f4;
+      background: var(--accent-soft);
+      border: 1px solid rgba(155,123,231,.18);
+      font-size: 11px;
+      font-weight: 800;
+    }
+
+    .concept h2 {
+      margin: 0 0 3px;
+      color: #e8e5ee;
+      font-size: 14px;
+      font-weight: 680;
+    }
+
+    .concept-head p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1.45;
+    }
+
+    .score {
+      padding: 4px 7px;
+      border-radius: 7px;
+      background: rgba(255,255,255,.035);
+      color: #898693;
+      font-size: 9px;
+      white-space: nowrap;
+    }
+
+    .demo {
+      min-height: 270px;
+      padding: 15px;
+      border: 1px solid rgba(255,255,255,.055);
+      border-radius: 16px;
+      background: #101117;
+      position: relative;
+    }
+
+    .task {
+      position: relative;
+      border: 1px solid rgba(255,255,255,.065);
+      border-radius: 14px;
+      background: var(--card);
+      box-shadow: 0 12px 30px rgba(0,0,0,.2);
+    }
+
+    .task-main {
+      min-height: 62px;
+      display: grid;
+      grid-template-columns: auto auto 1fr auto;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 12px;
+    }
+
+    .disclosure {
+      width: 22px;
+      height: 22px;
+      border-radius: 7px;
+      display: grid;
+      place-items: center;
+      color: #7e7b88;
+      background: transparent;
+    }
+
+    .check {
+      width: 19px;
+      height: 19px;
+      padding: 0;
+      border-radius: 6px;
+      border: 1.4px solid rgba(255,255,255,.2);
+      background: transparent;
+    }
+
+    .task-name {
+      overflow: hidden;
+      color: #e8e6ed;
+      font-size: 12px;
+      font-weight: 640;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .task-meta {
+      display: flex;
+      gap: 6px;
+      margin-top: 4px;
+      color: #73717e;
+      font-size: 9px;
+    }
+
+    .task-meta .priority { color: var(--orange); }
+
+    .progress {
+      color: #a9a5b1;
+      font-size: 9px;
+      white-space: nowrap;
+    }
+
+    .child-list {
+      position: relative;
+      padding: 0 12px 12px 48px;
+    }
+
+    .child-list::before {
+      content: "";
+      position: absolute;
+      left: 30px;
+      top: -3px;
+      bottom: 26px;
+      width: 1px;
+      background: rgba(255,255,255,.07);
+    }
+
+    .child {
+      position: relative;
+      min-height: 37px;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 9px;
+      margin-top: 5px;
+      padding: 7px 9px;
+      border-radius: 9px;
+      color: #aaa7b2;
+      background: rgba(255,255,255,.022);
+      font-size: 10px;
+    }
+
+    .child::before, .branch-item::before {
+      content: "";
+      position: absolute;
+      left: -18px;
+      top: 0;
+      width: 14px;
+      height: 14px;
+      border-left: 1px solid rgba(255,255,255,.07);
+      border-bottom: 1px solid rgba(255,255,255,.07);
+      border-radius: 0 0 0 6px;
+    }
+
+    .child .check { width: 15px; height: 15px; border-radius: 5px; }
+    .child small { color: #65636e; font-size: 8px; }
+
+    .action-dot {
+      width: 28px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      border-radius: 9px;
+      color: #b7a8da;
+      background: rgba(155,123,231,.1);
+      border: 1px solid rgba(155,123,231,.14);
+    }
+
+    .text-input {
+      min-width: 0;
+      width: 100%;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: var(--text);
+      font-size: 10px;
+    }
+
+    .text-input::placeholder { color: #625f6c; }
+
+    .submit {
+      min-width: 28px;
+      height: 27px;
+      padding: 0 8px;
+      border-radius: 8px;
+      color: white;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      font-size: 9px;
+      box-shadow: 0 6px 16px rgba(111,100,217,.22);
+    }
+
+    .cancel {
+      height: 26px;
+      padding: 0 6px;
+      border-radius: 7px;
+      color: #777481;
+      background: transparent;
+      font-size: 9px;
+    }
+
+    .cancel:hover { background: rgba(255,255,255,.04); color: #b7b3c0; }
+    .hidden { display: none !important; }
+    .fade-in { animation: fade-in .18s ease-out; }
+
+    @keyframes fade-in {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* A: 幽灵行 */
+    .ghost-add {
+      position: relative;
+      width: 100%;
+      min-height: 35px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      margin-top: 5px;
+      padding: 7px 9px;
+      border-radius: 9px;
+      border: 1px dashed rgba(255,255,255,.09);
+      color: #696674;
+      background: transparent;
+      font-size: 9px;
+      text-align: left;
+    }
+
+    .ghost-add:hover {
+      color: #b5a5dc;
+      border-color: rgba(155,123,231,.26);
+      background: rgba(155,123,231,.045);
+    }
+
+    .ghost-editor {
+      position: relative;
+      display: grid;
+      grid-template-columns: auto 1fr auto auto;
+      align-items: center;
+      gap: 7px;
+      min-height: 37px;
+      margin-top: 5px;
+      padding: 6px 7px;
+      border-radius: 9px;
+      background: rgba(255,255,255,.035);
+      border: 1px solid rgba(155,123,231,.26);
+    }
+
+    /* B: 悬浮层 */
+    .popover-anchor { position: relative; }
+
+    .popover {
+      position: absolute;
+      z-index: 5;
+      top: 48px;
+      right: 8px;
+      width: min(330px, calc(100% - 28px));
+      padding: 11px;
+      border: 1px solid rgba(255,255,255,.11);
+      border-radius: 13px;
+      background: rgba(28,29,39,.98);
+      box-shadow: 0 20px 50px rgba(0,0,0,.48);
+      transform-origin: top right;
+      animation: pop .17s ease-out;
+    }
+
+    @keyframes pop {
+      from { opacity: 0; transform: scale(.97) translateY(-4px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    .popover::before {
+      content: "";
+      position: absolute;
+      right: 20px;
+      top: -5px;
+      width: 9px;
+      height: 9px;
+      transform: rotate(45deg);
+      background: #1c1d27;
+      border-left: 1px solid rgba(255,255,255,.11);
+      border-top: 1px solid rgba(255,255,255,.11);
+    }
+
+    .popover-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      color: #8d8997;
+      font-size: 9px;
+    }
+
+    .popover-input {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      align-items: center;
+      min-height: 36px;
+      padding: 5px 6px 5px 10px;
+      border-radius: 9px;
+      background: #14151d;
+      border: 1px solid rgba(255,255,255,.07);
+    }
+
+    /* C: 命令条 */
+    .command-strip {
+      margin: 0 12px 12px;
+      border-top: 1px solid rgba(255,255,255,.055);
+    }
+
+    .command-trigger {
+      width: 100%;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 3px;
+      color: #767381;
+      background: transparent;
+      font-size: 9px;
+    }
+
+    .command-trigger span:first-child { display: flex; align-items: center; gap: 7px; }
+    .command-trigger kbd, .shortcut {
+      padding: 2px 5px;
+      border-radius: 5px;
+      color: #706d7a;
+      background: rgba(255,255,255,.035);
+      border: 1px solid rgba(255,255,255,.055);
+      font: 8px "Segoe UI";
+    }
+
+    .command-editor {
+      display: grid;
+      grid-template-columns: auto 1fr auto auto;
+      align-items: center;
+      gap: 7px;
+      min-height: 42px;
+      padding: 0 2px;
+    }
+
+    .command-symbol {
+      color: #aa91e2;
+      font: 700 13px Consolas, monospace;
+    }
+
+    .command-input {
+      min-width: 0;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: var(--text);
+      font: 10px Consolas, "Microsoft YaHei UI", monospace;
+    }
+
+    /* D: 草稿卡 */
+    .draft-trigger {
+      width: 100%;
+      min-height: 34px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      margin-top: 6px;
+      border-radius: 9px;
+      color: #766d8a;
+      background: rgba(155,123,231,.035);
+      border: 1px solid rgba(155,123,231,.08);
+      font-size: 9px;
+    }
+
+    .draft-card {
+      position: relative;
+      margin-top: 7px;
+      padding: 10px;
+      border-radius: 12px;
+      background: linear-gradient(145deg, #20212c, #191a23);
+      border: 1px solid rgba(155,123,231,.21);
+      box-shadow: 0 12px 30px rgba(0,0,0,.23);
+    }
+
+    .draft-card::before {
+      content: "新子任务";
+      position: absolute;
+      top: -7px;
+      left: 10px;
+      padding: 1px 6px;
+      border-radius: 5px;
+      color: #b9a5e8;
+      background: #20212c;
+      border: 1px solid rgba(155,123,231,.18);
+      font-size: 7px;
+      letter-spacing: .4px;
+    }
+
+    .draft-title {
+      width: 100%;
+      height: 31px;
+      margin-top: 2px;
+      padding: 0;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: var(--text);
+      font-size: 11px;
+    }
+
+    .draft-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 8px;
+      border-top: 1px solid rgba(255,255,255,.055);
+    }
+
+    .priority-group { display: flex; align-items: center; gap: 5px; }
+    .priority-group span { color: #6f6c78; font-size: 8px; }
+    .priority-group button {
+      width: 7px;
+      height: 7px;
+      padding: 0;
+      border-radius: 50%;
+      background: #666471;
+    }
+    .priority-group button:nth-child(3) { background: var(--orange); }
+    .priority-group button:nth-child(4) { background: var(--red); }
+    .draft-actions { display: flex; gap: 5px; }
+
+    .result {
+      min-height: 20px;
+      margin: 9px 2px 0;
+      color: #696673;
+      font-size: 9px;
+    }
+    .result.success { color: #77cda2; }
+
+    .recommendation {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 18px;
+      padding: 13px 15px;
+      border-radius: 14px;
+      color: #9894a2;
+      background: rgba(255,255,255,.025);
+      border: 1px solid var(--line);
+      font-size: 11px;
+    }
+    .recommendation strong { color: #d8d2e5; }
+
+    @media (max-width: 850px) {
+      .grid { grid-template-columns: 1fr; }
+      .hero { align-items: start; flex-direction: column; }
+      .legend { justify-content: flex-start; }
+    }
+
+    @media (max-width: 520px) {
+      body { padding: 25px 12px 40px; }
+      .concept { padding: 12px; }
+      .demo { padding: 10px; }
+      .task-main { grid-template-columns: auto auto 1fr; }
+      .task-main > .progress { display: none; }
+      .child-list { padding-left: 42px; }
+      .child-list::before { left: 26px; }
+      .popover { left: 8px; right: 8px; width: auto; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <div>
+        <div class="kicker">Taskato · Subtask UI study</div>
+        <h1>这次不修饰旧方案，直接换结构</h1>
+        <p>四种方案使用同一任务卡、同一配色，只改变“新增子任务”如何出现。点击每个方案的新增入口即可实际输入，Enter 提交，Esc 取消。</p>
+      </div>
+      <div class="legend">
+        <span>真实输入</span>
+        <span>Enter 提交</span>
+        <span>Esc 取消</span>
+        <span>响应式</span>
+      </div>
+    </header>
+
+    <section class="grid">
+      <!-- A -->
+      <article class="concept" data-concept="A">
+        <header class="concept-head">
+          <span class="concept-id">A</span>
+          <div>
+            <h2>幽灵子任务行</h2>
+            <p>它就是列表的最后一行，不制造第二层容器。</p>
+          </div>
+          <span class="score">最克制</span>
+        </header>
+        <div class="demo">
+          <div class="task">
+            <div class="task-main">
+              <button class="disclosure">⌄</button><button class="check"></button>
+              <div><div class="task-name">发布 Taskato 新版本</div><div class="task-meta"><span class="priority">● 高</span><span>今天创建</span></div></div>
+              <span class="progress">1 / 3</span>
+            </div>
+            <div class="child-list">
+              <div class="child"><button class="check"></button><span>整理版本说明</span><small>已完成</small></div>
+              <button class="ghost-add branch-item" data-open="A"><span>＋</span><span>添加子任务</span></button>
+              <div class="ghost-editor branch-item hidden" data-editor="A">
+                <span style="color:#8e79bf">↳</span>
+                <input class="text-input" data-input="A" placeholder="输入子任务标题">
+                <button class="cancel" data-cancel="A">取消</button>
+                <button class="submit" data-submit="A">添加</button>
+              </div>
+            </div>
+          </div>
+          <div class="result" data-result="A">适合：希望界面尽量安静，只保留一个“下一项”入口。</div>
+        </div>
+      </article>
+
+      <!-- B -->
+      <article class="concept" data-concept="B">
+        <header class="concept-head">
+          <span class="concept-id">B</span>
+          <div>
+            <h2>锚点悬浮浮层</h2>
+            <p>输入器脱离任务布局，打开时也不把列表向下挤。</p>
+          </div>
+          <span class="score">最干净</span>
+        </header>
+        <div class="demo">
+          <div class="task popover-anchor">
+            <div class="task-main">
+              <button class="disclosure">⌄</button><button class="check"></button>
+              <div><div class="task-name">发布 Taskato 新版本</div><div class="task-meta"><span class="priority">● 高</span><span>今天创建</span></div></div>
+              <button class="action-dot" data-open="B" aria-label="添加子任务">＋</button>
+            </div>
+            <div class="child-list">
+              <div class="child"><button class="check"></button><span>整理版本说明</span><small>已完成</small></div>
+            </div>
+            <div class="popover hidden" data-editor="B">
+              <div class="popover-label"><span>添加到「发布 Taskato 新版本」</span><span>Esc 关闭</span></div>
+              <div class="popover-input">
+                <input class="text-input" data-input="B" placeholder="下一步要完成什么？">
+                <button class="submit" data-submit="B">↵</button>
+              </div>
+            </div>
+          </div>
+          <div class="result" data-result="B">适合：任务列表密度高，不希望展开输入器改变滚动位置。</div>
+        </div>
+      </article>
+
+      <!-- C -->
+      <article class="concept" data-concept="C">
+        <header class="concept-head">
+          <span class="concept-id">C</span>
+          <div>
+            <h2>快捷命令条</h2>
+            <p>更像效率工具，新增入口固定在父任务底部。</p>
+          </div>
+          <span class="score">最高效</span>
+        </header>
+        <div class="demo">
+          <div class="task">
+            <div class="task-main">
+              <button class="disclosure">⌄</button><button class="check"></button>
+              <div><div class="task-name">发布 Taskato 新版本</div><div class="task-meta"><span class="priority">● 高</span><span>今天创建</span></div></div>
+              <span class="progress">1 / 3</span>
+            </div>
+            <div class="child-list">
+              <div class="child"><button class="check"></button><span>整理版本说明</span><small>已完成</small></div>
+            </div>
+            <div class="command-strip">
+              <button class="command-trigger" data-open="C">
+                <span><b style="color:#a38bd7">＋</b> 快速添加子任务</span>
+                <kbd>Ctrl + Enter</kbd>
+              </button>
+              <div class="command-editor hidden" data-editor="C">
+                <span class="command-symbol">&gt;</span>
+                <input class="command-input" data-input="C" placeholder="输入标题，然后按 Enter">
+                <button class="cancel" data-cancel="C">Esc</button>
+                <button class="submit" data-submit="C">保存</button>
+              </div>
+            </div>
+          </div>
+          <div class="result" data-result="C">适合：频繁拆任务、偏爱键盘、不需要每次调整高级属性。</div>
+        </div>
+      </article>
+
+      <!-- D -->
+      <article class="concept" data-concept="D">
+        <header class="concept-head">
+          <span class="concept-id">D</span>
+          <div>
+            <h2>子任务草稿卡</h2>
+            <p>新任务从一开始就是一张子卡，归属最明确。</p>
+          </div>
+          <span class="score">最完整</span>
+        </header>
+        <div class="demo">
+          <div class="task">
+            <div class="task-main">
+              <button class="disclosure">⌄</button><button class="check"></button>
+              <div><div class="task-name">发布 Taskato 新版本</div><div class="task-meta"><span class="priority">● 高</span><span>今天创建</span></div></div>
+              <span class="progress">1 / 3</span>
+            </div>
+            <div class="child-list">
+              <div class="child"><button class="check"></button><span>整理版本说明</span><small>已完成</small></div>
+              <button class="draft-trigger branch-item" data-open="D">＋ 新建一个子任务</button>
+              <div class="draft-card branch-item hidden" data-editor="D">
+                <input class="draft-title" data-input="D" placeholder="子任务标题">
+                <div class="draft-footer">
+                  <div class="priority-group"><span>优先级</span><button title="普通"></button><button title="中"></button><button title="高"></button></div>
+                  <div class="draft-actions"><button class="cancel" data-cancel="D">取消</button><button class="submit" data-submit="D">创建</button></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="result" data-result="D">适合：新增时常需要选择优先级，愿意用更多空间换取明确感。</div>
+        </div>
+      </article>
+    </section>
+
+    <div class="recommendation">
+      <strong>我的初步排序：</strong>
+      <span>A 最适合当前 Taskato；C 适合强化效率工具气质；B 最干净但要处理浮层遮挡；D 信息完整但视觉重量最大。</span>
+    </div>
+  </main>
+
+  <script>
+    const concepts = ["A", "B", "C", "D"];
+
+    function elements(id) {
+      return {
+        open: document.querySelector(`[data-open="${id}"]`),
+        editor: document.querySelector(`[data-editor="${id}"]`),
+        input: document.querySelector(`[data-input="${id}"]`),
+        submit: document.querySelector(`[data-submit="${id}"]`),
+        cancel: document.querySelector(`[data-cancel="${id}"]`),
+        result: document.querySelector(`[data-result="${id}"]`)
+      };
+    }
+
+    function openEditor(id) {
+      const ui = elements(id);
+      ui.open.classList.add("hidden");
+      ui.editor.classList.remove("hidden");
+      ui.editor.classList.add("fade-in");
+      requestAnimationFrame(() => ui.input.focus());
+    }
+
+    function closeEditor(id) {
+      const ui = elements(id);
+      ui.editor.classList.add("hidden");
+      ui.open.classList.remove("hidden");
+      ui.input.value = "";
+    }
+
+    function submitEditor(id) {
+      const ui = elements(id);
+      const title = ui.input.value.trim();
+      if (!title) {
+        ui.input.focus();
+        ui.input.animate(
+          [{ transform: "translateX(0)" }, { transform: "translateX(-3px)" }, { transform: "translateX(3px)" }, { transform: "translateX(0)" }],
+          { duration: 160 }
+        );
+        return;
+      }
+      ui.result.textContent = `已模拟添加：“${title}”`;
+      ui.result.classList.add("success");
+      closeEditor(id);
+    }
+
+    concepts.forEach(id => {
+      const ui = elements(id);
+      ui.open.addEventListener("click", () => openEditor(id));
+      ui.submit.addEventListener("click", () => submitEditor(id));
+      ui.cancel?.addEventListener("click", () => closeEditor(id));
+      ui.input.addEventListener("keydown", event => {
+        if (event.key === "Enter") submitEditor(id);
+        if (event.key === "Escape") closeEditor(id);
+      });
+    });
+  </script>
+</body>
+</html>

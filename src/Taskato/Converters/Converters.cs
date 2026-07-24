@@ -169,4 +169,17 @@ namespace Taskato.Converters
         public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
             => throw new NotImplementedException();
     }
+
+    public class DoubleToLeftMarginConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            var left = value is double number ? number : 0;
+            var bottom = parameter is string text && text == "Summary" ? 4 : 10;
+            return new Thickness(left, 0, 0, bottom);
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+            => throw new NotImplementedException();
+    }
 }

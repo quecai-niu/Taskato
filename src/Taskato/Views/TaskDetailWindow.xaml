@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:utils="clr-namespace:Taskato.Utils"
         Title="任务详情"
-        Width="460" MinHeight="320"
+        Width="560" MinHeight="420" MaxHeight="760"
         SizeToContent="Height"
         WindowStyle="None"
         AllowsTransparency="True"
@@ -80,7 +80,10 @@
             </Border>
 
             <!-- 2. 内容区 -->
-            <StackPanel Grid.Row="1" Margin="24,10,24,20">
+            <ScrollViewer Grid.Row="1" Margin="24,10,24,20"
+                          VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled">
+            <StackPanel>
                 
                 <!-- 标签栏（只读显示当前提取出的标签） -->
                 <ItemsControl ItemsSource="{Binding Tags}" Margin="0,0,0,16">
@@ -124,6 +127,70 @@
                              Margin="0,0,5,0"/>
                 </ScrollViewer>
 
+                <!-- 层级与直属子任务管理 -->
+                <Border Height="1" Background="{StaticResource SeparatorBrush}" Margin="0,18,0,14"/>
+
+                <TextBlock Text="所属父任务" FontSize="13" FontWeight="SemiBold"
+                           Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+                <ComboBox x:Name="ParentTaskComboBox"
+                          SelectedValue="{Binding SelectedParentId, RelativeSource={RelativeSource AncestorType=Window}, Mode=TwoWay}"
+                          Padding="8,6" Margin="0,0,0,16"/>
+
+                <Grid Margin="0,0,0,8">
+                    <TextBlock Text="直属子任务" FontSize="13" FontWeight="SemiBold"
+                               Foreground="{StaticResource TextSecondaryBrush}"/>
+                    <TextBlock Text="最多 5 层" FontSize="11"
+                               Foreground="{StaticResource TextMutedBrush}"
+                               HorizontalAlignment="Right"/>
+                </Grid>
+
+                <StackPanel x:Name="AddChildPanel" Orientation="Horizontal" Margin="0,0,0,10">
+                    <TextBox x:Name="NewChildTitleTextBox"
+                             FontSize="13" Padding="10,7"
+                             Foreground="{StaticResource TextPrimaryBrush}"
+                             Background="#1AFFFFFF"
+                             BorderBrush="#33FFFFFF"
+                             BorderThickness="1"
+                             CaretBrush="White"
+                             KeyDown="NewChildTitleTextBox_KeyDown"
+                             MinWidth="360"/>
+                    <Button Content="添加" Style="{StaticResource PrimaryButton}"
+                            Padding="14,7" Margin="8,0,0,0"
+                            Click="AddChildButton_Click"/>
+                </StackPanel>
+
+                <ItemsControl x:Name="ChildrenItemsControl">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="#0FFFFFFF" CornerRadius="8"
+                                    Padding="10,7" Margin="0,0,0,6">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="{Binding DisplayTitle}"
+                                               Foreground="{StaticResource TextPrimaryBrush}"
+                                               TextTrimming="CharacterEllipsis"
+                                               VerticalAlignment="Center"/>
+                                    <Button Grid.Column="1" Content="详情"
+                                            Style="{StaticResource SecondaryButton}"
+                                            Padding="10,4" Margin="8,0,0,0"
+                                            Tag="{Binding}"
+                                            Click="OpenChildButton_Click"/>
+                                    <Button Grid.Column="2" Content="删除"
+                                            Style="{StaticResource SecondaryButton}"
+                                            Padding="10,4" Margin="6,0,0,0"
+                                            Foreground="{StaticResource DangerBrush}"
+                                            Tag="{Binding}"
+                                            Click="DeleteChildButton_Click"/>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
                 <!-- 底部操作按钮 -->
                 <Grid Margin="0,20,0,0">
                     <Grid.ColumnDefinitions>
@@ -135,6 +202,7 @@
                 </Grid>
                            
             </StackPanel>
+            </ScrollViewer>
 
             <!-- 3. 底栏状态与时间 -->
             <Border Grid.Row="2" BorderThickness="0,1,0,0"

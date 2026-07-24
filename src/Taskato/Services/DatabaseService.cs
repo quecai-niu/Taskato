@@ -8,7 +8,7 @@ namespace Taskato.Services
     /// 数据库服务 — 负责 SQLite 数据库的初始化、CRUD 操作
     /// 数据库文件存放在 exe 同级的 Data 子目录下，方便迁移（用户要求）
     /// </summary>
-    public class DatabaseService
+    public partial class DatabaseService
     {
         /// <summary>
         /// SQLite 异步连接实例（线程安全）
@@ -24,18 +24,26 @@ namespace Taskato.Services
         /// 构造函数 — 初始化数据库连接
         /// 数据库文件路径 = exe所在目录/Data/taskato.db
         /// </summary>
-        public DatabaseService()
+        public DatabaseService(string? databasePath = null)
         {
-            // 获取 exe 所在目录，在其下创建 Data 文件夹存放数据库
-            // 这样用户换电脑时只需拷贝整个程序目录即可完成迁移
-            var baseDir = AppDomain.CurrentDomain.BaseDirectory;
-            var dataDir = System.IO.Path.Combine(baseDir, "Data");
+            if (string.IsNullOrWhiteSpace(databasePath))
+            {
+                // 默认仍使用 exe 同级 Data 目录；可注入路径仅用于自动化测试和安全预览。
+                var baseDir = AppDomain.CurrentDomain.BaseDirectory;
+                var dataDir = System.IO.Path.Combine(baseDir, "Data");
+                if (!System.IO.Directory.Exists(dataDir))
+                    System.IO.Directory.CreateDirectory(dataDir);
 
-            // 确保 Data 目录存在
-            if (!System.IO.Directory.Exists(dataDir))
-                System.IO.Directory.CreateDirectory(dataDir);
+                DatabasePath = System.IO.Path.Combine(dataDir, "taskato.db");
+            }
+            else
+            {
+                DatabasePath = System.IO.Path.GetFullPath(databasePath);
+                var dataDir = System.IO.Path.GetDirectoryName(DatabasePath);
+                if (!string.IsNullOrWhiteSpace(dataDir))
+                    System.IO.Directory.CreateDirectory(dataDir);
+            }
 
-            DatabasePath = System.IO.Path.Combine(dataDir, "taskato.db");
             _db = new SQLiteAsyncConnection(DatabasePath);
         }
 
@@ -46,6 +54,7 @@ namespace Taskato.Services
         public async Task InitializeAsync()
         {
             await _db.CreateTableAsync<TaskItem>();
+            await _db.CreateTableAsync<TaskCompletionRecord>();
 
             // 数据库迁移：为旧数据库添加 LastModifiedAt 列
             var colCheck = await _db.ExecuteScalarAsync<int>(
@@ -61,6 +70,17 @@ namespace Taskato.Services
             {
                 await _db.ExecuteAsync("ALTER TABLE TaskItems ADD COLUMN CompletionDurationMinutes INTEGER");
             }
+
+            var parentIdColCheck = await _db.ExecuteScalarAsync<int>(
+                "SELECT COUNT(*) FROM pragma_table_info('TaskItems') WHERE name='ParentId'");
+            if (parentIdColCheck == 0)
+            {
+                await _db.ExecuteAsync("ALTER TABLE TaskItems ADD COLUMN ParentId INTEGER");
+            }
+
+            await _db.ExecuteAsync(
+                "CREATE INDEX IF NOT EXISTS IX_TaskItems_ParentId ON TaskItems(ParentId)");
+            await MigrateLegacyCompletionRecordsAsync();
         }
 
         /// <summary>
@@ -68,6 +88,8 @@ namespace Taskato.Services
         /// 用于通知各个界面（如主页和历史列表）同步刷新数据
         /// </summary>
         public event Action? OnDataChanged;
+
+        public Task CloseAsync() => _db.CloseAsync();
 
         // ==================== 任务的 CRUD 操作 ====================
 
@@ -102,10 +124,12 @@ namespace Taskato.Services
         /// </summary>
         public async Task<int> CompleteTaskAsync(TaskItem task, DateTime completedAt, int? durationMinutes)
         {
-            task.IsCompleted = true;
-            task.CompletedAt = completedAt;
-            task.CompletionDurationMinutes = durationMinutes is > 0 ? durationMinutes : null;
-            return await UpdateTaskAsync(task);
+            var result = await CompleteTaskWithCascadeAsync(
+                task,
+                completedAt,
+                durationMinutes,
+                CompletionTrigger.Manual);
+            return result.Succeeded ? 1 : 0;
         }
 
         /// <summary>
@@ -115,9 +139,7 @@ namespace Taskato.Services
         /// <returns>受影响的行数</returns>
         public async Task<int> DeleteTaskAsync(TaskItem task)
         {
-            var result = await _db.DeleteAsync(task);
-            if (result > 0) OnDataChanged?.Invoke(); // 触发全局刷新通知
-            return result;
+            return await DeleteTaskAsync(task, TaskDeleteMode.DeleteBranch);
         }
 
         /// <summary>

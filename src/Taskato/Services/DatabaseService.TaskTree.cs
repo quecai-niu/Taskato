@@ -1,0 +1,538 @@
+using SQLite;
+using Taskato.Models;
+
+namespace Taskato.Services
+{
+    public partial class DatabaseService
+    {
+        public const int MaximumTaskDepth = 5;
+
+        public async Task<List<TaskItem>> GetTaskTreeItemsAsync()
+        {
+            return await _db.Table<TaskItem>()
+                .OrderByDescending(t => t.Priority)
+                .ThenBy(t => t.OrderIndex)
+                .ThenByDescending(t => t.CreatedAt)
+                .ToListAsync();
+        }
+
+        public async Task<TaskItem?> GetTaskByIdAsync(int taskId)
+        {
+            return await _db.FindAsync<TaskItem>(taskId);
+        }
+
+        public async Task<List<TaskItem>> GetValidParentCandidatesAsync(int taskId)
+        {
+            var tasks = await GetTaskTreeItemsAsync();
+            var task = tasks.FirstOrDefault(t => t.Id == taskId);
+            if (task is null) return new List<TaskItem>();
+
+            var descendants = GetDescendantIds(tasks, taskId);
+            descendants.Add(taskId);
+            var subtreeHeight = GetSubtreeHeight(tasks, taskId);
+
+            return tasks
+                .Where(candidate => !descendants.Contains(candidate.Id))
+                .Where(candidate => GetDepth(tasks, candidate.Id) + 1 + subtreeHeight < MaximumTaskDepth)
+                .OrderBy(candidate => BuildPath(tasks, candidate.Id), StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
+        public async Task<TaskItem?> AddChildTaskAsync(
+            TaskItem parent,
+            string title,
+            int priority = 0)
+        {
+            if (string.IsNullOrWhiteSpace(title)) return null;
+
+            TaskItem? createdTask = null;
+            await _db.RunInTransactionAsync(connection =>
+            {
+                var tasks = connection.Table<TaskItem>().ToList();
+                var storedParent = tasks.FirstOrDefault(t => t.Id == parent.Id);
+                if (storedParent is null || GetDepth(tasks, storedParent.Id) >= MaximumTaskDepth - 1)
+                    return;
+
+                createdTask = new TaskItem
+                {
+                    ParentId = storedParent.Id,
+                    Title = title.Trim(),
+                    Priority = priority,
+                    CreatedAt = DateTime.Now,
+                    LastModifiedAt = DateTime.Now,
+                    OrderIndex = GetNextSiblingOrder(connection, storedParent.Id)
+                };
+                connection.Insert(createdTask);
+
+                ReopenTaskAndAncestors(connection, tasks, storedParent.Id);
+            });
+
+            if (createdTask is not null)
+                OnDataChanged?.Invoke();
+            return createdTask;
+        }
+
+        public async Task<TaskCompletionResult> CompleteTaskWithCascadeAsync(
+            TaskItem task,
+            DateTime completedAt,
+            int? durationMinutes,
+            CompletionTrigger triggerType)
+        {
+            var operationResult = new TaskCompletionResult();
+            await _db.RunInTransactionAsync(connection =>
+            {
+                var tasks = connection.Table<TaskItem>().ToList();
+                var storedTask = tasks.FirstOrDefault(t => t.Id == task.Id);
+                if (storedTask is null) return;
+
+                var children = tasks.Where(t => t.ParentId == storedTask.Id).ToList();
+                if (children.Count > 0)
+                {
+                    operationResult = new TaskCompletionResult
+                    {
+                        Succeeded = false,
+                        UncompletedDescendantCount = CountUncompletedLeaves(tasks, storedTask.Id)
+                    };
+                    return;
+                }
+
+                var completedTaskIds = new List<int>();
+                MarkTaskCompleted(
+                    connection,
+                    tasks,
+                    storedTask,
+                    completedAt,
+                    durationMinutes,
+                    triggerType,
+                    completedTaskIds);
+
+                var parentId = storedTask.ParentId;
+                while (parentId.HasValue)
+                {
+                    var parent = tasks.FirstOrDefault(t => t.Id == parentId.Value);
+                    if (parent is null) break;
+
+                    var directChildren = tasks.Where(t => t.ParentId == parent.Id).ToList();
+                    if (directChildren.Count == 0 || directChildren.Any(t => !t.IsCompleted))
+                        break;
+
+                    if (!parent.IsCompleted)
+                    {
+                        MarkTaskCompleted(
+                            connection,
+                            tasks,
+                            parent,
+                            completedAt,
+                            null,
+                            CompletionTrigger.AutomaticCascade,
+                            completedTaskIds);
+                    }
+
+                    parentId = parent.ParentId;
+                }
+
+                operationResult = new TaskCompletionResult
+                {
+                    Succeeded = true,
+                    CompletedTaskIds = completedTaskIds
+                };
+            });
+
+            if (operationResult.Succeeded)
+                OnDataChanged?.Invoke();
+            return operationResult;
+        }
+
+        public async Task<int> ReopenTaskWithAncestorsAsync(TaskItem task)
+        {
+            var changedCount = 0;
+            await _db.RunInTransactionAsync(connection =>
+            {
+                var tasks = connection.Table<TaskItem>().ToList();
+                changedCount = ReopenTaskAndAncestors(connection, tasks, task.Id);
+            });
+
+            if (changedCount > 0)
+                OnDataChanged?.Invoke();
+            return changedCount;
+        }
+
+        public async Task<TaskMoveResult> MoveTaskAsync(int taskId, int? newParentId)
+        {
+            var result = new TaskMoveResult();
+            await _db.RunInTransactionAsync(connection =>
+            {
+                var tasks = connection.Table<TaskItem>().ToList();
+                var task = tasks.FirstOrDefault(t => t.Id == taskId);
+                if (task is null)
+                {
+                    result = new TaskMoveResult { ErrorMessage = "任务不存在。" };
+                    return;
+                }
+
+                if (task.ParentId == newParentId)
+                {
+                    result = new TaskMoveResult { Succeeded = true };
+                    return;
+                }
+
+                if (newParentId.HasValue)
+                {
+                    var newParent = tasks.FirstOrDefault(t => t.Id == newParentId.Value);
+                    if (newParent is null)
+                    {
+                        result = new TaskMoveResult { ErrorMessage = "目标父任务不存在。" };
+                        return;
+                    }
+
+                    var descendantIds = GetDescendantIds(tasks, taskId);
+                    if (newParent.Id == taskId || descendantIds.Contains(newParent.Id))
+                    {
+                        result = new TaskMoveResult { ErrorMessage = "不能把任务移动到自身或后代任务中。" };
+                        return;
+                    }
+
+                    var targetDepth = GetDepth(tasks, newParent.Id) + 1;
+                    var subtreeHeight = GetSubtreeHeight(tasks, taskId);
+                    if (targetDepth + subtreeHeight >= MaximumTaskDepth)
+                    {
+                        result = new TaskMoveResult { ErrorMessage = "移动后会超过最多 5 层的限制。" };
+                        return;
+                    }
+                }
+
+                var oldParentId = task.ParentId;
+                task.ParentId = newParentId;
+                task.OrderIndex = GetNextSiblingOrder(connection, newParentId);
+                task.LastModifiedAt = DateTime.Now;
+                connection.Update(task);
+
+                RecalculateAncestorStates(connection, tasks, oldParentId, DateTime.Now);
+                if (newParentId != oldParentId)
+                    RecalculateAncestorStates(connection, tasks, newParentId, DateTime.Now);
+
+                result = new TaskMoveResult { Succeeded = true };
+            });
+
+            if (result.Succeeded)
+                OnDataChanged?.Invoke();
+            return result;
+        }
+
+        public async Task<int> DeleteTaskAsync(TaskItem task, TaskDeleteMode deleteMode)
+        {
+            var affectedRows = 0;
+            await _db.RunInTransactionAsync(connection =>
+            {
+                var tasks = connection.Table<TaskItem>().ToList();
+                var storedTask = tasks.FirstOrDefault(t => t.Id == task.Id);
+                if (storedTask is null) return;
+
+                if (deleteMode == TaskDeleteMode.PromoteChildren)
+                {
+                    var directChildren = tasks.Where(t => t.ParentId == storedTask.Id).ToList();
+                    foreach (var child in directChildren)
+                    {
+                        child.ParentId = storedTask.ParentId;
+                        child.LastModifiedAt = DateTime.Now;
+                        connection.Update(child);
+                        affectedRows++;
+                    }
+                }
+                else
+                {
+                    var branchIds = GetDescendantIds(tasks, storedTask.Id);
+                    foreach (var descendantId in branchIds.OrderByDescending(id => GetDepth(tasks, id)))
+                    {
+                        affectedRows += connection.Delete<TaskItem>(descendantId);
+                    }
+                    tasks.RemoveAll(candidate => branchIds.Contains(candidate.Id));
+                }
+
+                affectedRows += connection.Delete<TaskItem>(storedTask.Id);
+                tasks.RemoveAll(candidate => candidate.Id == storedTask.Id);
+                RecalculateAncestorStates(
+                    connection,
+                    tasks,
+                    storedTask.ParentId,
+                    DateTime.Now);
+            });
+
+            if (affectedRows > 0)
+                OnDataChanged?.Invoke();
+            return affectedRows;
+        }
+
+        public async Task<List<TaskCompletionRecord>> GetCompletionRecordsOnAsync(DateTime date)
+        {
+            var dayStart = date.Date;
+            var dayEnd = dayStart.AddDays(1);
+            var records = await _db.Table<TaskCompletionRecord>()
+                .Where(record => record.CompletedAt >= dayStart && record.CompletedAt < dayEnd)
+                .OrderBy(record => record.CompletedAt)
+                .ToListAsync();
+
+            var tasks = await GetTaskTreeItemsAsync();
+            var tasksById = tasks.ToDictionary(task => task.Id);
+            foreach (var record in records)
+            {
+                if (tasksById.TryGetValue(record.TaskId, out var currentTask))
+                    record.CurrentTask = currentTask;
+            }
+
+            return records;
+        }
+
+        public async Task<List<TaskItem>> GetUncompletedLeafTasksAsync()
+        {
+            var tasks = await GetTaskTreeItemsAsync();
+            var parentIds = tasks
+                .Where(task => task.ParentId.HasValue)
+                .Select(task => task.ParentId!.Value)
+                .ToHashSet();
+            return tasks
+                .Where(task => !task.IsCompleted && !parentIds.Contains(task.Id))
+                .OrderByDescending(task => task.Priority)
+                .ThenBy(task => task.CreatedAt)
+                .ToList();
+        }
+
+        private async Task MigrateLegacyCompletionRecordsAsync()
+        {
+            var tasks = await GetTaskTreeItemsAsync();
+            var completedTasks = tasks
+                .Where(task => task.IsCompleted && task.CompletedAt.HasValue)
+                .ToList();
+            if (completedTasks.Count == 0) return;
+
+            var existingRecords = await _db.Table<TaskCompletionRecord>().ToListAsync();
+            foreach (var task in completedTasks)
+            {
+                var alreadyRecorded = existingRecords.Any(record =>
+                    record.TaskId == task.Id &&
+                    record.CompletedAt == task.CompletedAt!.Value);
+                if (alreadyRecorded) continue;
+
+                var record = CreateCompletionRecord(
+                    tasks,
+                    task,
+                    task.CompletedAt!.Value,
+                    task.CompletionDurationMinutes,
+                    CompletionTrigger.LegacyMigration);
+                await _db.InsertAsync(record);
+            }
+        }
+
+        private static void MarkTaskCompleted(
+            SQLiteConnection connection,
+            List<TaskItem> tasks,
+            TaskItem task,
+            DateTime completedAt,
+            int? durationMinutes,
+            CompletionTrigger triggerType,
+            List<int> completedTaskIds)
+        {
+            task.IsCompleted = true;
+            task.CompletedAt = completedAt;
+            task.CompletionDurationMinutes = durationMinutes is > 0 ? durationMinutes : null;
+            task.LastModifiedAt = DateTime.Now;
+            connection.Update(task);
+
+            var record = CreateCompletionRecord(
+                tasks,
+                task,
+                completedAt,
+                task.CompletionDurationMinutes,
+                triggerType);
+            connection.Insert(record);
+            completedTaskIds.Add(task.Id);
+        }
+
+        private static TaskCompletionRecord CreateCompletionRecord(
+            List<TaskItem> tasks,
+            TaskItem task,
+            DateTime completedAt,
+            int? durationMinutes,
+            CompletionTrigger triggerType)
+        {
+            var ancestors = GetAncestorChain(tasks, task);
+            var topLevelTask = ancestors.FirstOrDefault() ?? task;
+            var depth = ancestors.Count;
+            var hasChildren = tasks.Any(candidate => candidate.ParentId == task.Id);
+
+            var completionKind = !hasChildren
+                ? CompletionKind.LeafTask
+                : task.ParentId is null
+                    ? CompletionKind.TopLevelAchievement
+                    : CompletionKind.ParentMilestone;
+
+            return new TaskCompletionRecord
+            {
+                TaskId = task.Id,
+                TopLevelTaskId = topLevelTask.Id,
+                TitleSnapshot = task.Title,
+                PathSnapshot = BuildPath(tasks, task.Id),
+                TopLevelTitleSnapshot = topLevelTask.Title,
+                DepthSnapshot = depth,
+                PrioritySnapshot = task.Priority,
+                CompletionKind = completionKind,
+                TriggerType = triggerType,
+                CompletedAt = completedAt,
+                DurationMinutes = completionKind == CompletionKind.LeafTask
+                    ? durationMinutes
+                    : null
+            };
+        }
+
+        private static int ReopenTaskAndAncestors(
+            SQLiteConnection connection,
+            List<TaskItem> tasks,
+            int taskId)
+        {
+            var changedCount = 0;
+            var current = tasks.FirstOrDefault(task => task.Id == taskId);
+            while (current is not null)
+            {
+                if (current.IsCompleted || current.CompletedAt.HasValue || current.CompletionDurationMinutes.HasValue)
+                {
+                    current.IsCompleted = false;
+                    current.CompletedAt = null;
+                    current.CompletionDurationMinutes = null;
+                    current.LastModifiedAt = DateTime.Now;
+                    connection.Update(current);
+                    changedCount++;
+                }
+
+                current = current.ParentId.HasValue
+                    ? tasks.FirstOrDefault(task => task.Id == current.ParentId.Value)
+                    : null;
+            }
+
+            return changedCount;
+        }
+
+        private static void RecalculateAncestorStates(
+            SQLiteConnection connection,
+            List<TaskItem> tasks,
+            int? startTaskId,
+            DateTime changedAt)
+        {
+            var currentId = startTaskId;
+            var visited = new HashSet<int>();
+            var completedTaskIds = new List<int>();
+
+            while (currentId.HasValue && visited.Add(currentId.Value))
+            {
+                var current = tasks.FirstOrDefault(task => task.Id == currentId.Value);
+                if (current is null) break;
+
+                var directChildren = tasks.Where(task => task.ParentId == current.Id).ToList();
+                if (directChildren.Count == 0)
+                {
+                    currentId = current.ParentId;
+                    continue;
+                }
+
+                if (directChildren.Any(child => !child.IsCompleted))
+                {
+                    ReopenTaskAndAncestors(connection, tasks, current.Id);
+                    break;
+                }
+
+                if (!current.IsCompleted)
+                {
+                    MarkTaskCompleted(
+                        connection,
+                        tasks,
+                        current,
+                        changedAt,
+                        null,
+                        CompletionTrigger.AutomaticCascade,
+                        completedTaskIds);
+                }
+
+                currentId = current.ParentId;
+            }
+        }
+
+        private static int CountUncompletedLeaves(List<TaskItem> tasks, int taskId)
+        {
+            var children = tasks.Where(task => task.ParentId == taskId).ToList();
+            if (children.Count == 0)
+            {
+                var task = tasks.First(candidate => candidate.Id == taskId);
+                return task.IsCompleted ? 0 : 1;
+            }
+
+            return children.Sum(child => CountUncompletedLeaves(tasks, child.Id));
+        }
+
+        private static HashSet<int> GetDescendantIds(List<TaskItem> tasks, int taskId)
+        {
+            var result = new HashSet<int>();
+            var pending = new Queue<int>();
+            pending.Enqueue(taskId);
+
+            while (pending.Count > 0)
+            {
+                var parentId = pending.Dequeue();
+                foreach (var child in tasks.Where(task => task.ParentId == parentId))
+                {
+                    if (result.Add(child.Id))
+                        pending.Enqueue(child.Id);
+                }
+            }
+
+            return result;
+        }
+
+        private static List<TaskItem> GetAncestorChain(List<TaskItem> tasks, TaskItem task)
+        {
+            var result = new List<TaskItem>();
+            var currentParentId = task.ParentId;
+            var visited = new HashSet<int> { task.Id };
+            while (currentParentId.HasValue)
+            {
+                if (!visited.Add(currentParentId.Value)) break;
+                var parent = tasks.FirstOrDefault(candidate => candidate.Id == currentParentId.Value);
+                if (parent is null) break;
+                result.Insert(0, parent);
+                currentParentId = parent.ParentId;
+            }
+
+            return result;
+        }
+
+        private static int GetDepth(List<TaskItem> tasks, int taskId)
+        {
+            var task = tasks.FirstOrDefault(candidate => candidate.Id == taskId);
+            return task is null ? 0 : GetAncestorChain(tasks, task).Count;
+        }
+
+        private static int GetSubtreeHeight(List<TaskItem> tasks, int taskId)
+        {
+            var children = tasks.Where(task => task.ParentId == taskId).ToList();
+            return children.Count == 0
+                ? 0
+                : 1 + children.Max(child => GetSubtreeHeight(tasks, child.Id));
+        }
+
+        private static string BuildPath(List<TaskItem> tasks, int taskId)
+        {
+            var task = tasks.FirstOrDefault(candidate => candidate.Id == taskId);
+            if (task is null) return string.Empty;
+            var pathParts = GetAncestorChain(tasks, task)
+                .Select(ancestor => ancestor.Title)
+                .Append(task.Title);
+            return string.Join(" / ", pathParts);
+        }
+
+        private static double GetNextSiblingOrder(SQLiteConnection connection, int? parentId)
+        {
+            var siblings = connection.Table<TaskItem>()
+                .Where(task => task.ParentId == parentId)
+                .ToList();
+            return siblings.Count == 0 ? 0 : siblings.Max(task => task.OrderIndex) + 1;
+        }
+    }
+}

@@ -272,16 +272,71 @@ namespace Taskato.Views
             e.Handled = true;
         }
 
+        private async void ChildTaskInput_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+        {
+            if (sender is not FrameworkElement element ||
+                element.Tag is not Models.TaskItem parent ||
+                DataContext is not MainViewModel vm)
+            {
+                return;
+            }
+
+            if (e.Key == Key.Escape)
+            {
+                e.Handled = true;
+                parent.NewChildTitle = string.Empty;
+                parent.IsAddingChild = false;
+                return;
+            }
+
+            if (e.Key != Key.Enter)
+                return;
+
+            e.Handled = true;
+            await vm.AddChildTaskAsync(parent);
+        }
+
+        private void ChildTaskInput_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
+        {
+            if (sender is not System.Windows.Controls.TextBox input || !input.IsVisible)
+                return;
+
+            // 等可见性和布局更新完成后再聚焦，确保点击“添加子任务”后可以立即录入。
+            input.Dispatcher.BeginInvoke(
+                new System.Action(() =>
+                {
+                    input.Focus();
+                    input.SelectAll();
+                }),
+                System.Windows.Threading.DispatcherPriority.Input);
+        }
+
         /// <summary>
         /// 点击删除按钮 → 弹出确认对话框并执行删除
         /// </summary>
         private void DeleteButton_Click(object sender, MouseButtonEventArgs e)
         {
-            if (sender is FrameworkElement element && DataContext is MainViewModel vm)
+            if (sender is FrameworkElement element &&
+                element.Tag is Models.TaskItem task &&
+                DataContext is MainViewModel vm)
             {
-                if (ConfirmDialog.Show(this, "确定要删除这个任务吗？此操作无法撤销。"))
+                if (!task.HasChildren)
                 {
-                    vm.DeleteTaskCommand.Execute(element.Tag);
+                    if (ConfirmDialog.Show(this, "确定要删除这个任务吗？历史完成记录会保留。"))
+                        _ = vm.DeleteTaskAsync(task);
+                }
+                else
+                {
+                    var choice = MessageBox.Show(
+                        this,
+                        "该任务包含子任务。\n\n选择“是”：删除整个任务分支。\n选择“否”：仅删除父任务，并将直属子任务提升一级。\n选择“取消”：不删除。",
+                        "删除任务分支",
+                        MessageBoxButton.YesNoCancel,
+                        MessageBoxImage.Warning);
+                    if (choice == MessageBoxResult.Yes)
+                        _ = vm.DeleteTaskAsync(task, Models.TaskDeleteMode.DeleteBranch);
+                    else if (choice == MessageBoxResult.No)
+                        _ = vm.DeleteTaskAsync(task, Models.TaskDeleteMode.PromoteChildren);
                 }
             }
             e.Handled = true;
@@ -292,8 +347,10 @@ namespace Taskato.Views
         /// </summary>
         protected override void OnPreviewKeyDown(System.Windows.Input.KeyEventArgs e)
         {
-            // 排除系统组合键、功能键以及输入框已获得焦点的情况
-            if (!TaskInput.IsFocused && 
+            // 任意文本编辑框正在输入时都不能触发全局快捷录入，否则子任务输入会被主输入框抢走焦点。
+            var isEditingText = Keyboard.FocusedElement is System.Windows.Controls.Primitives.TextBoxBase;
+            if (!isEditingText &&
+                !TaskInput.IsFocused &&
                 ((e.Key >= Key.A && e.Key <= Key.Z) || (e.Key >= Key.D0 && e.Key <= Key.D9) || (e.Key >= Key.NumPad0 && e.Key <= Key.NumPad9)))
             {
                 TaskInput.Focus();
@@ -310,24 +367,11 @@ namespace Taskato.Views
         {
             if (e.ClickCount == 2 && sender is FrameworkElement element && element.DataContext is Models.TaskItem task)
             {
-                var detailWindow = new TaskDetailWindow(task) { Owner = this };
+                if (DataContext is not MainViewModel vm) return;
+
+                var detailWindow = new TaskDetailWindow(task, vm.DatabaseService) { Owner = this };
                 detailWindow.ShowDialog();
-
-                // 详情页关闭后，判断用户是否点击了保存
-                if (detailWindow.IsSaved)
-                {
-                    // 数据覆盖逻辑：在 V2 中我们使用替身编辑，保存时同步本体
-                    task.Title = detailWindow.EditingTask.Title;
-                    task.Priority = detailWindow.EditingTask.Priority;
-                    task.IsCompleted = detailWindow.EditingTask.IsCompleted;
-                    task.CompletedAt = detailWindow.EditingTask.CompletedAt;
-                    task.CompletionDurationMinutes = detailWindow.EditingTask.CompletionDurationMinutes;
-
-                    if (DataContext is MainViewModel vm)
-                    {
-                        await vm.SaveTaskEditAsync(task);
-                    }
-                }
+                await vm.LoadTodayTasksAsync();
 
                 e.Handled = true;
             }

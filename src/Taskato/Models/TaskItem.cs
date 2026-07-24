@@ -1,4 +1,5 @@
 using SQLite;
+using System.Collections.ObjectModel;
 
 namespace Taskato.Models
 {
@@ -54,6 +55,12 @@ namespace Taskato.Models
         private DateTime _lastModifiedAt = DateTime.Now;
         public DateTime LastModifiedAt { get => _lastModifiedAt; set => SetProperty(ref _lastModifiedAt, value); }
 
+        /// <summary>
+        /// 父任务编号；为空表示顶级任务。
+        /// </summary>
+        private int? _parentId;
+        public int? ParentId { get => _parentId; set => SetProperty(ref _parentId, value); }
+
         private bool _isCompleted = false;
         public bool IsCompleted { get => _isCompleted; set => SetProperty(ref _isCompleted, value); }
 
@@ -68,6 +75,85 @@ namespace Taskato.Models
         /// </summary>
         private double _orderIndex = 0;
         public double OrderIndex { get => _orderIndex; set => SetProperty(ref _orderIndex, value); }
+
+        // ==================== 树形界面运行时属性 ====================
+
+        private int _depth;
+        [Ignore]
+        public int Depth
+        {
+            get => _depth;
+            set
+            {
+                if (SetProperty(ref _depth, value))
+                {
+                    OnPropertyChanged(nameof(IndentWidth));
+                    OnPropertyChanged(nameof(CanAddChild));
+                }
+            }
+        }
+
+        private bool _isExpanded = true;
+        [Ignore]
+        public bool IsExpanded { get => _isExpanded; set => SetProperty(ref _isExpanded, value); }
+
+        private string _newChildTitle = string.Empty;
+        [Ignore]
+        public string NewChildTitle { get => _newChildTitle; set => SetProperty(ref _newChildTitle, value); }
+
+        private bool _isAddingChild;
+        [Ignore]
+        public bool IsAddingChild { get => _isAddingChild; set => SetProperty(ref _isAddingChild, value); }
+
+        [Ignore]
+        public ObservableCollection<TaskItem> Children { get; } = new();
+
+        private int _completedLeafCount;
+        [Ignore]
+        public int CompletedLeafCount
+        {
+            get => _completedLeafCount;
+            set
+            {
+                if (SetProperty(ref _completedLeafCount, value))
+                    OnPropertyChanged(nameof(ProgressDisplay));
+            }
+        }
+
+        private int _totalLeafCount = 1;
+        [Ignore]
+        public int TotalLeafCount
+        {
+            get => _totalLeafCount;
+            set
+            {
+                if (SetProperty(ref _totalLeafCount, value))
+                    OnPropertyChanged(nameof(ProgressDisplay));
+            }
+        }
+
+        [Ignore]
+        public bool HasChildren => Children.Count > 0;
+
+        [Ignore]
+        public bool IsLeaf => !HasChildren;
+
+        [Ignore]
+        public bool CanAddChild => Depth < 4;
+
+        [Ignore]
+        public double IndentWidth => Depth * 24;
+
+        [Ignore]
+        public string ProgressDisplay => $"{CompletedLeafCount}/{TotalLeafCount}";
+
+        public void NotifyTreeStateChanged()
+        {
+            OnPropertyChanged(nameof(HasChildren));
+            OnPropertyChanged(nameof(IsLeaf));
+            OnPropertyChanged(nameof(CanAddChild));
+            OnPropertyChanged(nameof(ProgressDisplay));
+        }
 
         // ==================== 微解析系统 ====================
 

@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Taskato 子任务新增交互预览</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #090b12;
+      --panel: rgba(22, 24, 38, .84);
+      --card: rgba(35, 38, 55, .88);
+      --card-hover: rgba(42, 45, 65, .94);
+      --line: rgba(183, 148, 246, .22);
+      --line-hot: rgba(183, 148, 246, .72);
+      --primary: #a879f7;
+      --primary-2: #7667f4;
+      --text: #f6f4fb;
+      --muted: #9997aa;
+      --soft: #c9c5d5;
+      --success: #68d8a0;
+      --danger: #ff8396;
+      --shadow: 0 24px 80px rgba(0, 0, 0, .42);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", "Microsoft YaHei UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 20% 10%, rgba(120, 83, 217, .22), transparent 34rem),
+        radial-gradient(circle at 84% 88%, rgba(68, 96, 197, .14), transparent 30rem),
+        var(--bg);
+      display: grid;
+      place-items: center;
+      padding: 42px 24px;
+    }
+
+    .preview-shell {
+      width: min(760px, 100%);
+      border: 1px solid rgba(255,255,255,.07);
+      border-radius: 26px;
+      background: linear-gradient(145deg, rgba(27,29,44,.96), rgba(15,17,28,.94));
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .preview-shell::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: linear-gradient(120deg, rgba(255,255,255,.035), transparent 32%);
+    }
+
+    .topbar {
+      height: 66px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      border-bottom: 1px solid rgba(255,255,255,.055);
+    }
+
+    .brand, .window-dots, .title-row, .meta, .composer-tools, .hint {
+      display: flex;
+      align-items: center;
+    }
+
+    .brand { gap: 10px; font-weight: 650; letter-spacing: .2px; }
+    .brand-mark {
+      width: 30px;
+      height: 30px;
+      display: grid;
+      place-items: center;
+      border-radius: 9px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-2));
+      box-shadow: 0 8px 20px rgba(118, 103, 244, .32);
+    }
+    .window-dots { gap: 8px; }
+    .window-dots i { width: 10px; height: 10px; border-radius: 50%; background: #4c4d5b; }
+    .window-dots i:nth-child(1) { background: #f06b76; }
+    .window-dots i:nth-child(2) { background: #e1b95c; }
+    .window-dots i:nth-child(3) { background: #57c790; }
+
+    main { padding: 26px 28px 34px; }
+
+    .section-head {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .eyebrow {
+      color: #b8a3e8;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.4px;
+      text-transform: uppercase;
+    }
+    h1 { font-size: 20px; margin: 5px 0 0; font-weight: 650; }
+    .section-head p { color: var(--muted); font-size: 12px; margin: 0; }
+
+    .task-card {
+      position: relative;
+      border: 1px solid rgba(255,255,255,.065);
+      border-radius: 18px;
+      background: var(--card);
+      box-shadow: 0 12px 30px rgba(0,0,0,.18);
+      overflow: hidden;
+    }
+
+    .task-card::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 14px;
+      bottom: 14px;
+      width: 3px;
+      border-radius: 0 4px 4px 0;
+      background: linear-gradient(var(--primary), var(--primary-2));
+      box-shadow: 0 0 18px rgba(168,121,247,.62);
+    }
+
+    .parent-row {
+      min-height: 78px;
+      display: grid;
+      grid-template-columns: auto auto 1fr auto auto;
+      gap: 12px;
+      align-items: center;
+      padding: 14px 16px 14px 18px;
+    }
+
+    button {
+      font: inherit;
+      color: inherit;
+      border: 0;
+      cursor: pointer;
+    }
+
+    .chevron, .check, .icon-button {
+      width: 28px;
+      height: 28px;
+      border-radius: 9px;
+      display: grid;
+      place-items: center;
+      background: transparent;
+      color: var(--muted);
+      transition: .18s ease;
+    }
+    .chevron:hover, .icon-button:hover { background: rgba(255,255,255,.065); color: var(--text); }
+    .check { border: 1.5px solid rgba(255,255,255,.2); width: 21px; height: 21px; border-radius: 7px; }
+
+    .title-row { gap: 9px; min-width: 0; }
+    .task-title { font-size: 14px; font-weight: 620; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .progress {
+      border: 1px solid rgba(168,121,247,.2);
+      background: rgba(168,121,247,.1);
+      color: #d8c6fb;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 7px;
+      border-radius: 999px;
+    }
+    .meta { gap: 6px; margin-top: 6px; color: var(--muted); font-size: 11px; }
+    .meta .priority { color: #f5bd72; }
+
+    .add-trigger {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      height: 32px;
+      padding: 0 11px;
+      border-radius: 10px;
+      color: #d8c6fb;
+      background: rgba(168,121,247,.095);
+      border: 1px solid rgba(168,121,247,.16);
+      transition: .18s ease;
+    }
+    .add-trigger:hover, .add-trigger.active {
+      background: rgba(168,121,247,.16);
+      border-color: rgba(168,121,247,.38);
+      transform: translateY(-1px);
+    }
+    .add-trigger span:last-child { font-size: 11px; }
+
+    .children {
+      position: relative;
+      padding: 0 16px 16px 68px;
+    }
+    .children::before {
+      content: "";
+      position: absolute;
+      left: 40px;
+      top: -5px;
+      bottom: 28px;
+      width: 1px;
+      background: linear-gradient(var(--line-hot), var(--line));
+    }
+
+    .child-row, .composer {
+      position: relative;
+      min-height: 44px;
+      border-radius: 12px;
+      margin-top: 7px;
+    }
+    .child-row::before, .composer::before {
+      content: "";
+      position: absolute;
+      width: 22px;
+      height: 14px;
+      left: -28px;
+      top: 0;
+      border-left: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      border-radius: 0 0 0 8px;
+    }
+
+    .child-row {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 10px;
+      align-items: center;
+      padding: 9px 11px;
+      color: var(--soft);
+      background: rgba(255,255,255,.025);
+      border: 1px solid rgba(255,255,255,.045);
+      transition: .18s ease;
+    }
+    .child-row:hover { background: rgba(255,255,255,.045); }
+    .child-row .check { width: 18px; height: 18px; border-radius: 6px; }
+    .child-row.done .check { background: linear-gradient(135deg, #57d59a, #40b980); border-color: transparent; }
+    .child-row.done .check::after { content: "✓"; font-size: 11px; font-weight: 800; color: #08140e; }
+    .child-row.done .child-title { color: #777687; text-decoration: line-through; }
+    .child-title { font-size: 13px; }
+    .child-time { color: #777687; font-size: 10px; }
+
+    .composer {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 9px 8px 11px;
+      background: linear-gradient(110deg, rgba(168,121,247,.1), rgba(90,82,172,.055));
+      border: 1px solid rgba(168,121,247,.26);
+      box-shadow: inset 0 1px rgba(255,255,255,.04), 0 8px 24px rgba(16,10,30,.16);
+      transform-origin: top;
+      animation: reveal .2s ease-out;
+    }
+    .composer.hidden { display: none; }
+    @keyframes reveal {
+      from { opacity: 0; transform: translateY(-6px) scale(.99); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .branch-dot {
+      width: 20px;
+      height: 20px;
+      display: grid;
+      place-items: center;
+      border-radius: 7px;
+      background: rgba(168,121,247,.14);
+      color: #d6c2ff;
+      font-size: 13px;
+    }
+    .input-wrap { min-width: 0; }
+    .input-wrap input {
+      width: 100%;
+      height: 27px;
+      padding: 0;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: var(--text);
+      font: 13px "Segoe UI", "Microsoft YaHei UI", sans-serif;
+    }
+    .input-wrap input::placeholder { color: #807d91; }
+    .hint { gap: 8px; color: #706e80; font-size: 9px; white-space: nowrap; }
+    kbd {
+      border: 1px solid rgba(255,255,255,.08);
+      border-bottom-color: rgba(255,255,255,.14);
+      background: rgba(255,255,255,.035);
+      color: #9693a5;
+      border-radius: 4px;
+      padding: 1px 4px;
+      font: 9px "Segoe UI";
+    }
+
+    .composer-tools { gap: 6px; }
+    .priority-dots { display: flex; gap: 4px; padding: 0 5px; }
+    .priority-dots button {
+      width: 7px;
+      height: 7px;
+      padding: 0;
+      border-radius: 50%;
+      background: #626171;
+      box-shadow: 0 0 0 3px transparent;
+    }
+    .priority-dots button:nth-child(2) { background: #e3ad62; }
+    .priority-dots button:nth-child(3) { background: #ef7e75; }
+    .priority-dots button.selected { box-shadow: 0 0 0 3px rgba(227,173,98,.15); }
+
+    .cancel-btn {
+      height: 28px;
+      padding: 0 8px;
+      border-radius: 8px;
+      background: transparent;
+      color: #8f8c9e;
+      font-size: 11px;
+    }
+    .cancel-btn:hover { background: rgba(255,255,255,.05); color: var(--soft); }
+
+    .submit-btn {
+      width: 30px;
+      height: 30px;
+      display: grid;
+      place-items: center;
+      border-radius: 9px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-2));
+      box-shadow: 0 7px 18px rgba(118,103,244,.26);
+      font-size: 16px;
+      transition: .18s ease;
+    }
+    .submit-btn:hover { transform: translateY(-1px); filter: brightness(1.08); }
+
+    .design-notes {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 16px;
+    }
+    .note {
+      min-height: 78px;
+      padding: 12px;
+      border: 1px solid rgba(255,255,255,.05);
+      border-radius: 12px;
+      background: rgba(255,255,255,.022);
+    }
+    .note strong { display: block; color: #d8d4e1; font-size: 11px; margin-bottom: 6px; }
+    .note span { color: #7f7d8d; font-size: 10px; line-height: 1.55; }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      transform: translate(-50%, 12px);
+      opacity: 0;
+      padding: 9px 14px;
+      border-radius: 999px;
+      color: #dff8eb;
+      background: rgba(41, 91, 66, .92);
+      border: 1px solid rgba(104,216,160,.3);
+      font-size: 11px;
+      pointer-events: none;
+      transition: .22s ease;
+    }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+    @media (max-width: 660px) {
+      .parent-row { grid-template-columns: auto auto 1fr auto; }
+      .parent-row > .icon-button { display: none; }
+      .add-trigger span:last-child { display: none; }
+      .children { padding-left: 54px; }
+      .children::before { left: 30px; }
+      .composer { grid-template-columns: auto 1fr; }
+      .composer-tools { grid-column: 2; justify-content: flex-end; }
+      .design-notes { grid-template-columns: 1fr; }
+      .section-head p { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <section class="preview-shell">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark">✦</span>
+        <span>Taskato</span>
+      </div>
+      <div class="window-dots" aria-hidden="true"><i></i><i></i><i></i></div>
+    </header>
+
+    <main>
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">Subtask composer</div>
+          <h1>轻量嵌入，不再像第二个主输入框</h1>
+        </div>
+        <p>下面所有控件都可以实际操作</p>
+      </div>
+
+      <article class="task-card">
+        <div class="parent-row">
+          <button class="chevron" aria-label="折叠">⌄</button>
+          <button class="check" aria-label="任务状态"></button>
+          <div>
+            <div class="title-row">
+              <span class="task-title">发布 Taskato 新版本</span>
+              <span class="progress" id="progress">1 / 3</span>
+            </div>
+            <div class="meta">
+              <span class="priority">● 高优先级</span>
+              <span>·</span>
+              <span>今天 09:30 创建</span>
+            </div>
+          </div>
+          <button class="add-trigger active" id="openComposer" aria-expanded="true">
+            <span>＋</span><span>子任务</span>
+          </button>
+          <button class="icon-button" aria-label="更多">•••</button>
+        </div>
+
+        <div class="children" id="children">
+          <div class="child-row done">
+            <button class="check" aria-label="已完成"></button>
+            <span class="child-title">整理本次更新说明</span>
+            <span class="child-time">10:18</span>
+          </div>
+          <div class="child-row">
+            <button class="check" aria-label="未完成"></button>
+            <span class="child-title">回归测试每日总结</span>
+            <span class="child-time">待完成</span>
+          </div>
+
+          <div class="composer" id="composer">
+            <span class="branch-dot">↳</span>
+            <div class="input-wrap">
+              <input id="subtaskInput" maxlength="80" autocomplete="off"
+                     placeholder="添加一个具体、可完成的步骤…">
+              <div class="hint"><span><kbd>Enter</kbd> 添加</span><span><kbd>Esc</kbd> 取消</span></div>
+            </div>
+            <div class="composer-tools">
+              <div class="priority-dots" aria-label="优先级">
+                <button title="普通"></button>
+                <button class="selected" title="中"></button>
+                <button title="高"></button>
+              </div>
+              <button class="cancel-btn" id="cancelComposer">取消</button>
+              <button class="submit-btn" id="submitSubtask" aria-label="添加子任务">↵</button>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <div class="design-notes">
+        <div class="note">
+          <strong>结构关系更清楚</strong>
+          <span>紫色树枝直接连接输入器，用户一眼知道新内容属于哪个父任务。</span>
+        </div>
+        <div class="note">
+          <strong>操作轻，不抢视觉</strong>
+          <span>输入器只有一行高度；键盘提示和优先级放在次要层，不与任务标题争夺注意力。</span>
+        </div>
+        <div class="note">
+          <strong>完整键盘路径</strong>
+          <span>点击“子任务”自动聚焦；Enter 添加，Esc 关闭，输入焦点不会跳回主任务框。</span>
+        </div>
+      </div>
+    </main>
+  </section>
+
+  <div class="toast" id="toast">已添加子任务</div>
+
+  <script>
+    const composer = document.querySelector("#composer");
+    const input = document.querySelector("#subtaskInput");
+    const openButton = document.querySelector("#openComposer");
+    const cancelButton = document.querySelector("#cancelComposer");
+    const submitButton = document.querySelector("#submitSubtask");
+    const children = document.querySelector("#children");
+    const progress = document.querySelector("#progress");
+    const toast = document.querySelector("#toast");
+    let total = 3;
+
+    function openComposer() {
+      composer.classList.remove("hidden");
+      openButton.classList.add("active");
+      openButton.setAttribute("aria-expanded", "true");
+      requestAnimationFrame(() => input.focus());
+    }
+
+    function closeComposer() {
+      composer.classList.add("hidden");
+      openButton.classList.remove("active");
+      openButton.setAttribute("aria-expanded", "false");
+      input.value = "";
+    }
+
+    function submitSubtask() {
+      const title = input.value.trim();
+      if (!title) {
+        input.focus();
+        input.animate(
+          [{ transform: "translateX(0)" }, { transform: "translateX(-4px)" }, { transform: "translateX(4px)" }, { transform: "translateX(0)" }],
+          { duration: 180 }
+        );
+        return;
+      }
+
+      const row = document.createElement("div");
+      row.className = "child-row";
+      row.innerHTML = `<button class="check" aria-label="未完成"></button><span class="child-title"></span><span class="child-time">刚刚</span>`;
+      row.querySelector(".child-title").textContent = title;
+      children.insertBefore(row, composer);
+      total += 1;
+      progress.textContent = `1 / ${total}`;
+      input.value = "";
+      input.focus();
+      toast.classList.add("show");
+      window.setTimeout(() => toast.classList.remove("show"), 1200);
+    }
+
+    openButton.addEventListener("click", () => composer.classList.contains("hidden") ? openComposer() : closeComposer());
+    cancelButton.addEventListener("click", closeComposer);
+    submitButton.addEventListener("click", submitSubtask);
+    input.addEventListener("keydown", event => {
+      if (event.key === "Enter") submitSubtask();
+      if (event.key === "Escape") closeComposer();
+    });
+    document.querySelectorAll(".priority-dots button").forEach(button => {
+      button.addEventListener("click", () => {
+        document.querySelectorAll(".priority-dots button").forEach(item => item.classList.remove("selected"));
+        button.classList.add("selected");
+        input.focus();
+      });
+    });
+
+    window.setTimeout(() => input.focus(), 220);
+  </script>
+</body>
+</html>

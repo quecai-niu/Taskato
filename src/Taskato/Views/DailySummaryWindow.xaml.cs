@@ -38,29 +38,21 @@ namespace Taskato.Views
 
         private void CloseButton_Click(object sender, RoutedEventArgs e) => Close();
 
-        private async void CompletedTaskCard_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        private async void CompletedRecordCard_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (e.ClickCount != 2 ||
                 sender is not FrameworkElement element ||
-                element.DataContext is not TaskItem task)
+                element.DataContext is not TaskCompletionRecord record ||
+                record.CurrentTask is not TaskItem task)
             {
                 return;
             }
 
-            var detailWindow = new TaskDetailWindow(task) { Owner = this };
+            if (DataContext is not DailySummaryViewModel vm) return;
+
+            var detailWindow = new TaskDetailWindow(task, vm.DatabaseService) { Owner = this };
             detailWindow.ShowDialog();
-
-            if (detailWindow.IsSaved)
-            {
-                task.Title = detailWindow.EditingTask.Title;
-                task.Priority = detailWindow.EditingTask.Priority;
-                task.IsCompleted = detailWindow.EditingTask.IsCompleted;
-                task.CompletedAt = detailWindow.EditingTask.CompletedAt;
-                task.CompletionDurationMinutes = detailWindow.EditingTask.CompletionDurationMinutes;
-
-                if (DataContext is DailySummaryViewModel vm)
-                    await vm.SaveTaskEditAsync(task);
-            }
+            await vm.LoadSummaryAsync();
 
             e.Handled = true;
         }

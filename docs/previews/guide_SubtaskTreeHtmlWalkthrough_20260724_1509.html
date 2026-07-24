@@ -1,0 +1,1307 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Taskato 无箭头子任务树 HTML 源码讲解</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --page: #f3f1f7;
+      --surface: #ffffff;
+      --surface-soft: #faf9fc;
+      --ink: #201d28;
+      --muted: #6f6978;
+      --line: #e1dce8;
+      --brand: #7057b5;
+      --brand-dark: #2b233e;
+      --brand-soft: #f0ebfb;
+      --code: #111119;
+      --code-line: #262431;
+      --warning: #a85f12;
+      --warning-bg: #fff6e8;
+      --danger: #a43c45;
+      --danger-bg: #fff0f1;
+      --success: #2e7554;
+      --success-bg: #eef9f3;
+      --radius: 16px;
+      --shadow: 0 14px 40px rgba(43, 35, 62, .08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--page);
+      font-family: "Microsoft YaHei UI", "Segoe UI", system-ui, sans-serif;
+      line-height: 1.75;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    a {
+      color: var(--brand);
+    }
+
+    .reading-progress {
+      position: fixed;
+      z-index: 30;
+      top: 0;
+      left: 0;
+      width: 0;
+      height: 4px;
+      background: var(--brand);
+    }
+
+    .hero {
+      padding: 54px max(24px, calc((100% - 1320px) / 2));
+      color: #fff;
+      background: var(--brand-dark);
+    }
+
+    .hero .eyebrow {
+      margin-bottom: 8px;
+      color: #cfc3ea;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1.7px;
+      text-transform: uppercase;
+    }
+
+    .hero h1 {
+      max-width: 900px;
+      margin: 0;
+      font-size: clamp(30px, 5vw, 52px);
+      line-height: 1.2;
+      letter-spacing: -1px;
+    }
+
+    .hero p {
+      max-width: 820px;
+      margin: 14px 0 0;
+      color: #ded7eb;
+      font-size: 16px;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 22px;
+    }
+
+    .chip {
+      padding: 5px 11px;
+      border: 1px solid rgba(255, 255, 255, .22);
+      border-radius: 999px;
+      color: #f4efff;
+      background: rgba(255, 255, 255, .07);
+      font-size: 12px;
+    }
+
+    .page {
+      width: min(1320px, 100%);
+      display: grid;
+      grid-template-columns: 260px minmax(0, 1fr);
+      gap: 26px;
+      margin: 28px auto 70px;
+      padding: 0 20px;
+    }
+
+    .toc {
+      position: sticky;
+      top: 20px;
+      align-self: start;
+      max-height: calc(100vh - 40px);
+      overflow-y: auto;
+      padding: 17px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .toc strong {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+    .toc a {
+      display: block;
+      padding: 7px 9px;
+      border-radius: 8px;
+      color: #4e4857;
+      font-size: 13px;
+      text-decoration: none;
+    }
+
+    .toc a:hover,
+    .toc a:focus-visible {
+      color: var(--brand);
+      background: var(--brand-soft);
+      outline: 0;
+    }
+
+    .toc-actions {
+      display: grid;
+      gap: 7px;
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid var(--line);
+    }
+
+    .toc button,
+    .copy-button {
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      color: #554e60;
+      background: var(--surface-soft);
+      cursor: pointer;
+    }
+
+    .toc button:hover,
+    .toc button:focus-visible,
+    .copy-button:hover,
+    .copy-button:focus-visible {
+      color: var(--brand);
+      border-color: #c8b9e7;
+      background: var(--brand-soft);
+      outline: 3px solid rgba(112, 87, 181, .12);
+    }
+
+    main {
+      min-width: 0;
+    }
+
+    section {
+      margin-bottom: 20px;
+      padding: clamp(22px, 4vw, 38px);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      scroll-margin-top: 18px;
+    }
+
+    h2 {
+      margin: 0 0 10px;
+      font-size: clamp(22px, 3vw, 30px);
+      line-height: 1.3;
+    }
+
+    h3 {
+      margin: 28px 0 10px;
+      line-height: 1.4;
+    }
+
+    p {
+      margin: 10px 0;
+    }
+
+    code {
+      font-family: "Cascadia Code", Consolas, "Microsoft YaHei UI", monospace;
+    }
+
+    p code,
+    td code,
+    li code {
+      padding: 2px 6px;
+      border-radius: 5px;
+      color: #5b3b94;
+      background: #f2edf9;
+      font-size: .92em;
+    }
+
+    .mental-model {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 22px;
+    }
+
+    .mental-model article {
+      padding: 15px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--surface-soft);
+    }
+
+    .mental-model span {
+      display: inline-grid;
+      width: 26px;
+      height: 26px;
+      place-items: center;
+      margin-bottom: 8px;
+      border-radius: 8px;
+      color: #fff;
+      background: var(--brand);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .mental-model strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .mental-model p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    details {
+      margin-top: 16px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--surface-soft);
+    }
+
+    summary {
+      padding: 14px 16px;
+      color: #41394d;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    details[open] summary {
+      border-bottom: 1px solid var(--line);
+    }
+
+    .details-body {
+      padding: 16px;
+    }
+
+    .notice {
+      margin: 18px 0;
+      padding: 14px 16px;
+      border-left: 5px solid #9b83d3;
+      border-radius: 10px;
+      color: #4e415f;
+      background: var(--brand-soft);
+    }
+
+    .notice.warning {
+      color: #70430d;
+      border-color: #e3a454;
+      background: var(--warning-bg);
+    }
+
+    .notice.danger {
+      color: #71363c;
+      border-color: #d8757e;
+      background: var(--danger-bg);
+    }
+
+    .notice.success {
+      color: #285f46;
+      border-color: #68b38d;
+      background: var(--success-bg);
+    }
+
+    .code-card {
+      margin: 18px 0;
+      overflow: hidden;
+      border: 1px solid #292634;
+      border-radius: 13px;
+      background: var(--code);
+    }
+
+    .code-head {
+      min-height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 7px 10px 7px 15px;
+      color: #aaa5b7;
+      background: #1a1922;
+      font-size: 12px;
+    }
+
+    .copy-button {
+      padding: 5px 9px;
+      color: #c9c3d2;
+      border-color: #34313f;
+      background: #23212d;
+      font-size: 11px;
+    }
+
+    pre {
+      max-height: 640px;
+      margin: 0;
+      overflow: auto;
+      padding: 11px 0;
+      color: #e8e3ef;
+      background: var(--code);
+      line-height: 1.65;
+      tab-size: 2;
+    }
+
+    pre code {
+      display: block;
+      min-width: max-content;
+      font-size: 13px;
+    }
+
+    .code-line {
+      display: block;
+      min-height: 1.65em;
+      padding-right: 18px;
+      white-space: pre;
+    }
+
+    .code-line::before {
+      content: attr(data-line);
+      position: sticky;
+      left: 0;
+      display: inline-block;
+      width: 54px;
+      margin-right: 14px;
+      padding-right: 11px;
+      color: #716b7d;
+      background: var(--code);
+      text-align: right;
+      user-select: none;
+    }
+
+    .code-line:hover {
+      background: var(--code-line);
+    }
+
+    .code-line:hover::before {
+      color: #c0b7d1;
+      background: var(--code-line);
+    }
+
+    .table-wrap {
+      margin: 14px 0;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 11px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    th,
+    td {
+      padding: 11px 13px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    th {
+      color: #50475e;
+      background: #f4f1f8;
+    }
+
+    td:first-child {
+      width: 120px;
+      color: var(--brand);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .flow {
+      display: flex;
+      align-items: stretch;
+      gap: 8px;
+      margin: 18px 0;
+      overflow-x: auto;
+    }
+
+    .flow span {
+      min-width: 126px;
+      display: grid;
+      place-items: center;
+      padding: 10px;
+      border: 1px solid #d8cee9;
+      border-radius: 10px;
+      color: #514366;
+      background: #f5f1fb;
+      font-size: 13px;
+      text-align: center;
+    }
+
+    .flow b {
+      align-self: center;
+      color: #a496bc;
+    }
+
+    .comparison {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .comparison article {
+      padding: 15px;
+      border-radius: 11px;
+    }
+
+    .comparison .old {
+      color: #70430d;
+      border: 1px solid #ecd09e;
+      background: var(--warning-bg);
+    }
+
+    .comparison .final {
+      color: #285f46;
+      border: 1px solid #b8ddca;
+      background: var(--success-bg);
+    }
+
+    .comparison h3 {
+      margin: 0 0 6px;
+      font-size: 16px;
+    }
+
+    .glossary {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .glossary div {
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--surface-soft);
+    }
+
+    .glossary dt {
+      color: #4d3d65;
+      font-weight: 700;
+    }
+
+    .glossary dd {
+      margin: 3px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 940px) {
+      .page {
+        grid-template-columns: 1fr;
+      }
+
+      .toc {
+        position: static;
+        max-height: none;
+      }
+
+      .mental-model {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 620px) {
+      .hero {
+        padding: 38px 20px;
+      }
+
+      .page {
+        padding: 0 10px;
+      }
+
+      section {
+        padding: 21px 16px;
+      }
+
+      .mental-model,
+      .comparison,
+      .glossary {
+        grid-template-columns: 1fr;
+      }
+
+      .code-head {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+    }
+
+    @media print {
+      body {
+        background: #fff;
+      }
+
+      .reading-progress,
+      .toc,
+      .copy-button {
+        display: none;
+      }
+
+      .hero {
+        padding: 0 0 22px;
+        color: #000;
+        background: #fff;
+      }
+
+      .hero p,
+      .hero .eyebrow {
+        color: #333;
+      }
+
+      .page {
+        display: block;
+        width: auto;
+        margin: 0;
+        padding: 0;
+      }
+
+      section {
+        break-inside: avoid;
+        border: 0;
+        box-shadow: none;
+        padding: 12px 0;
+      }
+
+      details {
+        break-inside: avoid;
+      }
+
+      details:not([open]) > *:not(summary) {
+        display: block;
+      }
+
+      pre {
+        max-height: none;
+        white-space: pre-wrap;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="reading-progress" id="readingProgress" aria-hidden="true"></div>
+
+  <header class="hero">
+    <div class="eyebrow">Taskato · Source walkthrough</div>
+    <h1>无箭头子任务树 HTML 源码讲解</h1>
+    <p>把 738 行预览源码拆成可以逐段阅读的学习指南：先建立整体模型，再依次理解 CSS、HTML 结构、数据属性和 JavaScript 交互。</p>
+    <div class="meta" aria-label="文档信息">
+      <span class="chip">适用对象：HTML / CSS / JavaScript 初学者</span>
+      <span class="chip">讲解源文件：preview_SubtaskTreeNoChevron_20260724_1433.html</span>
+      <span class="chip">更新日期：2026-07-24</span>
+      <span class="chip">离线可读</span>
+    </div>
+  </header>
+
+  <div class="page">
+    <nav class="toc" aria-label="本页目录">
+      <strong>本页目录</strong>
+      <a href="#overview">1. 整体工作方式</a>
+      <a href="#document">2. 文档骨架</a>
+      <a href="#theme">3. 主题与基础 CSS</a>
+      <a href="#task-row">4. 任务行与悬停按钮</a>
+      <a href="#tree">5. 任务树连接线</a>
+      <a href="#markup">6. HTML 任务结构</a>
+      <a href="#composer">7. 子任务输入器</a>
+      <a href="#progress">8. 进度统计</a>
+      <a href="#dynamic">9. 动态新增任务</a>
+      <a href="#events">10. 事件初始化</a>
+      <a href="#cleanup">11. 最终方案差异</a>
+      <a href="#glossary">12. 术语表</a>
+      <div class="toc-actions">
+        <button type="button" id="expandAll">展开全部讲解</button>
+        <button type="button" id="collapseAll">折叠全部讲解</button>
+        <button type="button" onclick="window.print()">打印或保存 PDF</button>
+      </div>
+    </nav>
+
+    <main>
+      <section id="overview">
+        <h2>1. 先建立整体工作方式</h2>
+        <p>这份页面不是由一段代码完成的，而是四层代码互相配合。先记住下面四层，再看具体行号会容易很多。</p>
+
+        <div class="mental-model">
+          <article>
+            <span>1</span>
+            <strong>HTML</strong>
+            <p>负责父任务、子任务、按钮、复选框和输入器的结构。</p>
+          </article>
+          <article>
+            <span>2</span>
+            <strong>CSS</strong>
+            <p>负责颜色、缩进、连接线、悬停显示和折叠动画。</p>
+          </article>
+          <article>
+            <span>3</span>
+            <strong>data-* 属性</strong>
+            <p>把按钮和对应的父任务分组关联起来。</p>
+          </article>
+          <article>
+            <span>4</span>
+            <strong>JavaScript</strong>
+            <p>处理新增、完成、进度计算、展开和折叠。</p>
+          </article>
+        </div>
+
+        <div class="flow" aria-label="新增子任务执行流程">
+          <span>悬停任务行</span><b>→</b>
+          <span>点击添加子任务</span><b>→</b>
+          <span>复制输入器模板</span><b>→</b>
+          <span>输入标题并保存</span><b>→</b>
+          <span>插入新任务并更新进度</span>
+        </div>
+
+        <div class="notice">
+          <strong>推荐阅读顺序：</strong>不要一开始就钻进 JavaScript。先看 HTML 中的
+          <code>data-add-to</code>、<code>data-toggle</code>、<code>data-children</code>，
+          再看 JavaScript 如何读取它们。
+        </div>
+      </section>
+
+      <section id="document">
+        <h2>2. 文档骨架：第 1–7 行</h2>
+        <p>这几行完成浏览器识别、中文编码、移动端宽度和页面标题设置。</p>
+
+        <div class="code-card">
+          <div class="code-head">
+            <span>第 1–7 行 · 页面基本声明</span>
+            <button class="copy-button" type="button">复制代码</button>
+          </div>
+          <pre><code data-start="1">&lt;!doctype html&gt;
+&lt;html lang="zh-CN"&gt;
+&lt;head&gt;
+  &lt;meta charset="utf-8"&gt;
+  &lt;meta name="viewport" content="width=device-width, initial-scale=1"&gt;
+  &lt;title&gt;Taskato · 无箭头子任务树预览&lt;/title&gt;
+  &lt;style&gt;</code></pre>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>行号</th><th>作用</th><th>为什么需要</th></tr></thead>
+            <tbody>
+              <tr><td>1</td><td>声明 HTML5</td><td>让浏览器使用标准模式解析页面。</td></tr>
+              <tr><td>2</td><td>声明简体中文</td><td>帮助浏览器、搜索引擎和朗读软件选择正确语言。</td></tr>
+              <tr><td>4</td><td>使用 UTF-8</td><td>保证中文和特殊符号正常显示。</td></tr>
+              <tr><td>5</td><td>设置视口</td><td>让窄屏设备按照真实设备宽度排版。</td></tr>
+              <tr><td>6</td><td>浏览器标签标题</td><td>页面打开后可以在标签栏中识别。</td></tr>
+              <tr><td>7</td><td>进入 CSS</td><td>后续第 8–460 行都在定义视觉样式。</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="theme">
+        <h2>3. 主题变量与基础 CSS：第 8–127 行</h2>
+
+        <details open>
+          <summary>第 8–23 行：为什么先定义颜色变量</summary>
+          <div class="details-body">
+            <div class="code-card">
+              <div class="code-head">
+                <span>第 8–23 行 · 全局主题变量</span>
+                <button class="copy-button" type="button">复制代码</button>
+              </div>
+              <pre><code data-start="8">:root {
+  color-scheme: dark;
+  --page: #0b0b10;
+  --panel: #111218;
+  --row: #15161d;
+  --row-hover: #191a22;
+  --line: #2a2b35;
+  --line-soft: #22232c;
+  --text: #f0eef4;
+  --text-secondary: #a3a0ac;
+  --muted: #696773;
+  --accent: #9d83e7;
+  --accent-soft: #211d31;
+  --success: #72c99a;
+  --warning: #e5aa68;
+}</code></pre>
+            </div>
+
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>行号</th><th>变量</th><th>用途</th></tr></thead>
+                <tbody>
+                  <tr><td>9</td><td><code>color-scheme</code></td><td>告诉浏览器原生复选框等控件应采用深色外观。</td></tr>
+                  <tr><td>10–13</td><td>页面、面板、任务行</td><td>区分页面层级，并提供悬停反馈。</td></tr>
+                  <tr><td>14–15</td><td>连接线、分隔线</td><td>控制任务树和工具栏边界。</td></tr>
+                  <tr><td>16–18</td><td>文字颜色</td><td>建立主文字、次要文字和弱化文字层级。</td></tr>
+                  <tr><td>19–20</td><td>紫色主题</td><td>用于复选框、进度胶囊和交互反馈。</td></tr>
+                  <tr><td>21–22</td><td>状态颜色</td><td>预留完成绿色和优先级橙色。</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="notice warning">
+              <strong>当前未使用：</strong><code>--row</code>、<code>--text-secondary</code> 和
+              <code>--success</code> 在这份预览中只是预留变量，删除它们不会改变当前画面。
+            </div>
+          </div>
+        </details>
+
+        <details>
+          <summary>第 25–127 行：基础布局规则</summary>
+          <div class="details-body">
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>行号</th><th>代码职责</th><th>理解重点</th></tr></thead>
+                <tbody>
+                  <tr><td>25–27</td><td>统一盒模型</td><td><code>border-box</code> 让宽高包含内边距和边框。</td></tr>
+                  <tr><td>29–36</td><td>页面基础样式</td><td>占满视口、移除默认边距、设置字体和背景。</td></tr>
+                  <tr><td>38–47</td><td>按钮和输入框重置</td><td>继承字体并清除按钮默认边框。</td></tr>
+                  <tr><td>49–52</td><td>预览宽度</td><td>最大 760px，空间不足时自动变为 100%。</td></tr>
+                  <tr><td>54–86</td><td>页面标题</td><td>标题和说明左右排列；窄屏时会改成上下排列。</td></tr>
+                  <tr><td>88–104</td><td>应用面板</td><td>圆角、边框、阴影和工具栏分隔线。</td></tr>
+                  <tr><td>106–127</td><td>工具栏和列表</td><td>“今天”、待完成数量、日期和任务列表内边距。</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </details>
+      </section>
+
+      <section id="task-row">
+        <h2>4. 任务行和悬停新增：第 129–232 行</h2>
+
+        <details open>
+          <summary>第 133–147 行：三列任务布局</summary>
+          <div class="details-body">
+            <div class="code-card">
+              <div class="code-head">
+                <span>复选框 | 标题 | 操作区</span>
+                <button class="copy-button" type="button">复制代码</button>
+              </div>
+              <pre><code data-start="133">.task-row {
+  min-height: 58px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 10px;
+  border-radius: 11px;
+  transition: background .14s ease;
+}
+
+.task-row:hover,
+.task-row:focus-within {
+  background: var(--row-hover);
+}</code></pre>
+            </div>
+
+            <p><code>minmax(0, 1fr)</code> 是这一段最关键的代码：标题列可以使用剩余空间，也允许缩小到
+              0，因此长标题才能正确出现省略号，而不会把右侧按钮顶出界面。</p>
+          </div>
+        </details>
+
+        <details open>
+          <summary>第 192–213 行：为什么按钮能“悬停才显示”</summary>
+          <div class="details-body">
+            <div class="code-card">
+              <div class="code-head">
+                <span>新增按钮的默认、出现和悬停状态</span>
+                <button class="copy-button" type="button">复制代码</button>
+              </div>
+              <pre><code data-start="192">.add-action {
+  height: 26px;
+  padding: 0 8px;
+  border-radius: 7px;
+  color: #9d8fc0;
+  background: transparent;
+  font-size: 9px;
+  opacity: 0;
+  transform: translateX(3px);
+  transition: opacity .14s ease, transform .14s ease, background .14s ease;
+}
+
+.task-row:hover .add-action,
+.task-row:focus-within .add-action {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.add-action:hover {
+  color: #c1afea;
+  background: var(--accent-soft);
+}</code></pre>
+            </div>
+
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>行号</th><th>执行结果</th></tr></thead>
+                <tbody>
+                  <tr><td>199</td><td><code>opacity: 0</code> 让按钮不可见，但仍保留布局空间。</td></tr>
+                  <tr><td>200</td><td>按钮初始向右移动 3px，为出现动画准备。</td></tr>
+                  <tr><td>204–208</td><td>鼠标悬停或键盘焦点进入任务行后，按钮淡入并向左复位。</td></tr>
+                  <tr><td>210–213</td><td>鼠标真正进入按钮后，再显示淡紫色背景。</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </details>
+
+        <details>
+          <summary>第 215–232 行：进度胶囊</summary>
+          <div class="details-body">
+            <p><code>border-radius: 999px</code> 把按钮变成胶囊；<code>font-variant-numeric: tabular-nums</code>
+              让数字等宽，进度从 <code>1 / 2</code> 变成 <code>2 / 2</code> 时不会轻微抖动。</p>
+          </div>
+        </details>
+      </section>
+
+      <section id="tree">
+        <h2>5. 无箭头任务树连接线：第 234–292 行</h2>
+
+        <div class="code-card">
+          <div class="code-head">
+            <span>第 234–262 行 · 竖线与折线</span>
+            <button class="copy-button" type="button">复制代码</button>
+          </div>
+          <pre><code data-start="234">.children {
+  position: relative;
+  margin-left: 20px;
+  padding-left: 23px;
+}
+
+.children::before {
+  content: "";
+  position: absolute;
+  top: -5px;
+  bottom: 29px;
+  left: 8px;
+  width: 1px;
+  background: var(--line);
+}
+
+.children &gt; .task-node::before,
+.children &gt; .composer-wrap::before,
+.children &gt; .add-row::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -15px;
+  width: 15px;
+  height: 28px;
+  border-bottom: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+  border-radius: 0 0 0 8px;
+}</code></pre>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>行号</th><th>作用</th></tr></thead>
+            <tbody>
+              <tr><td>234–238</td><td>给整个子任务组增加左侧缩进，并建立绝对定位参照物。</td></tr>
+              <tr><td>240–248</td><td><code>::before</code> 创建贯穿子任务组的 1px 竖线。</td></tr>
+              <tr><td>250–262</td><td>每个子任务再创建一段“左边框 + 下边框”，形成圆角折线。</td></tr>
+              <tr><td>264–278</td><td>缩小子任务行、标题和复选框，使层级更轻。</td></tr>
+              <tr><td>280–282</td><td>下一层子任务再次缩进，实现多级嵌套。</td></tr>
+              <tr><td>284–292</td><td>已完成任务变灰、标题增加删除线。</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="notice">
+          <strong>核心思路：</strong>任务树并不需要图片或 SVG。竖线由父容器的伪元素绘制，横向折线由每个子节点的伪元素绘制。
+        </div>
+      </section>
+
+      <section id="markup">
+        <h2>6. HTML 如何表达父子任务：第 483–592 行</h2>
+
+        <details open>
+          <summary>第 483–498 行：顶级父任务</summary>
+          <div class="details-body">
+            <div class="code-card">
+              <div class="code-head">
+                <span>父任务、自动完成状态和两个操作按钮</span>
+                <button class="copy-button" type="button">复制代码</button>
+              </div>
+              <pre><code data-start="483">&lt;article class="task-node" data-node="release"&gt;
+  &lt;div class="task-row"&gt;
+    &lt;input class="task-check" type="checkbox" data-parent-check="release" disabled
+           aria-label="发布 Taskato 新版本完成状态" title="全部子任务完成后自动完成"&gt;
+    &lt;div class="task-copy"&gt;
+      &lt;div class="task-name"&gt;发布 Taskato 新版本&lt;/div&gt;
+      &lt;div class="task-meta"&gt;
+        &lt;span class="priority"&gt;高优先级&lt;/span&gt;
+        &lt;span&gt;今天&lt;/span&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+    &lt;div class="task-actions"&gt;
+      &lt;button class="add-action" type="button" data-add-to="release"&gt;添加子任务&lt;/button&gt;
+      &lt;button class="progress-button" type="button" data-toggle="release"
+              aria-expanded="true" title="折叠子任务"&gt;2 / 5&lt;/button&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;</code></pre>
+            </div>
+
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>属性</th><th>含义</th><th>由谁读取</th></tr></thead>
+                <tbody>
+                  <tr><td><code>data-node</code></td><td>给父任务一个逻辑名称。</td><td>主要供人理解和后续扩展。</td></tr>
+                  <tr><td><code>data-parent-check</code></td><td>标记父任务的自动完成复选框。</td><td><code>updateProgress()</code></td></tr>
+                  <tr><td><code>data-add-to</code></td><td>说明新增任务应进入哪个分组。</td><td><code>openComposer()</code></td></tr>
+                  <tr><td><code>data-toggle</code></td><td>说明进度按钮控制哪个分组。</td><td><code>toggleChildren()</code></td></tr>
+                  <tr><td><code>aria-expanded</code></td><td>告诉辅助工具当前展开状态。</td><td>浏览器辅助功能树</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </details>
+
+        <details open>
+          <summary>第 500–580 行：叶子任务与嵌套父任务</summary>
+          <div class="details-body">
+            <p><code>data-leaf</code> 是进度统计的核心标记。带这个属性的任务可以直接完成；没有这个属性、但包含
+              <code>.children</code> 的任务被视为父任务。</p>
+
+            <div class="comparison">
+              <article class="final">
+                <h3>叶子任务</h3>
+                <p><code>&lt;article data-leaf&gt;</code></p>
+                <p>拥有可操作复选框，直接计入完成数量。</p>
+              </article>
+              <article class="old">
+                <h3>父任务</h3>
+                <p><code>&lt;article data-node="upgrade"&gt;</code></p>
+                <p>复选框禁用，由所有后代任务的状态自动决定。</p>
+              </article>
+            </div>
+
+            <div class="notice warning">
+              <strong>预览遗留：</strong>第 549–551 行和第 577–579 行仍有“添加下一项”按钮。你已经否决这个入口，正式 WPF 界面没有采用。
+            </div>
+          </div>
+        </details>
+      </section>
+
+      <section id="composer">
+        <h2>7. 子任务输入器：第 603–612、685–721 行</h2>
+
+        <details open>
+          <summary>第 603–612 行：为什么使用 template</summary>
+          <div class="details-body">
+            <div class="code-card">
+              <div class="code-head">
+                <span>不会立即显示的输入器模板</span>
+                <button class="copy-button" type="button">复制代码</button>
+              </div>
+              <pre><code data-start="603">&lt;template id="composerTemplate"&gt;
+  &lt;div class="composer-wrap"&gt;
+    &lt;div class="composer"&gt;
+      &lt;input class="task-check" type="checkbox" disabled aria-hidden="true"&gt;
+      &lt;input type="text" maxlength="80" placeholder="输入子任务标题"&gt;
+      &lt;button class="cancel-button" type="button"&gt;取消&lt;/button&gt;
+      &lt;button class="save-button" type="button"&gt;保存&lt;/button&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+&lt;/template&gt;</code></pre>
+            </div>
+
+            <p><code>&lt;template&gt;</code> 中的元素不会直接出现在页面上。点击“添加子任务”后，
+              JavaScript 才复制一份模板并插入对应父任务下面。</p>
+          </div>
+        </details>
+
+        <details>
+          <summary>第 685–721 行：打开、保存、取消和聚焦</summary>
+          <div class="details-body">
+            <div class="flow">
+              <span>找到父分组</span><b>→</b>
+              <span>展开父任务</span><b>→</b>
+              <span>避免重复输入器</span><b>→</b>
+              <span>复制 template</span><b>→</b>
+              <span>绑定按钮与键盘</span><b>→</b>
+              <span>自动聚焦</span>
+            </div>
+
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>行号</th><th>发生的事情</th></tr></thead>
+                <tbody>
+                  <tr><td>686–688</td><td>找到父分组并确保它处于展开状态。</td></tr>
+                  <tr><td>690–694</td><td>已经存在输入器时只重新聚焦，避免重复创建。</td></tr>
+                  <tr><td>696–701</td><td>复制模板并插入对应的子任务列表。</td></tr>
+                  <tr><td>703–712</td><td>验证标题、创建任务、删除输入器并更新进度。</td></tr>
+                  <tr><td>714–719</td><td>绑定取消、保存、Enter 和 Escape。</td></tr>
+                  <tr><td>720</td><td>等待浏览器完成 DOM 更新后再聚焦输入框。</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </details>
+      </section>
+
+      <section id="progress">
+        <h2>8. 进度统计：第 615–653 行</h2>
+
+        <details open>
+          <summary>第 620–624 行：统计直属叶子任务</summary>
+          <div class="details-body">
+            <div class="code-card">
+              <div class="code-head">
+                <span>输入一个分组，返回完成数和总数</span>
+                <button class="copy-button" type="button">复制代码</button>
+              </div>
+              <pre><code data-start="620">function directLeafStats(group) {
+  const leaves = [...group.children].filter(element =&gt; element.matches('[data-leaf]'));
+  const complete = leaves.filter(element =&gt; element.querySelector('.task-check').checked).length;
+  return { complete, total: leaves.length };
+}</code></pre>
+            </div>
+
+            <p><code>[...group.children]</code> 把类似数组的 HTMLCollection 转成真正数组，之后才能使用
+              <code>filter()</code>。</p>
+          </div>
+        </details>
+
+        <details open>
+          <summary>第 626–648 行：父任务自动完成</summary>
+          <div class="details-body">
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>行号</th><th>逻辑</th></tr></thead>
+                <tbody>
+                  <tr><td>627–633</td><td>计算 upgrade 的进度；全部完成后自动勾选父任务并添加完成样式。</td></tr>
+                  <tr><td>635–643</td><td>计算 release 的进度并更新顶级父任务。</td></tr>
+                  <tr><td>645–647</td><td>扫描全页面叶子任务，更新“还有多少项待完成”。</td></tr>
+                  <tr><td>650–653</td><td>单个复选框变化后更新自身样式，再重新计算所有父级。</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="notice danger">
+              <strong>当前预览存在统计偏差：</strong>第 635–639 行把整个 upgrade 分支算作一项，因此顶级进度会从 HTML 中写的
+              <code>2 / 5</code> 变成 <code>1 / 4</code>。
+            </div>
+
+            <div class="code-card">
+              <div class="code-head">
+                <span>与正式 Taskato 一致的递归叶子统计</span>
+                <button class="copy-button" type="button">复制代码</button>
+              </div>
+              <pre><code data-start="635">const releaseLeaves = [...groups.release.children]
+  .filter(element =&gt; element.matches('[data-leaf]'));
+const completedReleaseLeaves = releaseLeaves
+  .filter(element =&gt; element.querySelector('.task-check').checked).length;
+
+const releaseComplete = completedReleaseLeaves + upgradeStats.complete;
+const releaseTotal = releaseLeaves.length + upgradeStats.total;</code></pre>
+            </div>
+
+            <div class="notice success">
+              <strong>修正结果：</strong>嵌套分支中的每一个叶子任务都参与进度，初始状态正确显示为 <code>2 / 5</code>。
+            </div>
+          </div>
+        </details>
+      </section>
+
+      <section id="dynamic">
+        <h2>9. 动态创建任务：第 663–721 行</h2>
+
+        <details open>
+          <summary>第 667–683 行：createTaskNode()</summary>
+          <div class="details-body">
+            <div class="code-card">
+              <div class="code-head">
+                <span>根据标题创建一条新任务</span>
+                <button class="copy-button" type="button">复制代码</button>
+              </div>
+              <pre><code data-start="667">function createTaskNode(title) {
+  const node = document.createElement('article');
+  node.className = 'task-node new-node';
+  node.dataset.leaf = '';
+  node.innerHTML = `
+    &lt;div class="task-row"&gt;
+      &lt;input class="task-check" type="checkbox" aria-label="完成${title}"&gt;
+      &lt;div class="task-copy"&gt;
+        &lt;div class="task-name"&gt;&lt;/div&gt;
+        &lt;div class="task-meta"&gt;&lt;span&gt;刚刚添加&lt;/span&gt;&lt;/div&gt;
+      &lt;/div&gt;
+      &lt;div class="task-actions"&gt;&lt;/div&gt;
+    &lt;/div&gt;`;
+  node.querySelector('.task-name').textContent = title;
+  node.querySelector('.task-check')
+    .addEventListener('change', event =&gt; setCompleteState(event.target));
+  return node;
+}</code></pre>
+            </div>
+
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>行号</th><th>作用</th></tr></thead>
+                <tbody>
+                  <tr><td>668</td><td>创建新的 <code>article</code> 元素。</td></tr>
+                  <tr><td>669</td><td>添加任务样式和进入动画。</td></tr>
+                  <tr><td>670</td><td>把新任务标记为叶子任务。</td></tr>
+                  <tr><td>671–679</td><td>生成任务内部结构。</td></tr>
+                  <tr><td>680</td><td>用 <code>textContent</code> 安全写入可见标题。</td></tr>
+                  <tr><td>681</td><td>给新复选框绑定完成状态事件。</td></tr>
+                  <tr><td>682</td><td>把创建好的节点返回给保存逻辑。</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="notice warning">
+              <strong>正式代码注意：</strong>第 673 行把标题直接插入 <code>aria-label</code> 模板字符串。如果标题包含引号，
+              应改用 <code>setAttribute()</code>，避免属性内容被破坏。
+            </div>
+          </div>
+        </details>
+      </section>
+
+      <section id="events">
+        <h2>10. 页面启动时绑定事件：第 723–735 行</h2>
+
+        <div class="code-card">
+          <div class="code-head">
+            <span>胶囊、新增按钮和复选框的事件入口</span>
+            <button class="copy-button" type="button">复制代码</button>
+          </div>
+          <pre><code data-start="723">document.querySelectorAll('[data-toggle]').forEach(button =&gt; {
+  button.addEventListener('click', () =&gt; toggleChildren(button));
+});
+
+document.querySelectorAll('[data-add-to]').forEach(button =&gt; {
+  button.addEventListener('click', () =&gt; openComposer(button.dataset.addTo));
+});
+
+document.querySelectorAll('.task-check:not([disabled])').forEach(checkbox =&gt; {
+  checkbox.addEventListener('change', () =&gt; setCompleteState(checkbox));
+});
+
+updateProgress();</code></pre>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>选择器</th><th>绑定的行为</th></tr></thead>
+            <tbody>
+              <tr><td><code>[data-toggle]</code></td><td>点击进度胶囊后展开或折叠对应分组。</td></tr>
+              <tr><td><code>[data-add-to]</code></td><td>点击新增入口后，在指定父任务中打开输入器。</td></tr>
+              <tr><td><code>:not([disabled])</code></td><td>只给叶子任务绑定完成事件，父任务不能手动勾选。</td></tr>
+              <tr><td><code>updateProgress()</code></td><td>页面第一次打开时立即用真实复选框状态刷新数字。</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="cleanup">
+        <h2>11. 预览 HTML 与最终正式界面的差异</h2>
+
+        <div class="comparison">
+          <article class="old">
+            <h3>预览 HTML 仍有的旧逻辑</h3>
+            <ul>
+              <li>子任务列表底部仍有“添加下一项”。</li>
+              <li>顶级进度把嵌套父任务当作一项。</li>
+              <li>移动端隐藏悬停按钮后依赖底部入口。</li>
+            </ul>
+          </article>
+          <article class="final">
+            <h3>正式 WPF 已采用的最终逻辑</h3>
+            <ul>
+              <li>只有悬停显示的“添加子任务”入口。</li>
+              <li>进度统计所有后代叶子任务。</li>
+              <li>进度胶囊接管展开和折叠。</li>
+              <li>Enter 保存，Esc 清空并关闭输入。</li>
+            </ul>
+          </article>
+        </div>
+
+        <div class="notice">
+          <strong>学习时的判断：</strong>把这份 HTML 当作“视觉与交互原型”；业务规则以正式 WPF 实现为准。
+        </div>
+      </section>
+
+      <section id="glossary">
+        <h2>12. 术语表</h2>
+        <dl class="glossary">
+          <div><dt>DOM</dt><dd>浏览器解析 HTML 后形成的页面节点树。</dd></div>
+          <div><dt>叶子任务</dt><dd>没有子任务、可以直接完成的最末级任务。</dd></div>
+          <div><dt>父任务</dt><dd>包含子任务，其完成状态由后代决定的任务。</dd></div>
+          <div><dt>伪元素</dt><dd><code>::before</code> 等由 CSS 生成、无需额外 HTML 的视觉元素。</dd></div>
+          <div><dt>data-* 属性</dt><dd>HTML 提供给 JavaScript 使用的自定义数据。</dd></div>
+          <div><dt>可选链</dt><dd><code>?.</code>，对象不存在时安全返回，而不是立即报错。</dd></div>
+          <div><dt>模板字符串</dt><dd>使用反引号包裹，可以跨行并通过 <code>${...}</code> 插入变量。</dd></div>
+          <div><dt>事件监听器</dt><dd>等待点击、输入或状态变化，然后执行指定函数。</dd></div>
+        </dl>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    document.querySelectorAll('pre code[data-start]').forEach(code => {
+      const start = Number(code.dataset.start);
+      const raw = code.textContent.replace(/^\n|\n$/g, '');
+      code.dataset.raw = raw;
+      code.textContent = '';
+
+      raw.split('\n').forEach((line, index) => {
+        const row = document.createElement('span');
+        row.className = 'code-line';
+        row.dataset.line = String(start + index);
+        row.textContent = line || ' ';
+        code.appendChild(row);
+      });
+    });
+
+    document.querySelectorAll('.copy-button').forEach(button => {
+      button.addEventListener('click', async () => {
+        const code = button.closest('.code-card').querySelector('code');
+        const originalLabel = button.textContent;
+        try {
+          await navigator.clipboard.writeText(code.dataset.raw);
+          button.textContent = '已复制';
+        } catch {
+          button.textContent = '复制失败';
+        }
+        window.setTimeout(() => {
+          button.textContent = originalLabel;
+        }, 1200);
+      });
+    });
+
+    const details = [...document.querySelectorAll('details')];
+    document.getElementById('expandAll').addEventListener('click', () => {
+      details.forEach(detail => {
+        detail.open = true;
+      });
+    });
+
+    document.getElementById('collapseAll').addEventListener('click', () => {
+      details.forEach(detail => {
+        detail.open = false;
+      });
+    });
+
+    function updateReadingProgress() {
+      const scrollable = document.documentElement.scrollHeight - window.innerHeight;
+      const ratio = scrollable > 0 ? window.scrollY / scrollable : 0;
+      document.getElementById('readingProgress').style.width = `${Math.min(1, ratio) * 100}%`;
+    }
+
+    window.addEventListener('scroll', updateReadingProgress, { passive: true });
+    updateReadingProgress();
+  </script>
+</body>
+</html>

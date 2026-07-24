@@ -22,6 +22,7 @@ namespace Taskato.ViewModels
 
         /// <summary>数据库服务 — 负责任务的持久化存储</summary>
         private readonly DatabaseService _dbService;
+        public DatabaseService DatabaseService => _dbService;
 
         /// <summary>番茄钟服务 — 负责计时逻辑</summary>
         private readonly PomodoroService _pomodoroService;
@@ -69,6 +70,9 @@ namespace Taskato.ViewModels
         /// 今日任务列表（ObservableCollection 会自动通知 UI 更新列表）
         /// </summary>
         public ObservableCollection<TaskItem> TodayTasks { get; } = new();
+
+        private readonly List<TaskItem> _visibleTaskTree = new();
+        private readonly HashSet<int> _collapsedTaskIds = new();
 
         /// <summary>
         /// 新任务输入框绑定的文本内容
@@ -152,6 +156,12 @@ namespace Taskato.ViewModels
         /// <summary>删除任务的命令</summary>
         public ICommand DeleteTaskCommand { get; }
 
+        /// <summary>展开或折叠一个任务分支</summary>
+        public ICommand ToggleTaskExpansionCommand { get; }
+
+        /// <summary>显示或提交直属子任务输入框</summary>
+        public ICommand AddChildTaskCommand { get; }
+
         /// <summary>打开历史查询窗体的命令</summary>
         public ICommand OpenHistoryCommand { get; }
 
@@ -230,6 +240,30 @@ namespace Taskato.ViewModels
                     await DeleteTaskAsync(task);
             });
 
+            ToggleTaskExpansionCommand = new RelayCommand(param =>
+            {
+                if (param is not TaskItem task || !task.HasChildren) return;
+                task.IsExpanded = !task.IsExpanded;
+                if (task.IsExpanded)
+                    _collapsedTaskIds.Remove(task.Id);
+                else
+                    _collapsedTaskIds.Add(task.Id);
+                RefreshFlattenedTasks();
+            });
+
+            AddChildTaskCommand = new RelayCommand(async param =>
+            {
+                if (param is not TaskItem parent || !parent.CanAddChild) return;
+
+                if (!parent.IsAddingChild)
+                {
+                    parent.IsAddingChild = true;
+                    return;
+                }
+
+                await AddChildTaskAsync(parent);
+            });
+
             // 附加计时器管理
             AddAdditionalTimerCommand = new RelayCommand(_ => AddAdditionalTimer());
             RemoveAdditionalTimerCommand = new RelayCommand(param => 
@@ -304,15 +338,9 @@ namespace Taskato.ViewModels
         /// </summary>
         public async Task LoadTodayTasksAsync()
         {
-            var tasks = await _dbService.GetTodayTasksAsync();
-
-            TodayTasks.Clear();
-            foreach (var task in tasks)
-            {
-                TodayTasks.Add(task);
-            }
-
-            // 刷新统计
+            var tasks = await _dbService.GetTaskTreeItemsAsync();
+            BuildVisibleTaskTree(tasks);
+            RefreshFlattenedTasks();
             UpdateCounts();
         }
 
@@ -342,30 +370,71 @@ namespace Taskato.ViewModels
         /// </summary>
         private async Task ToggleTaskAsync(TaskItem task)
         {
+            if (task.HasChildren)
+            {
+                var remaining = Math.Max(0, task.TotalLeafCount - task.CompletedLeafCount);
+                var message = remaining > 0
+                    ? $"“{task.DisplayTitle}”还有 {remaining} 个叶子任务未完成，请先完成子任务。"
+                    : "父任务由子任务状态自动维护；如需重新打开，请取消一个叶子任务的完成状态。";
+                MessageBox.Show(
+                    Application.Current?.MainWindow,
+                    message,
+                    "父任务状态",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                task.IsExpanded = true;
+                _collapsedTaskIds.Remove(task.Id);
+                RefreshFlattenedTasks();
+                return;
+            }
+
             if (!task.IsCompleted)
             {
                 var owner = Application.Current?.MainWindow;
                 if (!Views.TaskCompletionDialog.TryShowForCompletion(owner, task, out var durationMinutes))
                     return;
 
-                await _dbService.CompleteTaskAsync(task, DateTime.Now, durationMinutes);
+                await _dbService.CompleteTaskWithCascadeAsync(
+                    task,
+                    DateTime.Now,
+                    durationMinutes,
+                    CompletionTrigger.Manual);
                 return;
             }
 
-            task.IsCompleted = false;
-            task.CompletedAt = null;
-            task.CompletionDurationMinutes = null;
-            await _dbService.UpdateTaskAsync(task);
+            await _dbService.ReopenTaskWithAncestorsAsync(task);
+        }
+
+        public async Task AddChildTaskAsync(TaskItem parent)
+        {
+            if (!parent.CanAddChild) return;
+            if (string.IsNullOrWhiteSpace(parent.NewChildTitle))
+            {
+                parent.IsAddingChild = true;
+                return;
+            }
+
+            var createdTask = await _dbService.AddChildTaskAsync(
+                parent,
+                parent.NewChildTitle,
+                parent.Priority);
+            if (createdTask is null) return;
+
+            parent.NewChildTitle = string.Empty;
+            parent.IsAddingChild = false;
+            parent.IsExpanded = true;
+            _collapsedTaskIds.Remove(parent.Id);
+            await LoadTodayTasksAsync();
         }
 
         /// <summary>
         /// 删除任务
         /// </summary>
-        private async Task DeleteTaskAsync(TaskItem task)
+        public async Task DeleteTaskAsync(
+            TaskItem task,
+            TaskDeleteMode deleteMode = TaskDeleteMode.DeleteBranch)
         {
-            await _dbService.DeleteTaskAsync(task);
-            // 注意：因为订阅了 OnDataChanged 事件，这里其实不需要手动 LoadTodayTasksAsync，
-            // 但为了双重保险也可以保留，或者由事件统一接管
+            await _dbService.DeleteTaskAsync(task, deleteMode);
         }
 
         /// <summary>
@@ -376,13 +445,127 @@ namespace Taskato.ViewModels
             await _dbService.UpdateTaskAsync(task);
         }
 
+        public async Task<TaskMoveResult> SaveTaskEditAsync(TaskItem task, int? parentId)
+        {
+            await _dbService.UpdateTaskAsync(task);
+            return await _dbService.MoveTaskAsync(task.Id, parentId);
+        }
+
         /// <summary>
         /// 更新统计数字（完成数 / 总数）
         /// </summary>
         private void UpdateCounts()
         {
-            TotalCount = TodayTasks.Count;
-            CompletedCount = TodayTasks.Count(t => t.IsCompleted);
+            var leafTasks = _visibleTaskTree.Where(task => task.IsLeaf).ToList();
+            TotalCount = leafTasks.Count;
+            CompletedCount = leafTasks.Count(task => task.IsCompleted);
+        }
+
+        private void BuildVisibleTaskTree(List<TaskItem> tasks)
+        {
+            foreach (var task in tasks)
+            {
+                task.Children.Clear();
+                task.IsExpanded = !_collapsedTaskIds.Contains(task.Id);
+            }
+
+            var tasksById = tasks.ToDictionary(task => task.Id);
+            var roots = new List<TaskItem>();
+            foreach (var task in tasks)
+            {
+                if (task.ParentId.HasValue &&
+                    tasksById.TryGetValue(task.ParentId.Value, out var parent) &&
+                    parent.Id != task.Id)
+                {
+                    parent.Children.Add(task);
+                }
+                else
+                {
+                    roots.Add(task);
+                }
+            }
+
+            foreach (var task in tasks)
+                task.NotifyTreeStateChanged();
+
+            _visibleTaskTree.Clear();
+            var todayStart = DateTime.Today;
+            foreach (var root in roots
+                         .OrderByDescending(task => task.Priority)
+                         .ThenBy(task => task.OrderIndex)
+                         .ThenByDescending(task => task.CreatedAt))
+            {
+                CalculateTreeState(root, 0, new HashSet<int>());
+                if (ContainsCurrentTask(root, todayStart))
+                    _visibleTaskTree.Add(root);
+            }
+        }
+
+        private void RefreshFlattenedTasks()
+        {
+            TodayTasks.Clear();
+            foreach (var root in _visibleTaskTree)
+                AddVisibleBranch(root);
+        }
+
+        private void AddVisibleBranch(TaskItem task)
+        {
+            TodayTasks.Add(task);
+            if (!task.IsExpanded) return;
+            foreach (var child in task.Children
+                         .OrderByDescending(item => item.Priority)
+                         .ThenBy(item => item.OrderIndex)
+                         .ThenByDescending(item => item.CreatedAt))
+            {
+                AddVisibleBranch(child);
+            }
+        }
+
+        private static (int CompletedLeaves, int TotalLeaves) CalculateTreeState(
+            TaskItem task,
+            int depth,
+            HashSet<int> branch)
+        {
+            task.Depth = Math.Min(depth, DatabaseService.MaximumTaskDepth - 1);
+            if (!branch.Add(task.Id))
+            {
+                task.CompletedLeafCount = task.IsCompleted ? 1 : 0;
+                task.TotalLeafCount = 1;
+                task.NotifyTreeStateChanged();
+                return (task.CompletedLeafCount, 1);
+            }
+
+            if (task.Children.Count == 0)
+            {
+                task.CompletedLeafCount = task.IsCompleted ? 1 : 0;
+                task.TotalLeafCount = 1;
+            }
+            else
+            {
+                var completedLeaves = 0;
+                var totalLeaves = 0;
+                foreach (var child in task.Children)
+                {
+                    var childState = CalculateTreeState(child, depth + 1, branch);
+                    completedLeaves += childState.CompletedLeaves;
+                    totalLeaves += childState.TotalLeaves;
+                }
+
+                task.CompletedLeafCount = completedLeaves;
+                task.TotalLeafCount = totalLeaves;
+            }
+
+            branch.Remove(task.Id);
+            task.NotifyTreeStateChanged();
+            return (task.CompletedLeafCount, task.TotalLeafCount);
+        }
+
+        private static bool ContainsCurrentTask(TaskItem task, DateTime todayStart)
+        {
+            var isCurrent = !task.IsCompleted ||
+                            task.CreatedAt >= todayStart ||
+                            task.CompletedAt >= todayStart;
+            return isCurrent || task.Children.Any(child => ContainsCurrentTask(child, todayStart));
         }
 
 

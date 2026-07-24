@@ -21,6 +21,7 @@
             <converters:InverseBoolConverter x:Key="InverseBoolConverter"/>
             <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
             <converters:TaskTimeDisplayConverter x:Key="TaskTimeDisplayConverter"/>
+            <converters:DoubleToLeftMarginConverter x:Key="DoubleToLeftMarginConverter"/>
             <converters:IntToBoolConverter x:Key="IntToBoolConverter"/>
             <converters:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter"/>
 

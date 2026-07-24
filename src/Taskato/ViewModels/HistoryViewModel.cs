@@ -19,6 +19,7 @@ namespace Taskato.ViewModels
     {
         /// <summary>数据库服务</summary>
         private readonly DatabaseService _dbService;
+        public DatabaseService DatabaseService => _dbService;
 
         // ==================== 搜索条件 ====================
 
@@ -148,6 +149,12 @@ namespace Taskato.ViewModels
         public async Task SaveTaskEditAsync(TaskItem task)
         {
             await _dbService.UpdateTaskAsync(task);
+        }
+
+        public async Task DeleteTaskAsync(TaskItem task, TaskDeleteMode deleteMode)
+        {
+            await _dbService.DeleteTaskAsync(task, deleteMode);
+            await SearchAsync();
         }
 
         /// <summary>

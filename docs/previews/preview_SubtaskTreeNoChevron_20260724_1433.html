@@ -1,0 +1,738 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Taskato · 无箭头子任务树预览</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --page: #0b0b10;
+      --panel: #111218;
+      --row: #15161d;
+      --row-hover: #191a22;
+      --line: #2a2b35;
+      --line-soft: #22232c;
+      --text: #f0eef4;
+      --text-secondary: #a3a0ac;
+      --muted: #696773;
+      --accent: #9d83e7;
+      --accent-soft: #211d31;
+      --success: #72c99a;
+      --warning: #e5aa68;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      padding: 56px 24px;
+      color: var(--text);
+      background: var(--page);
+      font-family: "Segoe UI", "Microsoft YaHei UI", sans-serif;
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    button {
+      color: inherit;
+      border: 0;
+      cursor: pointer;
+    }
+
+    .preview {
+      width: min(760px, 100%);
+      margin: 0 auto;
+    }
+
+    .preview-header {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 18px;
+      padding: 0 4px;
+    }
+
+    .eyebrow {
+      margin-bottom: 7px;
+      color: #9b8cc0;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(24px, 4vw, 32px);
+      line-height: 1.2;
+      letter-spacing: -.5px;
+    }
+
+    .preview-header p {
+      width: min(280px, 42%);
+      margin: 0 0 2px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.6;
+      text-align: right;
+    }
+
+    .app {
+      overflow: hidden;
+      border: 1px solid #20212a;
+      border-radius: 18px;
+      background: var(--panel);
+      box-shadow: 0 30px 80px rgba(0, 0, 0, .38);
+    }
+
+    .app-toolbar {
+      min-height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 0 20px;
+      border-bottom: 1px solid var(--line-soft);
+    }
+
+    .app-title {
+      display: flex;
+      align-items: baseline;
+      gap: 9px;
+      font-size: 15px;
+      font-weight: 680;
+    }
+
+    .task-total {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 500;
+    }
+
+    .toolbar-note {
+      color: #777481;
+      font-size: 10px;
+    }
+
+    .task-list {
+      padding: 10px;
+    }
+
+    .task-node {
+      position: relative;
+    }
+
+    .task-row {
+      min-height: 58px;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 11px;
+      padding: 9px 10px;
+      border-radius: 11px;
+      transition: background .14s ease;
+    }
+
+    .task-row:hover,
+    .task-row:focus-within {
+      background: var(--row-hover);
+    }
+
+    .task-check {
+      width: 18px;
+      height: 18px;
+      margin: 0;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    .task-copy {
+      min-width: 0;
+    }
+
+    .task-name {
+      overflow: hidden;
+      color: #e9e7ed;
+      font-size: 13px;
+      font-weight: 610;
+      line-height: 1.35;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .task-meta {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 9px;
+    }
+
+    .task-meta .priority {
+      color: var(--warning);
+    }
+
+    .task-actions {
+      min-width: 104px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 6px;
+    }
+
+    .add-action {
+      height: 26px;
+      padding: 0 8px;
+      border-radius: 7px;
+      color: #9d8fc0;
+      background: transparent;
+      font-size: 9px;
+      opacity: 0;
+      transform: translateX(3px);
+      transition: opacity .14s ease, transform .14s ease, background .14s ease;
+    }
+
+    .task-row:hover .add-action,
+    .task-row:focus-within .add-action {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    .add-action:hover {
+      color: #c1afea;
+      background: var(--accent-soft);
+    }
+
+    .progress-button {
+      width: 46px;
+      height: 26px;
+      padding: 0;
+      border: 1px solid #2c293a;
+      border-radius: 999px;
+      color: #b1a3d1;
+      background: var(--accent-soft);
+      font-size: 9px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .progress-button:hover,
+    .progress-button:focus-visible {
+      color: #d1c1f3;
+      border-color: #443b5d;
+      outline: 0;
+    }
+
+    .children {
+      position: relative;
+      margin-left: 20px;
+      padding-left: 23px;
+    }
+
+    .children::before {
+      content: "";
+      position: absolute;
+      top: -5px;
+      bottom: 29px;
+      left: 8px;
+      width: 1px;
+      background: var(--line);
+    }
+
+    .children > .task-node::before,
+    .children > .composer-wrap::before,
+    .children > .add-row::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: -15px;
+      width: 15px;
+      height: 28px;
+      border-bottom: 1px solid var(--line);
+      border-left: 1px solid var(--line);
+      border-radius: 0 0 0 8px;
+    }
+
+    .children .task-row {
+      min-height: 49px;
+      padding-top: 7px;
+      padding-bottom: 7px;
+    }
+
+    .children .task-name {
+      font-size: 12px;
+      font-weight: 560;
+    }
+
+    .children .task-check {
+      width: 16px;
+      height: 16px;
+    }
+
+    .children .children {
+      margin-left: 18px;
+    }
+
+    .is-complete .task-name {
+      color: #76737e;
+      text-decoration: line-through;
+      text-decoration-color: #55525d;
+    }
+
+    .is-complete .task-meta {
+      color: #54525b;
+    }
+
+    .add-row {
+      position: relative;
+      min-height: 38px;
+      display: flex;
+      align-items: center;
+      padding: 0 10px;
+    }
+
+    .add-row button {
+      height: 27px;
+      padding: 0 8px;
+      border-radius: 7px;
+      color: #6d6977;
+      background: transparent;
+      font-size: 9px;
+      text-align: left;
+    }
+
+    .add-row button:hover {
+      color: #aa96d7;
+      background: #17151f;
+    }
+
+    .composer-wrap {
+      position: relative;
+      padding: 4px 8px 8px;
+    }
+
+    .composer {
+      min-height: 44px;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto auto;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 8px;
+      border: 1px solid #3b3450;
+      border-radius: 10px;
+      background: #171720;
+    }
+
+    .composer input[type="text"] {
+      min-width: 0;
+      width: 100%;
+      padding: 0;
+      border: 0;
+      outline: 0;
+      color: var(--text);
+      background: transparent;
+      font-size: 11px;
+    }
+
+    .composer input[type="text"]::placeholder {
+      color: #5f5c67;
+    }
+
+    .composer button {
+      height: 26px;
+      padding: 0 8px;
+      border-radius: 7px;
+      font-size: 9px;
+    }
+
+    .cancel-button {
+      color: #77737f;
+      background: transparent;
+    }
+
+    .cancel-button:hover {
+      color: #b2aebb;
+      background: #20212a;
+    }
+
+    .save-button {
+      color: #eee8fb;
+      background: #715bb0;
+    }
+
+    .save-button:hover {
+      background: #8068c2;
+    }
+
+    .collapsed {
+      display: none;
+    }
+
+    .new-node {
+      animation: reveal .2s ease-out;
+    }
+
+    @keyframes reveal {
+      from {
+        opacity: 0;
+        transform: translateY(-4px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .design-note {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1px;
+      margin-top: 14px;
+      overflow: hidden;
+      border: 1px solid #1c1d25;
+      border-radius: 12px;
+      background: #1c1d25;
+    }
+
+    .design-note div {
+      padding: 12px;
+      color: #716e7a;
+      background: #101116;
+      font-size: 9px;
+      line-height: 1.55;
+    }
+
+    .design-note strong {
+      display: block;
+      margin-bottom: 3px;
+      color: #aaa5b1;
+      font-size: 10px;
+      font-weight: 600;
+    }
+
+    @media (max-width: 620px) {
+      body {
+        padding: 30px 10px;
+      }
+
+      .preview-header {
+        align-items: start;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .preview-header p {
+        width: auto;
+        text-align: left;
+      }
+
+      .add-action {
+        display: none;
+      }
+
+      .task-actions {
+        min-width: 50px;
+      }
+
+      .children {
+        margin-left: 14px;
+        padding-left: 17px;
+      }
+
+      .children > .task-node::before,
+      .children > .composer-wrap::before,
+      .children > .add-row::before {
+        left: -9px;
+        width: 9px;
+      }
+
+      .design-note {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="preview">
+    <header class="preview-header">
+      <div>
+        <div class="eyebrow">Taskato · Task tree</div>
+        <h1>无箭头子任务树</h1>
+      </div>
+      <p>点击进度数字折叠；悬停任务可新增子任务；Enter 保存，Esc 取消。</p>
+    </header>
+
+    <section class="app" aria-label="任务列表预览">
+      <header class="app-toolbar">
+        <div class="app-title">
+          <span>今天</span>
+          <span class="task-total" id="taskTotal">5 项待完成</span>
+        </div>
+        <span class="toolbar-note">7 月 24 日 · 星期五</span>
+      </header>
+
+      <div class="task-list">
+        <article class="task-node" data-node="release">
+          <div class="task-row">
+            <input class="task-check" type="checkbox" data-parent-check="release" disabled
+                   aria-label="发布 Taskato 新版本完成状态" title="全部子任务完成后自动完成">
+            <div class="task-copy">
+              <div class="task-name">发布 Taskato 新版本</div>
+              <div class="task-meta">
+                <span class="priority">高优先级</span>
+                <span>今天</span>
+              </div>
+            </div>
+            <div class="task-actions">
+              <button class="add-action" type="button" data-add-to="release">添加子任务</button>
+              <button class="progress-button" type="button" data-toggle="release" aria-expanded="true" title="折叠子任务">2 / 5</button>
+            </div>
+          </div>
+
+          <div class="children" data-children="release">
+            <article class="task-node is-complete new-node" data-leaf>
+              <div class="task-row">
+                <input class="task-check" type="checkbox" checked aria-label="整理版本说明">
+                <div class="task-copy">
+                  <div class="task-name">整理版本说明</div>
+                  <div class="task-meta"><span>今天 10:20 完成</span></div>
+                </div>
+                <div class="task-actions"></div>
+              </div>
+            </article>
+
+            <article class="task-node" data-node="upgrade">
+              <div class="task-row">
+                <input class="task-check" type="checkbox" data-parent-check="upgrade" disabled
+                       aria-label="验证升级流程完成状态" title="全部子任务完成后自动完成">
+                <div class="task-copy">
+                  <div class="task-name">验证升级流程</div>
+                  <div class="task-meta"><span>包含 2 个步骤</span></div>
+                </div>
+                <div class="task-actions">
+                  <button class="add-action" type="button" data-add-to="upgrade">添加子任务</button>
+                  <button class="progress-button" type="button" data-toggle="upgrade" aria-expanded="true" title="折叠子任务">1 / 2</button>
+                </div>
+              </div>
+
+              <div class="children" data-children="upgrade">
+                <article class="task-node is-complete" data-leaf>
+                  <div class="task-row">
+                    <input class="task-check" type="checkbox" checked aria-label="验证全新安装">
+                    <div class="task-copy">
+                      <div class="task-name">验证全新安装</div>
+                      <div class="task-meta"><span>已完成</span></div>
+                    </div>
+                    <div class="task-actions"></div>
+                  </div>
+                </article>
+
+                <article class="task-node" data-leaf>
+                  <div class="task-row">
+                    <input class="task-check" type="checkbox" aria-label="从 v1.4 升级">
+                    <div class="task-copy">
+                      <div class="task-name">从 v1.4 升级</div>
+                      <div class="task-meta"><span>等待验证</span></div>
+                    </div>
+                    <div class="task-actions"></div>
+                  </div>
+                </article>
+
+                <div class="add-row">
+                  <button type="button" data-add-to="upgrade">添加下一项</button>
+                </div>
+              </div>
+            </article>
+
+            <article class="task-node" data-leaf>
+              <div class="task-row">
+                <input class="task-check" type="checkbox" aria-label="打包 Windows 安装程序">
+                <div class="task-copy">
+                  <div class="task-name">打包 Windows 安装程序</div>
+                  <div class="task-meta"><span>预计 30 分钟</span></div>
+                </div>
+                <div class="task-actions"></div>
+              </div>
+            </article>
+
+            <article class="task-node" data-leaf>
+              <div class="task-row">
+                <input class="task-check" type="checkbox" aria-label="更新下载页面">
+                <div class="task-copy">
+                  <div class="task-name">更新下载页面</div>
+                  <div class="task-meta"><span>未开始</span></div>
+                </div>
+                <div class="task-actions"></div>
+              </div>
+            </article>
+
+            <div class="add-row">
+              <button type="button" data-add-to="release">添加下一项</button>
+            </div>
+          </div>
+        </article>
+
+        <article class="task-node" data-leaf>
+          <div class="task-row">
+            <input class="task-check" type="checkbox" aria-label="回复项目反馈">
+            <div class="task-copy">
+              <div class="task-name">回复项目反馈</div>
+              <div class="task-meta"><span>收件箱</span><span>今天</span></div>
+            </div>
+            <div class="task-actions"></div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="design-note" aria-label="设计说明">
+      <div><strong>没有展开箭头</strong>进度数字本身就是展开入口，左侧只保留完成状态。</div>
+      <div><strong>层级靠连接线</strong>线条只负责建立父子关系，不抢任务标题的视觉焦点。</div>
+      <div><strong>输入就是任务行</strong>新增时不弹卡片、不切页面，保存后直接留在当前层级。</div>
+    </section>
+  </main>
+
+  <template id="composerTemplate">
+    <div class="composer-wrap">
+      <div class="composer">
+        <input class="task-check" type="checkbox" disabled aria-hidden="true">
+        <input type="text" maxlength="80" placeholder="输入子任务标题">
+        <button class="cancel-button" type="button">取消</button>
+        <button class="save-button" type="button">保存</button>
+      </div>
+    </div>
+  </template>
+
+  <script>
+    const groups = {
+      release: document.querySelector('[data-children="release"]'),
+      upgrade: document.querySelector('[data-children="upgrade"]')
+    };
+
+    function directLeafStats(group) {
+      const leaves = [...group.children].filter(element => element.matches('[data-leaf]'));
+      const complete = leaves.filter(element => element.querySelector('.task-check').checked).length;
+      return { complete, total: leaves.length };
+    }
+
+    function updateProgress() {
+      const upgradeStats = directLeafStats(groups.upgrade);
+      const upgradeButton = document.querySelector('[data-toggle="upgrade"]');
+      upgradeButton.textContent = `${upgradeStats.complete} / ${upgradeStats.total}`;
+      const upgradeIsComplete = upgradeStats.total > 0 && upgradeStats.complete === upgradeStats.total;
+      const upgradeCheckbox = document.querySelector('[data-parent-check="upgrade"]');
+      upgradeCheckbox.checked = upgradeIsComplete;
+      upgradeCheckbox.closest('.task-node').classList.toggle('is-complete', upgradeIsComplete);
+
+      const releaseLeaves = [...groups.release.children].filter(element => element.matches('[data-leaf]'));
+      const completedReleaseLeaves = releaseLeaves.filter(element => element.querySelector('.task-check').checked).length;
+      const releaseComplete = completedReleaseLeaves + (upgradeIsComplete ? 1 : 0);
+      const releaseTotal = releaseLeaves.length + 1;
+      document.querySelector('[data-toggle="release"]').textContent = `${releaseComplete} / ${releaseTotal}`;
+      const releaseIsComplete = releaseTotal > 0 && releaseComplete === releaseTotal;
+      const releaseCheckbox = document.querySelector('[data-parent-check="release"]');
+      releaseCheckbox.checked = releaseIsComplete;
+      releaseCheckbox.closest('.task-node').classList.toggle('is-complete', releaseIsComplete);
+
+      const allLeaves = [...document.querySelectorAll('[data-leaf]')];
+      const remaining = allLeaves.filter(element => !element.querySelector('.task-check').checked).length;
+      document.getElementById('taskTotal').textContent = `${remaining} 项待完成`;
+    }
+
+    function setCompleteState(checkbox) {
+      checkbox.closest('.task-node')?.classList.toggle('is-complete', checkbox.checked);
+      updateProgress();
+    }
+
+    function toggleChildren(button) {
+      const group = groups[button.dataset.toggle];
+      const willExpand = group.classList.contains('collapsed');
+      group.classList.toggle('collapsed');
+      button.setAttribute('aria-expanded', String(willExpand));
+      button.title = willExpand ? '折叠子任务' : '展开子任务';
+    }
+
+    function closeComposer(wrapper) {
+      wrapper.remove();
+    }
+
+    function createTaskNode(title) {
+      const node = document.createElement('article');
+      node.className = 'task-node new-node';
+      node.dataset.leaf = '';
+      node.innerHTML = `
+        <div class="task-row">
+          <input class="task-check" type="checkbox" aria-label="完成${title}">
+          <div class="task-copy">
+            <div class="task-name"></div>
+            <div class="task-meta"><span>刚刚添加</span></div>
+          </div>
+          <div class="task-actions"></div>
+        </div>`;
+      node.querySelector('.task-name').textContent = title;
+      node.querySelector('.task-check').addEventListener('change', event => setCompleteState(event.target));
+      return node;
+    }
+
+    function openComposer(parentId) {
+      const group = groups[parentId];
+      group.classList.remove('collapsed');
+      document.querySelector(`[data-toggle="${parentId}"]`)?.setAttribute('aria-expanded', 'true');
+
+      const existing = group.querySelector(':scope > .composer-wrap');
+      if (existing) {
+        existing.querySelector('input[type="text"]').focus();
+        return;
+      }
+
+      const wrapper = document.getElementById('composerTemplate').content.firstElementChild.cloneNode(true);
+      const input = wrapper.querySelector('input[type="text"]');
+      const cancelButton = wrapper.querySelector('.cancel-button');
+      const saveButton = wrapper.querySelector('.save-button');
+      const trailingAddRow = group.querySelector(':scope > .add-row');
+      group.insertBefore(wrapper, trailingAddRow);
+
+      const save = () => {
+        const title = input.value.trim();
+        if (!title) {
+          input.focus();
+          return;
+        }
+        group.insertBefore(createTaskNode(title), wrapper);
+        closeComposer(wrapper);
+        updateProgress();
+      };
+
+      cancelButton.addEventListener('click', () => closeComposer(wrapper));
+      saveButton.addEventListener('click', save);
+      input.addEventListener('keydown', event => {
+        if (event.key === 'Enter') save();
+        if (event.key === 'Escape') closeComposer(wrapper);
+      });
+      requestAnimationFrame(() => input.focus());
+    }
+
+    document.querySelectorAll('[data-toggle]').forEach(button => {
+      button.addEventListener('click', () => toggleChildren(button));
+    });
+
+    document.querySelectorAll('[data-add-to]').forEach(button => {
+      button.addEventListener('click', () => openComposer(button.dataset.addTo));
+    });
+
+    document.querySelectorAll('.task-check:not([disabled])').forEach(checkbox => {
+      checkbox.addEventListener('change', () => setCompleteState(checkbox));
+    });
+
+    updateProgress();
+  </script>
+</body>
+</html>

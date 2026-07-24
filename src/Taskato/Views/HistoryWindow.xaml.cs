@@ -57,13 +57,31 @@ namespace Taskato.Views
         /// <summary>
         /// 点击删除按钮 → 弹出确认并执行历史删除
         /// </summary>
-        private void DeleteButton_Click(object sender, MouseButtonEventArgs e)
+        private async void DeleteButton_Click(object sender, MouseButtonEventArgs e)
         {
-            if (sender is FrameworkElement element && DataContext is HistoryViewModel vm)
+            if (sender is FrameworkElement element &&
+                element.Tag is Models.TaskItem task &&
+                DataContext is HistoryViewModel vm)
             {
-                if (ConfirmDialog.Show(this, "确定要从历史记录中删除这个任务吗？"))
+                var allTasks = await vm.DatabaseService.GetTaskTreeItemsAsync();
+                var hasChildren = allTasks.Any(candidate => candidate.ParentId == task.Id);
+                if (!hasChildren)
                 {
-                    vm.DeleteTaskCommand.Execute(element.Tag);
+                    if (ConfirmDialog.Show(this, "确定删除这个任务吗？每日总结中的历史完成记录会保留。"))
+                        await vm.DeleteTaskAsync(task, Models.TaskDeleteMode.DeleteBranch);
+                }
+                else
+                {
+                    var choice = MessageBox.Show(
+                        this,
+                        "选择“是”：删除整个任务分支。\n选择“否”：仅删除父任务，并将直属子任务提升一级。",
+                        "删除任务分支",
+                        MessageBoxButton.YesNoCancel,
+                        MessageBoxImage.Warning);
+                    if (choice == MessageBoxResult.Yes)
+                        await vm.DeleteTaskAsync(task, Models.TaskDeleteMode.DeleteBranch);
+                    else if (choice == MessageBoxResult.No)
+                        await vm.DeleteTaskAsync(task, Models.TaskDeleteMode.PromoteChildren);
                 }
             }
             e.Handled = true;
@@ -76,23 +94,11 @@ namespace Taskato.Views
         {
             if (e.ClickCount == 2 && sender is FrameworkElement element && element.DataContext is Models.TaskItem task)
             {
-                var detailWindow = new TaskDetailWindow(task) { Owner = this };
-                detailWindow.ShowDialog();
-                
-                // 详情页关闭后，判断用户是否点击了保存
-                if (detailWindow.IsSaved)
-                {
-                    // 将替身数据覆盖回本体
-                    task.Title = detailWindow.EditingTask.Title;
-                    task.Priority = detailWindow.EditingTask.Priority;
-                    task.IsCompleted = detailWindow.EditingTask.IsCompleted;
-                    task.CompletedAt = detailWindow.EditingTask.CompletedAt;
+                if (DataContext is not HistoryViewModel vm) return;
 
-                    if (DataContext is HistoryViewModel vm)
-                    {
-                        await vm.SaveTaskEditAsync(task);
-                    }
-                }
+                var detailWindow = new TaskDetailWindow(task, vm.DatabaseService) { Owner = this };
+                detailWindow.ShowDialog();
+                await vm.SearchAsync();
                 
                 e.Handled = true;
             }

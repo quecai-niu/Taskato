@@ -199,13 +199,41 @@
                             <!-- 单个任务卡片容器 -->
                             <Border x:Name="taskCard"
                                     Background="{StaticResource CardBackgroundBrush}"
-                                    CornerRadius="14" Margin="0,0,0,10"
+                                    CornerRadius="14"
+                                    Margin="{Binding IndentWidth, Converter={StaticResource DoubleToLeftMarginConverter}}"
                                     BorderThickness="0"
                                     Cursor="Hand" ClipToBounds="False"
                                     MouseLeftButtonDown="TaskCard_MouseLeftButtonDown">
                                 <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+
+                                    <!-- 子任务层级连接线：用缩进和折线表达父子关系，不再使用展开箭头。 -->
+                                    <Border Grid.RowSpan="2"
+                                            Width="16" Height="30"
+                                            Margin="-16,-8,0,0"
+                                            HorizontalAlignment="Left"
+                                            VerticalAlignment="Top"
+                                            BorderBrush="#2AFFFFFF"
+                                            BorderThickness="1,0,0,1"
+                                            CornerRadius="0,0,0,7"
+                                            IsHitTestVisible="False">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Depth}" Value="0">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                    </Border>
+
                                     <!-- 左侧优先级色条 -->
-                                     <Rectangle Width="4" RadiusX="2" RadiusY="2" Margin="14,14,0,14" 
+                                     <Rectangle Grid.RowSpan="2" Width="4" RadiusX="2" RadiusY="2" Margin="14,14,0,14"
                                                 HorizontalAlignment="Left" VerticalAlignment="Stretch">
                                          <Rectangle.Style>
                                              <Style TargetType="Rectangle">
@@ -235,10 +263,12 @@
                                      </Rectangle>
 
                                     <!-- 内容区：左边距26px（色条间距） -->
-                                    <Grid Margin="26,14,14,14" Background="Transparent">
+                                    <Grid Grid.Row="0" Margin="26,14,14,14" Background="Transparent">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="Auto"/>
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
 
@@ -317,8 +347,80 @@
                                             </TextBlock>
                                         </StackPanel>
 
+                                        <!-- 悬停任务行后显示唯一的子任务新增入口。 -->
+                                        <Button Grid.Column="2" Content="添加子任务"
+                                                Height="28" Padding="9,0" Margin="6,0,2,0"
+                                                ToolTip="添加直属子任务"
+                                                Visibility="{Binding CanAddChild, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                Command="{Binding DataContext.AddChildTaskCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                CommandParameter="{Binding}">
+                                            <Button.Style>
+                                                <Style TargetType="Button" BasedOn="{StaticResource SecondaryButton}">
+                                                    <Setter Property="FontSize" Value="11"/>
+                                                    <Setter Property="Foreground" Value="#B6A4DA"/>
+                                                    <Setter Property="Opacity" Value="0"/>
+                                                    <Setter Property="IsHitTestVisible" Value="False"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsMouseOver, ElementName=taskCard}" Value="True">
+                                                            <Setter Property="Opacity" Value="1"/>
+                                                            <Setter Property="IsHitTestVisible" Value="True"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding IsKeyboardFocusWithin, ElementName=taskCard}" Value="True">
+                                                            <Setter Property="Opacity" Value="1"/>
+                                                            <Setter Property="IsHitTestVisible" Value="True"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Button.Style>
+                                        </Button>
+
+                                        <!-- 进度胶囊同时作为展开/折叠入口。 -->
+                                        <Button Grid.Column="3"
+                                                Content="{Binding ProgressDisplay}"
+                                                MinWidth="42" Height="26"
+                                                Padding="8,0" Margin="4,0"
+                                                Command="{Binding DataContext.ToggleTaskExpansionCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                CommandParameter="{Binding}"
+                                                Visibility="{Binding HasChildren, Converter={StaticResource BoolToVisibilityConverter}}">
+                                            <Button.Style>
+                                                <Style TargetType="Button">
+                                                    <Setter Property="FontSize" Value="10"/>
+                                                    <Setter Property="Foreground" Value="#D8B4FE"/>
+                                                    <Setter Property="Background" Value="#221F31"/>
+                                                    <Setter Property="BorderBrush" Value="#403653"/>
+                                                    <Setter Property="BorderThickness" Value="1"/>
+                                                    <Setter Property="Cursor" Value="Hand"/>
+                                                    <Setter Property="ToolTip" Value="折叠子任务"/>
+                                                    <Setter Property="Template">
+                                                        <Setter.Value>
+                                                            <ControlTemplate TargetType="Button">
+                                                                <Border Background="{TemplateBinding Background}"
+                                                                        BorderBrush="{TemplateBinding BorderBrush}"
+                                                                        BorderThickness="{TemplateBinding BorderThickness}"
+                                                                        CornerRadius="13">
+                                                                    <ContentPresenter HorizontalAlignment="Center"
+                                                                                      VerticalAlignment="Center"/>
+                                                                </Border>
+                                                                <ControlTemplate.Triggers>
+                                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                                        <Setter Property="Background" Value="#302841"/>
+                                                                        <Setter Property="BorderBrush" Value="#5A4875"/>
+                                                                    </Trigger>
+                                                                </ControlTemplate.Triggers>
+                                                            </ControlTemplate>
+                                                        </Setter.Value>
+                                                    </Setter>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsExpanded}" Value="False">
+                                                            <Setter Property="ToolTip" Value="展开子任务"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Button.Style>
+                                        </Button>
+
                                         <!-- 右侧悬浮删除按钮 -->
-                                        <TextBlock Grid.Column="2" Text="✕" FontSize="14" Foreground="{StaticResource DangerBrush}"
+                                        <TextBlock Grid.Column="4" Text="✕" FontSize="14" Foreground="{StaticResource DangerBrush}"
                                                    VerticalAlignment="Center" Cursor="Hand" Padding="8" Tag="{Binding}"
                                                    MouseLeftButtonDown="DeleteButton_Click">
                                             <TextBlock.Style>
@@ -335,6 +437,31 @@
                                                 </Style>
                                             </TextBlock.Style>
                                         </TextBlock>
+                                    </Grid>
+
+                                    <!-- 子任务快速输入 -->
+                                    <Grid Grid.Row="1" Margin="52,0,14,12"
+                                          Visibility="{Binding IsAddingChild, Converter={StaticResource BoolToVisibilityConverter}}">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox Grid.Column="0"
+                                                 Text="{Binding NewChildTitle, UpdateSourceTrigger=PropertyChanged}"
+                                                 Tag="{Binding}"
+                                                 KeyDown="ChildTaskInput_KeyDown"
+                                                 IsVisibleChanged="ChildTaskInput_IsVisibleChanged"
+                                                 FontSize="13" Padding="10,6"
+                                                 Foreground="{StaticResource TextPrimaryBrush}"
+                                                 Background="#1AFFFFFF"
+                                                 BorderBrush="#33FFFFFF"
+                                                 BorderThickness="1"
+                                                 CaretBrush="White"/>
+                                        <Button Grid.Column="1" Content="添加"
+                                                Style="{StaticResource PrimaryButton}"
+                                                Padding="12,6" Margin="8,0,0,0"
+                                                Command="{Binding DataContext.AddChildTaskCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                CommandParameter="{Binding}"/>
                                     </Grid>
                                 </Grid>
                             </Border>

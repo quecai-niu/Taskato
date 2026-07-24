@@ -67,47 +67,73 @@
                     <TextBlock FontSize="13" Foreground="{StaticResource TextSecondaryBrush}"
                                Margin="0,0,0,8">
                         <TextBlock.Text>
-                            <MultiBinding StringFormat="统计：完成 {0} | 高优先级完成 {1} | 耗时 {2}">
+                            <MultiBinding StringFormat="记录 {0} | 叶子 {1} | 父级成果 {2} | 高优先级 {3} | 耗时 {4}">
                                 <Binding Path="CompletedCount"/>
+                                <Binding Path="LeafCompletedCount"/>
+                                <Binding Path="ParentAchievementCount"/>
                                 <Binding Path="HighPriorityCompleted"/>
                                 <Binding Path="TotalDurationDisplay"/>
                             </MultiBinding>
                         </TextBlock.Text>
                     </TextBlock>
 
-                    <TextBlock Text="已完成" FontSize="13" FontWeight="SemiBold"
+                    <TextBlock Text="完成成果" FontSize="13" FontWeight="SemiBold"
                                Foreground="#4ADE80" Margin="0,12,0,6"/>
-                    <ItemsControl ItemsSource="{Binding CompletedTasks}">
+                    <ItemsControl ItemsSource="{Binding CompletionGroups}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Background="#0A22C55E" CornerRadius="6"
-                                        Padding="10,6" Margin="0,0,0,4"
-                                        Cursor="Hand"
-                                        MouseLeftButtonDown="CompletedTaskCard_MouseLeftButtonDown">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <TextBlock Grid.Column="0"
-                                                   FontSize="13"
-                                                   Foreground="{StaticResource TextPrimaryBrush}"
-                                                   TextTrimming="CharacterEllipsis">
-                                            <TextBlock.Text>
-                                                <MultiBinding StringFormat="{}{0}  {1}">
-                                                    <Binding Path="Priority" Converter="{StaticResource PriorityToLabelConverter}"/>
-                                                    <Binding Path="Title"/>
-                                                </MultiBinding>
-                                            </TextBlock.Text>
-                                        </TextBlock>
-                                        <TextBlock Grid.Column="1"
-                                                   Text="{Binding CompletionDurationDisplay, Mode=OneWay}"
-                                                   FontSize="12"
-                                                   Foreground="{StaticResource TextMutedBrush}"
-                                                   Margin="12,0,0,0"
-                                                   Visibility="{Binding HasCompletionDuration, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                                    </Grid>
-                                </Border>
+                                <StackPanel Margin="0,0,0,12">
+                                    <Border Background="#18A855F7" CornerRadius="8"
+                                            Padding="10,7" Margin="0,0,0,6">
+                                        <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold"
+                                                   Foreground="#D8B4FE" TextTrimming="CharacterEllipsis"/>
+                                    </Border>
+                                    <ItemsControl ItemsSource="{Binding Records}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Background="#0A22C55E" CornerRadius="6"
+                                                        Padding="10,7"
+                                                        Margin="{Binding IndentWidth, Converter={StaticResource DoubleToLeftMarginConverter}, ConverterParameter=Summary}"
+                                                        Cursor="Hand"
+                                                        MouseLeftButtonDown="CompletedRecordCard_MouseLeftButtonDown">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <StackPanel Grid.Column="0">
+                                                            <TextBlock FontSize="13"
+                                                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                                                       TextTrimming="CharacterEllipsis">
+                                                                <TextBlock.Text>
+                                                                    <MultiBinding StringFormat="{}{0}  {1}">
+                                                                        <Binding Path="PrioritySnapshot" Converter="{StaticResource PriorityToLabelConverter}"/>
+                                                                        <Binding Path="TitleSnapshot"/>
+                                                                    </MultiBinding>
+                                                                </TextBlock.Text>
+                                                            </TextBlock>
+                                                            <TextBlock Text="{Binding PathSnapshot}"
+                                                                       FontSize="10"
+                                                                       Foreground="{StaticResource TextMutedBrush}"
+                                                                       TextTrimming="CharacterEllipsis"/>
+                                                        </StackPanel>
+                                                        <StackPanel Grid.Column="1" Margin="12,0,0,0"
+                                                                    HorizontalAlignment="Right">
+                                                            <TextBlock Text="{Binding KindDisplay}"
+                                                                       FontSize="11" Foreground="#4ADE80"
+                                                                       HorizontalAlignment="Right"/>
+                                                            <TextBlock Text="{Binding DurationDisplay}"
+                                                                       FontSize="10"
+                                                                       Foreground="{StaticResource TextMutedBrush}"
+                                                                       HorizontalAlignment="Right"
+                                                                       Visibility="{Binding HasDuration, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                                        </StackPanel>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
