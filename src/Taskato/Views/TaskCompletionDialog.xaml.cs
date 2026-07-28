@@ -7,7 +7,7 @@ using Taskato.Utils;
 namespace Taskato.Views
 {
     /// <summary>
-    /// 完成任务时记录可选耗时，也用于每日总结里的补录流程。
+    /// 完成任务时记录可选耗时，也用于每日总结里的补充任务流程。
     /// </summary>
     public partial class TaskCompletionDialog : Window
     {
@@ -71,9 +71,9 @@ namespace Taskato.Views
 
         private void ConfigureForBackfill(DateTime completionDate, IReadOnlyList<TaskItem> tasks)
         {
-            HeaderText.Text = "补录完成任务";
+            HeaderText.Text = "补充任务";
             DescriptionText.Text = "从当前未完成任务中选择一项，补记到当前总结日期。";
-            ConfirmButton.Content = "补录完成";
+            ConfirmButton.Content = "确认补充";
             TaskPickerPanel.Visibility = Visibility.Visible;
             SingleTaskPanel.Visibility = Visibility.Collapsed;
             CompletionDateText.Text = FormatDate(completionDate);
@@ -111,7 +111,7 @@ namespace Taskato.Views
                 SelectedTask = TaskComboBox.SelectedItem as TaskItem;
                 if (SelectedTask is null)
                 {
-                    ShowError("请选择要补录的任务。");
+                    ShowError("请选择要补充的任务。");
                     return;
                 }
             }

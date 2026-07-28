@@ -74,6 +74,14 @@ namespace Taskato.ViewModels
         private readonly List<TaskItem> _visibleTaskTree = new();
         private readonly HashSet<int> _collapsedTaskIds = new();
 
+        private TaskItem? _selectedTask;
+        /// <summary>任务工作区当前选中的任务，用于中栏详情和右侧专注上下文。</summary>
+        public TaskItem? SelectedTask
+        {
+            get => _selectedTask;
+            set => SetProperty(ref _selectedTask, value);
+        }
+
         /// <summary>
         /// 新任务输入框绑定的文本内容
         /// </summary>
@@ -134,6 +142,9 @@ namespace Taskato.ViewModels
         // ==================== 番茄钟相关属性 ====================
 
         public ObservableCollection<PomodoroTimerViewModel> AllTimers { get; } = new();
+
+        /// <summary>跨天自动总结请求，由主壳层接管导航。</summary>
+        public event Action<DateTime>? DailySummaryRequested;
 
         private PomodoroTimerViewModel? _currentActiveTimer;
         /// <summary>
@@ -314,17 +325,7 @@ namespace Taskato.ViewModels
 
                     if (_settingsService.Config.AutoShowDailySummary)
                     {
-                        var summaryVM = new DailySummaryViewModel(_dbService)
-                        {
-                            CurrentDate = yesterdayDate
-                        };
-                        await summaryVM.LoadSummaryAsync();
-                        var summaryWindow = new Views.DailySummaryWindow
-                        {
-                            DataContext = summaryVM,
-                            Owner = Application.Current.MainWindow
-                        };
-                        summaryWindow.ShowDialog();
+                        DailySummaryRequested?.Invoke(yesterdayDate);
                     }
                 }
             };
@@ -338,9 +339,13 @@ namespace Taskato.ViewModels
         /// </summary>
         public async Task LoadTodayTasksAsync()
         {
+            var selectedId = SelectedTask?.Id;
             var tasks = await _dbService.GetTaskTreeItemsAsync();
             BuildVisibleTaskTree(tasks);
             RefreshFlattenedTasks();
+            SelectedTask = selectedId.HasValue
+                ? TodayTasks.FirstOrDefault(task => task.Id == selectedId.Value)
+                : TodayTasks.FirstOrDefault();
             UpdateCounts();
         }
 
@@ -612,6 +617,22 @@ namespace Taskato.ViewModels
 
             // 同步多组模式的状态
             OnPropertyChanged(nameof(IsMultiMode));
+        }
+
+        /// <summary>设置页保存后，把可即时生效的配置同步到正在运行的计时器和绑定属性。</summary>
+        public void ApplySettingsFromConfig()
+        {
+            var mainTimer = AllTimers.FirstOrDefault();
+            if (mainTimer is not null && mainTimer.CurrentState == PomodoroService.PomodoroState.Idle)
+                mainTimer.WorkMinutes = _settingsService.Config.WorkMinutes;
+
+            foreach (var timer in AllTimers)
+                timer.RestMinutes = _settingsService.Config.RestMinutes;
+
+            OnPropertyChanged(nameof(IsMultiMode));
+            OnPropertyChanged(nameof(EnableToastTimer));
+            OnPropertyChanged(nameof(NotificationSoundChoice));
+            OnPropertyChanged(nameof(FeishuEnabled));
         }
 
         /// <summary>

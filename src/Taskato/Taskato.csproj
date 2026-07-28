@@ -30,6 +30,20 @@
 
   <ItemGroup>
     <PackageReference Include="sqlite-net-pcl" Version="1.9.172" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4078.44" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\Taskato.Web\dist\**\*">
+      <Link>Web\%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
+
+  <Target Name="ValidateWebFrontendAssets" BeforeTargets="PrepareForBuild" Condition="'$(Configuration)' == 'Release'">
+    <Error Condition="!Exists('..\Taskato.Web\dist\index.html')"
+           Text="Taskato 网页构建产物缺失。请先在 src/Taskato.Web 执行 npm ci 和 npm run build。" />
+  </Target>
 
 </Project>

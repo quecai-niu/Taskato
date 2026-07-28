@@ -27,7 +27,9 @@
 
 ## 这是什么
 
-Taskato 是一个基于 **.NET 8 + WPF** 的番茄钟与任务管理桌面应用。它不是简单的计时器，而是围绕一天的工作流做了几件事：
+Taskato 是一个基于 **.NET 8 + WPF + WebView2 + React** 的番茄钟与任务管理桌面应用。WPF 负责窗口、托盘、通知和本地服务，React 负责完整工作区界面。
+
+主界面采用可缩放、可最大化的整窗工作区，通过左侧导航在任务、每日总结、历史记录和设置之间切换；任务页按任务树、当前任务和番茄钟分栏展示。
 
 - 专注前，把今天要做的事放进任务列表。
 - 专注中，用番茄钟保持节奏，支持多组并行计时。
@@ -42,6 +44,7 @@ Taskato 是一个基于 **.NET 8 + WPF** 的番茄钟与任务管理桌面应用
 
 更多交互预览：
 
+- [React 整窗工作区设计基准](docs/previews/preview_TaskatoWorkspace_20260728_1421/index.html)
 - [番茄钟附加组删除按钮预览](docs/previews/preview_PomodoroTabDelete_20260618_1407.html)
 - [番茄钟完成弹窗鎏金边框预览](docs/previews/preview_ToastGoldBorder_20260618_1406.html)
 - [番茄钟完成弹窗熔金闪卡预览](docs/previews/preview_ToastGoldHybrid_20260618_1411.html)
@@ -56,8 +59,8 @@ Taskato 是一个基于 **.NET 8 + WPF** 的番茄钟与任务管理桌面应用
 | 提醒弹窗 | 四角轮换出现、鎏金边框、按钮延迟启用、显示已出现时长 |
 | 提示音 | 无声、Windows Notify、Ding、Background、Chimes、自定义音效 |
 | 飞书通知 | 工作完成、休息完成、休息过半、重复提醒均可配置 |
-| 每日总结 | 按顶级任务分组、叶子/父级成果统计、不可变完成历史、复制/导出、叶子任务补录 |
-| 历史查询 | 日期范围、关键词、完成状态筛选、多字段排序、CSV 导出 |
+| 每日总结 | 按顶级任务分组、叶子/父级成果统计、有效完成过滤、复制/导出、补充任务 |
+| 历史查询 | 创建/完成/取消完成时间线、日期与关键词筛选、排序、删除、CSV 导出 |
 | 系统集成 | 托盘常驻、最小化后台运行、开机自启、单例运行 |
 
 ## 快速开始
@@ -66,20 +69,33 @@ Taskato 是一个基于 **.NET 8 + WPF** 的番茄钟与任务管理桌面应用
 
 - Windows 10/11
 - [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
+- Node.js 20 或更高版本（仅源码构建前端时需要）
+- Microsoft Edge WebView2 Runtime（Windows 11 通常已包含）
 
 ### 克隆与运行
 
 ```powershell
 git clone https://github.com/quecai-niu/Taskato.git
 cd Taskato
+cd src/Taskato.Web
+npm ci
+npm run build
+cd ../..
 dotnet run --project src/Taskato/Taskato.csproj
 ```
 
 ### 构建
 
 ```powershell
-dotnet build Taskato.sln
+cd src/Taskato.Web
+npm ci
+npm test
+npm run build
+cd ../..
+dotnet build Taskato.sln -c Release
 ```
+
+Release 构建会检查 `src/Taskato.Web/dist/index.html`；缺失时会给出明确错误，避免生成只能显示空白页的安装包。前端开发时可启动 Vite，并把 `TASKATO_WEB_DEV_URL` 设置为开发服务器地址。
 
 ## 使用方式
 
@@ -87,15 +103,15 @@ dotnet build Taskato.sln
 2. 展开任务树逐项完成叶子任务；全部子任务完成后，父任务会自动完成并记录为阶段成果。
 3. 双击任务进入详情，可更换父任务、管理直属子任务或调整层级。
 4. 设置工作/休息时长，启动番茄钟。
-5. 打开历史查询或每日总结，按大任务分组回看叶子任务和父级成果。
+5. 使用左侧导航进入历史记录或每日总结，按大任务分组回看仍然有效的叶子任务和父级成果。
 6. 如需远程提醒，在设置中配置飞书 Webhook。
 
 ## 技术栈
 
 | 层级 | 技术 |
 | --- | --- |
-| UI | WPF, XAML, WindowChrome |
-| 架构 | MVVM |
+| UI | React 19、TypeScript、Vite、WebView2；WPF 保留原生宿主与短流程弹窗 |
+| 架构 | C# Service / ViewModel 为唯一业务事实来源，JSON WebBridge 白名单通信 |
 | 运行时 | .NET 8, C# |
 | 存储 | SQLite, sqlite-net-pcl |
 | 系统集成 | Windows Forms NotifyIcon, HKCU Run |
@@ -113,7 +129,8 @@ Taskato/
 │  │  ├─ Services/        # 数据库、计时器、设置、托盘、飞书通知
 │  │  ├─ Utils/           # RelayCommand、视觉效果等工具
 │  │  ├─ ViewModels/      # Main、Pomodoro、History、DailySummary
-│  │  └─ Views/           # 主窗体、设置、历史、详情、弹窗
+│  │  └─ Views/           # WebView2 主壳层、旧 WPF 回退页与原生短流程弹窗
+│  ├─ Taskato.Web/        # React + TypeScript 工作区、桥接客户端与浏览器 mock
 │  └─ TestProject/
 ├─ docs/
 │  └─ previews/           # UI 预览与截图
@@ -126,15 +143,15 @@ Taskato/
 应用会在运行目录下维护本地数据与设置：
 
 - `Data/settings.json`：主题、番茄钟、提示音、通知等偏好设置。
-- SQLite 数据库：保存任务树及独立完成记录；任务后续重命名、移动、重开或删除不会改写过去的每日总结。
+- SQLite 数据库：保存任务树及独立完成记录；取消完成不会删除历史，但每日总结只展示当前仍有效的最后一次完成；已删除任务仍可保留完成快照。
 
 这些数据默认留在本机，不需要云端账号。
 
 ## 当前版本
 
-`v2.13`
+`v2.18`
 
-- 优化番茄钟完成弹窗四角轮换、鎏金边框和按钮延迟。
-- 新增设置页提醒弹窗按钮延迟时长配置。
-- 优化附加番茄钟删除按钮悬浮显示效果。
-- 新增番茄钟弹窗和附加组删除按钮预览文件及截图。
+- 主工作区迁移为 React + TypeScript，并由 WPF WebView2 承载。
+- 新增最多五层的任务树、独立子任务输入、父级级联成果与有效每日总结。
+- 新增创建、完成和取消完成事件时间线，同时保留旧 WPF 工作区回退入口。
+- 完整桥接番茄钟、托盘窗口操作、设置、系统文件选择和原生完成弹窗。

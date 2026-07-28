@@ -108,7 +108,7 @@
 3. 每一级把 `IsCompleted` 改为 `false`。
 4. 清空当前状态用的 `CompletedAt` 和 `CompletionDurationMinutes`。
 5. 更新修改时间后继续处理父级。
-6. 该方法不删除 `TaskCompletionRecords`，所以过去的每日总结保持不变。
+6. 该方法不删除 `TaskCompletionRecords`，所以操作历史仍保留；每日总结会过滤这次已经失效的完成。
 7. 以后再次完成同一任务时，会生成一组新的完成记录。
 
 ## 6. 移动和删除后的状态重算
@@ -184,23 +184,23 @@
 
 ### `DailySummaryViewModel.LoadSummaryAsync`
 
-1. 按当前日期查询 `TaskCompletionRecords`，不查询任务当前状态。
-2. `CompletedCount` 是当天全部完成记录数。
-3. `LeafCompletedCount` 只统计叶子完成。
-4. `ParentAchievementCount` 统计阶段和顶级成果。
-5. 高优先级统计使用完成时优先级快照。
-6. 耗时只累加记录中的非空耗时，因此父级级联不会重复计算。
-7. 记录按 `TopLevelTaskId + TopLevelTitleSnapshot` 分组。
-8. 每组按完成时间和层级排列。
-9. XAML 先显示大任务分组，再按 `DepthSnapshot` 缩进每条完成记录。
-10. 双击记录时，如果原任务仍存在，则打开详情；任务已删除时历史记录仍可正常展示。
+1. 按当前日期查询 `TaskCompletionRecords`，并关联仍存在的当前任务状态。
+2. 仍存在的任务只有在 `IsCompleted == true` 且 `CompletedAt` 与记录时间相同时才计入；已删除任务继续使用完成快照。
+3. `CompletedCount` 是当天仍然有效的完成记录数。
+4. `LeafCompletedCount` 只统计叶子完成。
+5. `ParentAchievementCount` 统计阶段和顶级成果。
+6. 高优先级统计使用完成时优先级快照。
+7. 耗时只累加记录中的非空耗时，因此父级级联不会重复计算。
+8. 记录按 `TopLevelTaskId + TopLevelTitleSnapshot` 分组。
+9. 每组按完成时间和层级排列。
+10. XAML 先显示大任务分组，再按 `DepthSnapshot` 缩进每条完成记录。
 
 ### `BackfillTaskAsync`
 
-1. 禁止补录未来日期。
+1. 禁止为未来日期补充任务。
 2. 候选列表只加载未完成叶子任务。
 3. 用户选定叶子并填写耗时后，调用同一个级联完成方法。
-4. 叶子和因此完成的所有父级使用相同补录时间。
+4. 叶子和因此完成的所有父级使用相同补充时间。
 
 ### `BuildSummaryText`
 
@@ -247,4 +247,26 @@ dotnet build Taskato.sln -p:BaseOutputPath="$buildRoot\"
 
 ```text
 PASS: 任务树、级联完成、历史记录、层级限制和删除提升测试全部通过。
+```
+
+## 12. 2026-07-28 Web 工作区迁移补充
+
+主工作区现已迁移到 `src/Taskato.Web` 的 React + TypeScript 页面，WPF 仍是桌面宿主和业务事实来源：
+
+1. `WebShellWindow` 通过 WebView2 虚拟域名加载打包后的静态资源，生产环境不启动 HTTP 服务。
+2. `WebBridgeService` 只接受白名单 JSON 请求，任务、总结、历史、设置和番茄钟写操作继续进入原有 C# Service。
+3. React 的顶级任务输入与子任务输入使用两个独立 state；浏览器交互烟测已确认子任务输入不会污染顶级输入。
+4. 历史页从不可变完成记录和任务当前状态投影创建、完成、父级成果与取消完成事件；取消完成不改变每日总结的有效记录过滤规则。
+5. `UseLegacyWorkspace=true` 或 WebView2 初始化错误页的“切换到旧版界面”可回退到本文件前文说明的 WPF 工作区。
+6. `TestProject` 增加桥接握手、未知方法、无效参数、任务 DTO 和历史时间线契约测试。
+
+新的验证顺序：
+
+```powershell
+cd src/Taskato.Web
+npm test
+npm run build
+cd ../..
+dotnet build Taskato.sln -c Release
+dotnet run --project src/TestProject/TestProject.csproj -c Release
 ```

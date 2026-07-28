@@ -63,6 +63,20 @@ namespace Taskato.Services
 
         /// <summary>跨天时自动弹出昨日总结</summary>
         public bool AutoShowDailySummary { get; set; } = false;
+
+        /// <summary>主窗口宽度和高度；旧配置缺失字段时使用整窗工作区默认值。</summary>
+        public double WindowWidth { get; set; } = 1280;
+        public double WindowHeight { get; set; } = 820;
+
+        public double? WindowLeft { get; set; }
+        public double? WindowTop { get; set; }
+        public bool IsWindowMaximized { get; set; }
+
+        /// <summary>最近一次访问的一级工作区。</summary>
+        public string LastAppSection { get; set; } = "Tasks";
+
+        /// <summary>WebView2 初始化失败时允许用户持久切回旧 WPF 工作区。</summary>
+        public bool UseLegacyWorkspace { get; set; } = false;
     }
 
     /// <summary>
@@ -73,16 +87,21 @@ namespace Taskato.Services
         private readonly string _configPath;
         public SettingsConfig Config { get; private set; } = new SettingsConfig();
 
-        public SettingsService()
+        public SettingsService(string? configPath = null)
         {
             var baseDir = AppDomain.CurrentDomain.BaseDirectory;
-            var dataDir = Path.Combine(baseDir, "Data");
+            var dataDir = string.IsNullOrWhiteSpace(configPath)
+                ? Path.Combine(baseDir, "Data")
+                : Path.GetDirectoryName(Path.GetFullPath(configPath))!;
             if (!Directory.Exists(dataDir))
             {
                 Directory.CreateDirectory(dataDir);
             }
-            
-            _configPath = Path.Combine(dataDir, "settings.json");
+
+            // 可注入路径用于自动化测试，生产环境仍固定保存到 exe/Data/settings.json。
+            _configPath = string.IsNullOrWhiteSpace(configPath)
+                ? Path.Combine(dataDir, "settings.json")
+                : Path.GetFullPath(configPath);
             Load();
         }
 

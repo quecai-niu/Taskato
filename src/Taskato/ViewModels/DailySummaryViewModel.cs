@@ -16,7 +16,8 @@ namespace Taskato.ViewModels
     }
 
     /// <summary>
-    /// 每日总结基于不可变完成记录生成，不再依赖任务当前是否仍处于完成状态。
+    /// 每日总结基于不可变完成记录生成，但只展示当前仍然有效的最后一次完成。
+    /// 取消完成不会删除历史记录，只会让对应记录退出每日总结。
     /// </summary>
     public class DailySummaryViewModel : ViewModelBase
     {
@@ -111,7 +112,8 @@ namespace Taskato.ViewModels
 
         public async Task LoadSummaryAsync()
         {
-            var records = await _dbService.GetCompletionRecordsOnAsync(CurrentDate);
+            var allRecords = await _dbService.GetCompletionRecordsOnAsync(CurrentDate);
+            var records = allRecords.Where(IsActiveCompletionRecord).ToList();
 
             CompletedCount = records.Count;
             LeafCompletedCount = records.Count(record => record.CompletionKind == CompletionKind.LeafTask);
@@ -149,6 +151,19 @@ namespace Taskato.ViewModels
             }
         }
 
+        /// <summary>
+        /// 已删除任务无法再判断当前状态，因此继续保留完成时快照。
+        /// 对仍存在的任务，完成状态和完成时间必须同时匹配，才能排除已经取消或被后续完成替代的旧记录。
+        /// </summary>
+        private static bool IsActiveCompletionRecord(TaskCompletionRecord record)
+        {
+            if (record.CurrentTask is null)
+                return true;
+
+            return record.CurrentTask.IsCompleted &&
+                   record.CurrentTask.CompletedAt == record.CompletedAt;
+        }
+
         private async Task BackfillTaskAsync()
         {
             var completionDate = CurrentDate.Date;
@@ -156,8 +171,8 @@ namespace Taskato.ViewModels
             {
                 MessageBox.Show(
                     GetOwnerWindow(),
-                    "不能补录未来日期的任务。",
-                    "补录完成任务",
+                    "不能为未来日期补充任务。",
+                    "补充任务",
                     MessageBoxButton.OK,
                     MessageBoxImage.Warning);
                 return;
@@ -168,8 +183,8 @@ namespace Taskato.ViewModels
             {
                 MessageBox.Show(
                     GetOwnerWindow(),
-                    "当前没有可补录的未完成叶子任务。",
-                    "补录完成任务",
+                    "当前没有可补充的未完成叶子任务。",
+                    "补充任务",
                     MessageBoxButton.OK,
                     MessageBoxImage.Information);
                 return;

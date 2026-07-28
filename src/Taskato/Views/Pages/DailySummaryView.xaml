@@ -1,0 +1,72 @@
+<UserControl x:Class="Taskato.Views.Pages.DailySummaryView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid Margin="28,24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel>
+                <TextBlock Text="每日总结" Style="{StaticResource WorkspaceTitle}"/>
+                <TextBlock Text="{Binding DateDisplay}" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,7,0,0"/>
+            </StackPanel>
+            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                <Button Content="上一天" Command="{Binding GoPrevCommand}" Style="{StaticResource SecondaryButton}" Margin="0,0,8,0"/>
+                <Button Content="下一天" Command="{Binding GoNextCommand}" Style="{StaticResource SecondaryButton}" Margin="0,0,8,0"/>
+                <Button Content="补充任务" Command="{Binding BackfillTaskCommand}" Style="{StaticResource PrimaryButton}"/>
+            </StackPanel>
+        </Grid>
+
+        <UniformGrid Grid.Row="1" Columns="4" Margin="0,22,0,18">
+            <Border Style="{StaticResource WorkspaceCard}" Margin="0,0,10,0"><StackPanel><TextBlock Text="有效完成" Foreground="{DynamicResource TextSecondaryBrush}"/><TextBlock Text="{Binding CompletedCount}" FontSize="28" Foreground="{DynamicResource TextPrimaryBrush}" FontWeight="Bold"/></StackPanel></Border>
+            <Border Style="{StaticResource WorkspaceCard}" Margin="0,0,10,0"><StackPanel><TextBlock Text="叶子任务" Foreground="{DynamicResource TextSecondaryBrush}"/><TextBlock Text="{Binding LeafCompletedCount}" FontSize="28" Foreground="{DynamicResource TextPrimaryBrush}" FontWeight="Bold"/></StackPanel></Border>
+            <Border Style="{StaticResource WorkspaceCard}" Margin="0,0,10,0"><StackPanel><TextBlock Text="父级成果" Foreground="{DynamicResource TextSecondaryBrush}"/><TextBlock Text="{Binding ParentAchievementCount}" FontSize="28" Foreground="{DynamicResource TextPrimaryBrush}" FontWeight="Bold"/></StackPanel></Border>
+            <Border Style="{StaticResource WorkspaceCard}"><StackPanel><TextBlock Text="专注时长" Foreground="{DynamicResource TextSecondaryBrush}"/><TextBlock Text="{Binding TotalDurationDisplay}" FontSize="28" Foreground="{DynamicResource TextPrimaryBrush}" FontWeight="Bold"/></StackPanel></Border>
+        </UniformGrid>
+
+        <Border Grid.Row="2" Style="{StaticResource WorkspaceCard}">
+            <Grid>
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                <TextBlock Text="{Binding SummaryLine}" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="15" Margin="0,0,0,14"/>
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemsSource="{Binding CompletionGroups}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Margin="0,0,0,20">
+                                    <TextBlock Text="{Binding Title}" Foreground="{DynamicResource ThemePrimaryBrush}" FontWeight="SemiBold" FontSize="15"/>
+                                    <ItemsControl ItemsSource="{Binding Records}" Margin="0,8,0,0">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Grid Margin="0,5,0,5">
+                                                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                                    <Border Width="7" Height="7" CornerRadius="4" Background="{DynamicResource ThemePrimaryBrush}" Margin="4,0,12,0"/>
+                                                    <TextBlock Grid.Column="1" Text="{Binding TitleSnapshot}" Foreground="{DynamicResource TextPrimaryBrush}"
+                                                               Margin="{Binding IndentWidth, Converter={StaticResource DoubleToLeftMarginConverter}}" TextWrapping="Wrap"/>
+                                                    <StackPanel Grid.Column="2" Orientation="Horizontal">
+                                                        <TextBlock Text="{Binding KindDisplay}" Foreground="{DynamicResource TextMutedBrush}" Margin="12,0,10,0"/>
+                                                        <TextBlock Text="{Binding DurationDisplay}" Foreground="{DynamicResource TextSecondaryBrush}"/>
+                                                    </StackPanel>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+                <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
+                    <Button Content="复制" Command="{Binding CopyCommand}" Style="{StaticResource SecondaryButton}" Margin="0,0,8,0"/>
+                    <Button Content="导出" Command="{Binding ExportCommand}" Style="{StaticResource SecondaryButton}"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

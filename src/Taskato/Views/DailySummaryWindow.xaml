@@ -145,7 +145,7 @@
             <Border Grid.Row="2" BorderBrush="{StaticResource SeparatorBrush}"
                     BorderThickness="0,1,0,0" CornerRadius="0,0,16,16">
                 <StackPanel Orientation="Horizontal" Margin="20,14" HorizontalAlignment="Right">
-                    <Button Content="补录完成" Style="{StaticResource SecondaryButton}"
+                    <Button Content="补充任务" Style="{StaticResource SecondaryButton}"
                             Command="{Binding BackfillTaskCommand}" Padding="16,8" Margin="0,0,10,0"/>
                     <Button Content="复制总结" Style="{StaticResource SecondaryButton}"
                             Command="{Binding CopyCommand}" Padding="16,8" Margin="0,0,10,0"/>

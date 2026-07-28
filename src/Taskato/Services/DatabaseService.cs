@@ -205,7 +205,7 @@ namespace Taskato.Services
         }
 
         /// <summary>
-        /// 查询所有未完成任务（用于每日总结补录，不限制创建日期）
+        /// 查询所有未完成任务（用于每日总结补充任务，不限制创建日期）
         /// </summary>
         public async Task<List<TaskItem>> GetUncompletedTasksAsync()
         {

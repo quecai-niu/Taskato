@@ -1,392 +1,44 @@
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using Taskato.Utils;
-using Taskato.ViewModels;
 
 namespace Taskato.Views
 {
-    /// <summary>
-    /// 主窗体的代码后台
-    /// 
-    /// 注意：MVVM 架构下，业务逻辑应在 ViewModel 中处理。
-    /// 这里只处理 View 层特有的 UI 操作（拖拽窗体、窗口按钮等），
-    /// 以及一些 XAML 绑定不方便处理的事件转发。
-    /// </summary>
+    /// <summary>应用壳层代码后台，仅处理窗口本身的桌面交互。</summary>
     public partial class MainWindow : Window
     {
-        /// <summary>
-        /// 是否正在退出整个应用程序。
-        /// 如果为 true，则允许窗口真正关闭；否则只允许隐藏。
-        /// </summary>
-        public bool IsAppShuttingDown { get; set; } = false;
+        public bool IsAppShuttingDown { get; set; }
 
         public MainWindow()
         {
             InitializeComponent();
-
             VisualEffects.Initialize(this);
-
-            // 日期显示已通过 XAML 绑定到 MainViewModel.DateLabelText，跨天自动刷新
-
-            // 绑定 ViewModel 事件 — 番茄钟完成时弹出 Toast 窗口
-            Loaded += (s, e) =>
-            {
-                if (DataContext is MainViewModel vm)
-                {
-                    // 监听所有计时器集合变化，为每个新加入的计时器注册独立的弹窗回调
-                    vm.AllTimers.CollectionChanged += (_, args) =>
-                    {
-                        if (args.NewItems == null) return;
-                        foreach (PomodoroTimerViewModel subVm in args.NewItems)
-                        {
-                            var capturedSubVm = subVm; // 闭包捕获，避免变量引用问题
-                            capturedSubVm.WorkCompleted += () =>
-                            {
-                                var toast = new ToastWindow(
-                                    $"{capturedSubVm.TimerName} 时间到！",
-                                    "要休息一下吗？",
-                                    onRest: () => capturedSubVm.StartRest(),
-                                    onContinue: () => capturedSubVm.StartWork(),
-                                    showTimer: vm.EnableToastTimer,
-                                    actionDelaySeconds: vm.ToastActionDelaySeconds,
-                                    soundChoice: vm.NotificationSoundChoice,
-                                    customSoundPath: vm.CustomSoundPath
-                                );
-                                toast.Show();
-                                _ = Task.Run(async () =>
-                                {
-                                    if (vm.FeishuEnabled && vm.FeishuNotifyOnWork)
-                                        await vm.FeishuService.NotifyAsync(
-                                            $"{capturedSubVm.TimerName} 时间到！",
-                                            "你已完成专注工作，要休息一下吗？");
-                                });
-                            };
-
-                            capturedSubVm.RestCompleted += () =>
-                            {
-                                var toast = new ToastWindow(
-                                    $"{capturedSubVm.TimerName} 休息结束！",
-                                    "精力充沛了吗？开始新一轮专注吧！",
-                                    onRest: null,
-                                    onContinue: () => capturedSubVm.StartWork(),
-                                    showTimer: vm.EnableToastTimer,
-                                    isRestComplete: true,
-                                    actionDelaySeconds: vm.ToastActionDelaySeconds,
-                                    soundChoice: vm.NotificationSoundChoice,
-                                    customSoundPath: vm.CustomSoundPath
-                                );
-                                toast.Show();
-                                _ = Task.Run(async () =>
-                                {
-                                    if (vm.FeishuEnabled && vm.FeishuNotifyOnRest)
-                                        await vm.FeishuService.NotifyAsync(
-                                            $"{capturedSubVm.TimerName} 休息结束！",
-                                            "精力充沛了吗？开始新一轮专注吧！");
-                                });
-                            };
-
-                            capturedSubVm.RestHalfway += () =>
-                            {
-                                _ = Task.Run(async () =>
-                                {
-                                    if (vm.FeishuEnabled && vm.FeishuRestHalfwayEnabled)
-                                        await vm.FeishuService.NotifyAsync(
-                                            $"{capturedSubVm.TimerName} 休息过半",
-                                            "休息时间已过半，准备回到工作状态吧！");
-                                });
-                            };
-                        }
-                    };
-                    
-                    // 手动为初始就在集合中的计时器（如主番茄钟）触发一次注册
-                    foreach (var subVm in vm.AllTimers)
-                    {
-                        var capturedSubVm = subVm;
-                        capturedSubVm.WorkCompleted += () =>
-                        {
-                            var toast = new ToastWindow(
-                                $"{capturedSubVm.TimerName} 时间到！",
-                                "你已完成专注工作，要休息一下吗？",
-                                onRest: () => capturedSubVm.StartRest(),
-                                onContinue: () => capturedSubVm.StartWork(),
-                                showTimer: vm.EnableToastTimer,
-                                actionDelaySeconds: vm.ToastActionDelaySeconds,
-                                soundChoice: vm.NotificationSoundChoice,
-                                customSoundPath: vm.CustomSoundPath
-                            );
-                            toast.Show();
-                            _ = Task.Run(async () =>
-                            {
-                                if (vm.FeishuEnabled && vm.FeishuNotifyOnWork)
-                                    await vm.FeishuService.NotifyAsync(
-                                        $"{capturedSubVm.TimerName} 时间到！",
-                                        "你已完成专注工作，要休息一下吗？");
-                            });
-                        };
-
-                        capturedSubVm.RestCompleted += () =>
-                        {
-                            var toast = new ToastWindow(
-                                $"{capturedSubVm.TimerName} 休息结束！",
-                                "精力充沛了吗？开始新一轮专注吧！",
-                                onRest: null,
-                                onContinue: () => capturedSubVm.StartWork(),
-                                showTimer: vm.EnableToastTimer,
-                                isRestComplete: true,
-                                actionDelaySeconds: vm.ToastActionDelaySeconds,
-                                soundChoice: vm.NotificationSoundChoice,
-                                customSoundPath: vm.CustomSoundPath
-                            );
-                            toast.Show();
-                            _ = Task.Run(async () =>
-                            {
-                                if (vm.FeishuEnabled && vm.FeishuNotifyOnRest)
-                                    await vm.FeishuService.NotifyAsync(
-                                        $"{capturedSubVm.TimerName} 休息结束！",
-                                        "精力充沛了吗？开始新一轮专注吧！");
-                            });
-                        };
-
-                        capturedSubVm.RestHalfway += () =>
-                        {
-                            _ = Task.Run(async () =>
-                            {
-                                if (vm.FeishuEnabled && vm.FeishuRestHalfwayEnabled)
-                                    await vm.FeishuService.NotifyAsync(
-                                        $"{capturedSubVm.TimerName} 休息过半",
-                                        "休息时间已过半，准备回到工作状态吧！");
-                            });
-                        };
-                    }
-                }
-            };
         }
 
-        // ==================== 标题栏操作 ====================
-
-        /// <summary>
-        /// 拖拽标题栏移动窗体
-        /// </summary>
         private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (e.ClickCount == 2)
-            {
-                // 双击标题栏 → 最大化/还原
                 VisualEffects.RunWithTemporaryReduction(this, ToggleMaximize);
-            }
             else
-            {
                 VisualEffects.RunWithTemporaryReduction(this, DragMove);
-            }
         }
 
-        /// <summary>
-        /// 最小化按钮 → 隐藏到任务栏
-        /// </summary>
-        private void MinimizeButton_Click(object sender, RoutedEventArgs e)
-        {
+        private void MinimizeButton_Click(object sender, RoutedEventArgs e) =>
             WindowState = WindowState.Minimized;
-        }
 
-        /// <summary>
-        /// 最大化/还原按钮
-        /// </summary>
-        private void MaximizeButton_Click(object sender, RoutedEventArgs e)
-        {
+        private void MaximizeButton_Click(object sender, RoutedEventArgs e) =>
             VisualEffects.RunWithTemporaryReduction(this, ToggleMaximize);
-        }
 
-        /// <summary>
-        /// 关闭按钮 → 隐藏到托盘而非真正退出
-        /// </summary>
-        private void CloseButton_Click(object sender, RoutedEventArgs e)
-        {
-            Hide(); // 只是隐藏，应用继续在后台运行
-        }
+        private void CloseButton_Click(object sender, RoutedEventArgs e) => Hide();
 
-        /// <summary>
-        /// 切换最大化/还原状态
-        /// </summary>
-        private void ToggleMaximize()
-        {
-            WindowState = WindowState == WindowState.Maximized
-                ? WindowState.Normal
-                : WindowState.Maximized;
-        }
+        private void ToggleMaximize() =>
+            WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
 
-        /// <summary>
-        /// 关键：拦截窗口关闭事件
-        /// 当用户通过 Alt+F4、任务栏右键或其他系统方式关闭窗口时，
-        /// 拦截该行为并改为“隐藏”，以防止窗口对象被销毁导致无法再次通过托盘唤起。
-        /// </summary>
         protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
         {
-            if (IsAppShuttingDown)
-            {
-                // 如果是应用正在退出，允许窗口正常关闭
-                return;
-            }
-
-            // 拦截手动关闭操作
+            if (IsAppShuttingDown) return;
             e.Cancel = true;
-            // 改为隐藏
-            this.Hide();
-        }
-
-        // ==================== 任务列表操作 ====================
-
-        /// <summary>
-        /// 输入框按 Enter 键添加任务，Shift+Enter 插入换行
-        /// </summary>
-        private void TaskInput_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
-        {
-            if (e.Key == Key.Enter && DataContext is MainViewModel vm)
-            {
-                // Shift+Enter 交给 TextBox 处理，用于录入多行任务标题。
-                if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
-                    return;
-
-                // 普通 Enter 只负责提交，避免同时向输入框写入换行。
-                e.Handled = true;
-                if (vm.AddTaskCommand.CanExecute(null))
-                    vm.AddTaskCommand.Execute(null);
-            }
-            else if (e.Key == Key.Tab && DataContext is MainViewModel vmTab)
-            {
-                e.Handled = true; // 拦截默认的焦点切换
-                vmTab.NewTaskPriority = (vmTab.NewTaskPriority + 1) % 4; // 0,1,2,3 循环
-            }
-        }
-
-        /// <summary>
-        /// 点击勾选框 → 切换任务完成状态
-        /// 因为 Border 不支持 Command 绑定，所以在代码后台转发到 ViewModel
-        /// </summary>
-        private void Checkbox_Click(object sender, MouseButtonEventArgs e)
-        {
-            if (sender is FrameworkElement element && DataContext is MainViewModel vm)
-            {
-                vm.ToggleTaskCommand.Execute(element.Tag);
-            }
-            e.Handled = true;
-        }
-
-        private async void ChildTaskInput_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
-        {
-            if (sender is not FrameworkElement element ||
-                element.Tag is not Models.TaskItem parent ||
-                DataContext is not MainViewModel vm)
-            {
-                return;
-            }
-
-            if (e.Key == Key.Escape)
-            {
-                e.Handled = true;
-                parent.NewChildTitle = string.Empty;
-                parent.IsAddingChild = false;
-                return;
-            }
-
-            if (e.Key != Key.Enter)
-                return;
-
-            e.Handled = true;
-            await vm.AddChildTaskAsync(parent);
-        }
-
-        private void ChildTaskInput_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
-        {
-            if (sender is not System.Windows.Controls.TextBox input || !input.IsVisible)
-                return;
-
-            // 等可见性和布局更新完成后再聚焦，确保点击“添加子任务”后可以立即录入。
-            input.Dispatcher.BeginInvoke(
-                new System.Action(() =>
-                {
-                    input.Focus();
-                    input.SelectAll();
-                }),
-                System.Windows.Threading.DispatcherPriority.Input);
-        }
-
-        /// <summary>
-        /// 点击删除按钮 → 弹出确认对话框并执行删除
-        /// </summary>
-        private void DeleteButton_Click(object sender, MouseButtonEventArgs e)
-        {
-            if (sender is FrameworkElement element &&
-                element.Tag is Models.TaskItem task &&
-                DataContext is MainViewModel vm)
-            {
-                if (!task.HasChildren)
-                {
-                    if (ConfirmDialog.Show(this, "确定要删除这个任务吗？历史完成记录会保留。"))
-                        _ = vm.DeleteTaskAsync(task);
-                }
-                else
-                {
-                    var choice = MessageBox.Show(
-                        this,
-                        "该任务包含子任务。\n\n选择“是”：删除整个任务分支。\n选择“否”：仅删除父任务，并将直属子任务提升一级。\n选择“取消”：不删除。",
-                        "删除任务分支",
-                        MessageBoxButton.YesNoCancel,
-                        MessageBoxImage.Warning);
-                    if (choice == MessageBoxResult.Yes)
-                        _ = vm.DeleteTaskAsync(task, Models.TaskDeleteMode.DeleteBranch);
-                    else if (choice == MessageBoxResult.No)
-                        _ = vm.DeleteTaskAsync(task, Models.TaskDeleteMode.PromoteChildren);
-                }
-            }
-            e.Handled = true;
-        }
-
-        /// <summary>
-        /// 全局按键拦截 — 当用户直接敲击字母/数字键时，自动聚焦到输入框并开始录入
-        /// </summary>
-        protected override void OnPreviewKeyDown(System.Windows.Input.KeyEventArgs e)
-        {
-            // 任意文本编辑框正在输入时都不能触发全局快捷录入，否则子任务输入会被主输入框抢走焦点。
-            var isEditingText = Keyboard.FocusedElement is System.Windows.Controls.Primitives.TextBoxBase;
-            if (!isEditingText &&
-                !TaskInput.IsFocused &&
-                ((e.Key >= Key.A && e.Key <= Key.Z) || (e.Key >= Key.D0 && e.Key <= Key.D9) || (e.Key >= Key.NumPad0 && e.Key <= Key.NumPad9)))
-            {
-                TaskInput.Focus();
-                // 强制将光标移至末尾
-                TaskInput.SelectionStart = TaskInput.Text.Length;
-            }
-            base.OnPreviewKeyDown(e);
-        }
-
-        /// <summary>
-        /// 任务卡片按下 → 处理双击详情页编辑
-        /// </summary>
-        private async void TaskCard_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-        {
-            if (e.ClickCount == 2 && sender is FrameworkElement element && element.DataContext is Models.TaskItem task)
-            {
-                if (DataContext is not MainViewModel vm) return;
-
-                var detailWindow = new TaskDetailWindow(task, vm.DatabaseService) { Owner = this };
-                detailWindow.ShowDialog();
-                await vm.LoadTodayTasksAsync();
-
-                e.Handled = true;
-            }
-        }
-
-        /// <summary>
-        /// 附加番茄钟选项卡 × 按钮 → 移除该计时器
-        /// </summary>
-        private void RemoveTimerButton_Click(object sender, MouseButtonEventArgs e)
-        {
-            if (sender is FrameworkElement element && DataContext is MainViewModel vm)
-            {
-                vm.RemoveAdditionalTimerCommand.Execute(element.Tag);
-            }
-            e.Handled = true;
+            Hide();
         }
     }
 }

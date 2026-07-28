@@ -1,14 +1,23 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using Taskato.Models;
+using Taskato.Models.BridgeDtos;
 using Taskato.Services;
+using Taskato.Services.WebBridge;
+using Taskato.ViewModels;
+using Taskato.Views;
 
 internal static class Program
 {
+    [STAThread]
     private static async Task Main()
     {
+        RunWorkspaceXamlSmokeTest();
+
         var testDirectory = Path.Combine(Path.GetTempPath(), "TaskatoTests");
         Directory.CreateDirectory(testDirectory);
         var databasePath = Path.Combine(testDirectory, $"task-tree-{Guid.NewGuid():N}.db");
@@ -60,6 +69,16 @@ internal static class Program
             Assert((await database.GetCompletionRecordsOnAsync(DateTime.Today)).Count == 4,
                 "重新打开不应删除历史完成记录。");
 
+            var reopenedSummary = new DailySummaryViewModel(database);
+            await reopenedSummary.LoadSummaryAsync();
+            Assert(reopenedSummary.CompletedCount == 1,
+                "每日总结应隐藏已取消完成的叶子任务及重新打开的父级成果。");
+            Assert(reopenedSummary.CompletionGroups
+                    .SelectMany(group => group.Records)
+                    .Single()
+                    .TaskId == leafOne.Id,
+                "每日总结应保留仍然有效的叶子完成记录。");
+
             leafTwo = reopenedTasks.Single(task => task.Id == leafTwo.Id);
             await database.CompleteTaskWithCascadeAsync(
                 leafTwo,
@@ -68,6 +87,11 @@ internal static class Program
                 CompletionTrigger.Manual);
             Assert((await database.GetCompletionRecordsOnAsync(DateTime.Today)).Count == 7,
                 "再次完成应新增叶子与父级完成记录。");
+
+            var recompletedSummary = new DailySummaryViewModel(database);
+            await recompletedSummary.LoadSummaryAsync();
+            Assert(recompletedSummary.CompletedCount == 4,
+                "同日再次完成后，每日总结只应展示最后一次有效完成及其他有效成果。");
 
             phase = (await database.GetTaskTreeItemsAsync()).Single(task => task.Id == phase.Id);
             var addedAfterCompletion = await database.AddChildTaskAsync(phase, "补充回归测试");
@@ -159,7 +183,80 @@ internal static class Program
                     record.TriggerType == CompletionTrigger.LegacyMigration),
                 "升级后必须把旧的已完成任务迁移为历史完成记录。");
 
-            Console.WriteLine("PASS: 任务树、级联完成、历史记录、层级限制和删除提升测试全部通过。");
+            var bridgeSettingsPath = Path.Combine(testDirectory, $"bridge-settings-{Guid.NewGuid():N}.json");
+            try
+            {
+                var settings = new SettingsService(bridgeSettingsPath);
+                var pomodoro = new PomodoroService(settings.Config.WorkMinutes, settings.Config.RestMinutes);
+                var mainViewModel = new MainViewModel(
+                    database,
+                    pomodoro,
+                    settings,
+                    new FeishuService(settings));
+                using var bridge = new WebBridgeService(database, mainViewModel, settings);
+
+                var ready = await bridge.ProcessRequestAsync(new WebBridgeRequest
+                {
+                    Id = "ready-1",
+                    Method = "app.ready"
+                });
+                Assert(ready.Ok && ready.Id == "ready-1", "桥接握手必须回传请求 id。");
+
+                var unknown = await bridge.ProcessRequestAsync(new WebBridgeRequest
+                {
+                    Id = "unknown-1",
+                    Method = "system.runAnything"
+                });
+                Assert(!unknown.Ok && unknown.Error?.Code == "method_not_found",
+                    "未知桥接方法必须返回结构化白名单错误。");
+
+                var invalid = await bridge.ProcessRequestAsync(new WebBridgeRequest
+                {
+                    Id = "invalid-1",
+                    Method = "tasks.add",
+                    Params = JsonSerializer.SerializeToElement(new { title = "" })
+                });
+                Assert(!invalid.Ok && invalid.Error?.Code == "invalid_params",
+                    "无效任务参数必须返回结构化参数错误。");
+
+                var malformedUpdate = await bridge.ProcessRequestAsync(new WebBridgeRequest
+                {
+                    Id = "invalid-2",
+                    Method = "tasks.update",
+                    Params = JsonSerializer.SerializeToElement(new { taskId = root.Id, priority = "high" })
+                });
+                Assert(!malformedUpdate.Ok && malformedUpdate.Error?.Code == "invalid_params",
+                    "错误参数类型不能泄漏为内部异常。");
+
+                var taskList = await bridge.ProcessRequestAsync(new WebBridgeRequest
+                {
+                    Id = "tasks-1",
+                    Method = "tasks.list"
+                });
+                Assert(taskList.Ok && taskList.Result is not null, "任务查询桥接必须返回 DTO 快照。");
+
+                var timeline = await bridge.ProcessRequestAsync(new WebBridgeRequest
+                {
+                    Id = "history-1",
+                    Method = "history.events",
+                    Params = JsonSerializer.SerializeToElement(new
+                    {
+                        startDate = DateTime.Today.AddDays(-2).ToString("yyyy-MM-dd"),
+                        endDate = DateTime.Today.ToString("yyyy-MM-dd"),
+                        eventFilter = "reopened"
+                    })
+                });
+                Assert(timeline.Ok &&
+                       timeline.Result is IEnumerable<TaskActivityBridgeDto> timelineRows &&
+                       timelineRows.Any(item => item.EventType == "reopened"),
+                    "取消完成必须能在历史时间线中查询到。");
+            }
+            finally
+            {
+                if (File.Exists(bridgeSettingsPath)) File.Delete(bridgeSettingsPath);
+            }
+
+            Console.WriteLine("PASS: 整窗 XAML、任务树、级联完成、历史记录、桥接契约、层级限制和删除提升测试全部通过。");
         }
         finally
         {
@@ -168,6 +265,38 @@ internal static class Program
             if (File.Exists(databasePath))
                 File.Delete(databasePath);
         }
+    }
+
+    private static void RunWorkspaceXamlSmokeTest()
+    {
+        Exception? failure = null;
+        var thread = new Thread(() =>
+        {
+            try
+            {
+                var app = new Taskato.App();
+                app.InitializeComponent();
+                var window = new MainWindow
+                {
+                    IsAppShuttingDown = true,
+                    ShowActivated = false,
+                    ShowInTaskbar = false,
+                    Opacity = 0
+                };
+                window.Show();
+                window.UpdateLayout();
+                window.Close();
+            }
+            catch (Exception exception)
+            {
+                failure = exception;
+            }
+        });
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        thread.Join();
+        if (failure is not null)
+            throw new InvalidOperationException("整窗 XAML 实例化失败。", failure);
     }
 
     private static async Task<TaskItem> AddTaskAsync(DatabaseService database, string title)

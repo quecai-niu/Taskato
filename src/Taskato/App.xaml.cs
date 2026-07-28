@@ -4,6 +4,7 @@ using Taskato.ViewModels;
 using Taskato.Views;
 using System.Threading;
 using System.Windows.Media;
+using Taskato.Services.WebBridge;
 
 namespace Taskato
 {
@@ -31,8 +32,13 @@ namespace Taskato
         /// <summary>系统设置服务（全局单例）</summary>
         private SettingsService _settingsService = null!;
 
+        /// <summary>番茄钟通知订阅协调器（全局单例）</summary>
+        private PomodoroNotificationCoordinator _notificationCoordinator = null!;
+        private WebBridgeService _webBridgeService = null!;
+
         /// <summary>单例应用锁</summary>
-        private static Mutex _mutex = null!;
+        private static Mutex? _mutex;
+        private static bool _ownsMutex;
 
         /// <summary>
         /// 应用启动事件 — 替代 StartupUri 的手动启动方式
@@ -40,22 +46,33 @@ namespace Taskato
         private async void Application_Startup(object sender, StartupEventArgs e)
         {
             // ---- 0. 检测是否已经运行（单例控制） ----
-            _mutex = new Mutex(true, "TaskatoWpfAppMutex", out bool createdNew);
-            if (!createdNew)
+            var allowMultipleInstances = Environment.GetEnvironmentVariable("TASKATO_ALLOW_MULTIPLE_INSTANCES") == "1";
+            if (!allowMultipleInstances)
             {
-                MessageBox.Show("Taskato 已经在运行中了！请在右下角系统托盘查看。", "Taskato 提示", MessageBoxButton.OK, MessageBoxImage.Information);
-                Shutdown();
-                return;
+                _mutex = new Mutex(true, "TaskatoWpfAppMutex", out bool createdNew);
+                _ownsMutex = createdNew;
+                if (!createdNew)
+                {
+                    MessageBox.Show("Taskato 已经在运行中了！请在右下角系统托盘查看。", "Taskato 提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                    Shutdown();
+                    return;
+                }
             }
 
             // ---- 0.1 初始化设置服务并应用主题颜色 ----
-            _settingsService = new SettingsService();
+            // 自动化烟测可注入隔离数据目录；未设置时保持原有 exe/Data 行为。
+            var dataDirectory = Environment.GetEnvironmentVariable("TASKATO_DATA_DIRECTORY");
+            _settingsService = string.IsNullOrWhiteSpace(dataDirectory)
+                ? new SettingsService()
+                : new SettingsService(System.IO.Path.Combine(dataDirectory, "settings.json"));
             ApplySavedTheme();
 
             // ---- 0.2 初始化飞书通知服务 ----
             var _feishuService = new FeishuService(_settingsService);
             // ---- 1. 初始化数据库 ----
-            _dbService = new DatabaseService();
+            _dbService = string.IsNullOrWhiteSpace(dataDirectory)
+                ? new DatabaseService()
+                : new DatabaseService(System.IO.Path.Combine(dataDirectory, "taskato.db"));
             await _dbService.InitializeAsync();
 
             // ---- 2. 初始化番茄钟（加载配置中的时长） ----
@@ -69,45 +86,92 @@ namespace Taskato
 
             // ---- 4. 创建主窗体和 ViewModel ----
             var mainVM = new MainViewModel(_dbService, _pomodoroService, _settingsService, _feishuService);
-            var mainWindow = new MainWindow
+            _notificationCoordinator = new PomodoroNotificationCoordinator(mainVM);
+            var shellVM = new ShellViewModel(mainVM, _dbService, _settingsService);
+            _webBridgeService = new WebBridgeService(_dbService, mainVM, _settingsService);
+
+            Window activeWindow = null!;
+            MainWindow? legacyWindow = null;
+            WebShellWindow? webWindow = null;
+
+            void ActivateWindow(Window window)
             {
-                DataContext = mainVM
-            };
+                activeWindow = window;
+                MainWindow = window;
+                RestoreWindowPlacement(window);
+                window.Show();
+            }
+
+            void ShowLegacyWorkspace(bool persistPreference)
+            {
+                if (persistPreference)
+                {
+                    _settingsService.Config.UseLegacyWorkspace = true;
+                    _settingsService.Save();
+                }
+
+                if (webWindow is not null)
+                {
+                    webWindow.IsAppShuttingDown = true;
+                    webWindow.Close();
+                    webWindow = null;
+                }
+
+                legacyWindow ??= new MainWindow { DataContext = shellVM };
+                ActivateWindow(legacyWindow);
+            }
+
+            if (_settingsService.Config.UseLegacyWorkspace)
+            {
+                ShowLegacyWorkspace(false);
+            }
+            else
+            {
+                webWindow = new WebShellWindow(_webBridgeService);
+                webWindow.LegacyWorkspaceRequested += () => ShowLegacyWorkspace(true);
+                ActivateWindow(webWindow);
+            }
 
             // ---- 5. 设置托盘事件回调 ----
 
             // 托盘菜单"显示主窗口" → 显示并激活窗口
             _trayService.ShowWindowRequested += () =>
             {
-                mainWindow.Show();
-                mainWindow.WindowState = WindowState.Normal;
-                mainWindow.Activate();
+                activeWindow.Show();
+                activeWindow.WindowState = WindowState.Normal;
+                activeWindow.Activate();
             };
 
-            // 托盘菜单"设置" → 直接弹出设置窗口
+            // 托盘菜单"设置" → 显示主窗口并切换到内嵌设置页
             _trayService.ShowSettingsRequested += () =>
             {
-                if (mainVM.OpenSettingsCommand.CanExecute(null))
-                    mainVM.OpenSettingsCommand.Execute(null);
+                activeWindow.Show();
+                activeWindow.WindowState = WindowState.Normal;
+                activeWindow.Activate();
+                if (activeWindow is WebShellWindow web)
+                    web.NavigateTo("settings");
+                else
+                    shellVM.ShowSettingsCommand.Execute(null);
             };
 
             // 托盘菜单"退出" → 真正关闭应用
             _trayService.ExitRequested += () =>
             {
-                mainWindow.IsAppShuttingDown = true; // 标记应用正在退出，允许窗口销毁
+                if (activeWindow is WebShellWindow web) web.IsAppShuttingDown = true;
+                if (activeWindow is MainWindow legacy) legacy.IsAppShuttingDown = true;
                 _trayService.Dispose();  // 清理托盘图标
                 Shutdown();              // 退出应用
             };
 
             // ---- 6. 加载今日任务并显示窗口 ----
             await mainVM.LoadTodayTasksAsync();
-            mainWindow.Show();
-
-            if (!_settingsService.Config.HasSeenFeishuGuide)
+            await shellVM.NavigateAsync(shellVM.ActiveSection);
+            var skipFirstRunGuide = Environment.GetEnvironmentVariable("TASKATO_SKIP_FIRST_RUN_GUIDE") == "1";
+            if (!_settingsService.Config.HasSeenFeishuGuide && !skipFirstRunGuide)
             {
                 var guideWindow = new FeishuGuideWindow
                 {
-                    Owner = mainWindow
+                    Owner = activeWindow
                 };
                 guideWindow.ShowDialog();
 
@@ -116,7 +180,10 @@ namespace Taskato
 
                 if (guideWindow.ShouldConfigure)
                 {
-                    mainVM.OpenFeishuSettings();
+                    if (activeWindow is WebShellWindow web)
+                        web.NavigateTo("settings");
+                    else
+                        await shellVM.NavigateAsync(Models.AppSection.Settings);
                 }
             }
         }
@@ -137,12 +204,56 @@ namespace Taskato
             resources["ThemeGradientBrush"] = new LinearGradientBrush(primary, secondary, 135);
         }
 
+        /// <summary>把旧配置或屏幕外坐标约束到当前主屏可用区域。</summary>
+        private void RestoreWindowPlacement(Window window)
+        {
+            var config = _settingsService.Config;
+            var area = SystemParameters.WorkArea;
+            window.Width = Math.Min(window.Width, area.Width);
+            window.Height = Math.Min(window.Height, area.Height);
+
+            if (config.WindowLeft.HasValue && config.WindowTop.HasValue)
+            {
+                window.WindowStartupLocation = WindowStartupLocation.Manual;
+                window.Left = Math.Clamp(config.WindowLeft.Value, area.Left, Math.Max(area.Left, area.Right - window.Width));
+                window.Top = Math.Clamp(config.WindowTop.Value, area.Top, Math.Max(area.Top, area.Bottom - window.Height));
+            }
+
+            if (config.IsWindowMaximized)
+                window.WindowState = WindowState.Maximized;
+        }
+
+        private void SaveWindowPlacement()
+        {
+            // 单例检测失败会在服务初始化前进入 OnExit，此时不能访问设置服务。
+            if (_settingsService is null || MainWindow is not Window window) return;
+            var bounds = window.RestoreBounds;
+            var config = _settingsService.Config;
+            config.WindowWidth = Math.Max(960, bounds.Width);
+            config.WindowHeight = Math.Max(640, bounds.Height);
+            config.WindowLeft = bounds.Left;
+            config.WindowTop = bounds.Top;
+            config.IsWindowMaximized = window.WindowState == WindowState.Maximized;
+            _settingsService.Save();
+        }
+
         /// <summary>
         /// 应用退出时确保清理托盘图标
         /// </summary>
         protected override void OnExit(ExitEventArgs e)
         {
+            SaveWindowPlacement();
             _trayService?.Dispose();
+            _notificationCoordinator?.Dispose();
+            _webBridgeService?.Dispose();
+            if (_ownsMutex)
+            {
+                try { _mutex?.ReleaseMutex(); }
+                catch (ApplicationException) { /* 启动未完成时不持有锁。 */ }
+            }
+            _mutex?.Dispose();
+            _mutex = null;
+            _ownsMutex = false;
             base.OnExit(e);
         }
     }

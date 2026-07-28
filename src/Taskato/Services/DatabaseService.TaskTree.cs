@@ -283,6 +283,25 @@ namespace Taskato.Services
             return records;
         }
 
+        public async Task<List<TaskCompletionRecord>> GetCompletionRecordsBetweenAsync(
+            DateTime startDate,
+            DateTime endDate)
+        {
+            var dayEnd = endDate.Date.AddDays(1);
+            var records = await _db.Table<TaskCompletionRecord>()
+                .Where(record => record.CompletedAt >= startDate.Date && record.CompletedAt < dayEnd)
+                .OrderByDescending(record => record.CompletedAt)
+                .ToListAsync();
+
+            var tasksById = (await GetTaskTreeItemsAsync()).ToDictionary(task => task.Id);
+            foreach (var record in records)
+            {
+                if (tasksById.TryGetValue(record.TaskId, out var currentTask))
+                    record.CurrentTask = currentTask;
+            }
+            return records;
+        }
+
         public async Task<List<TaskItem>> GetUncompletedLeafTasksAsync()
         {
             var tasks = await GetTaskTreeItemsAsync();
