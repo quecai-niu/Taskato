@@ -38,7 +38,7 @@
 ## 验证与发布
 
 - `src/TestProject/Program.cs`：XAML、任务树、日志、迁移、备份、桥接、窗口归位、通知生命周期和长期计时回归测试。
-- `scripts/build-release.ps1`：前后端验证、自包含 Windows x64 发布、真实 WebView2 烟测、便携包、校验和与清单。
+- `scripts/build-release.ps1`：前后端验证、自包含 Windows x64 发布、真实 WebView2 烟测、便携包/安装包、校验和与清单。
 - `scripts/test-webview-smoke.ps1`：以隔离数据目录启动发布程序，验证 React 根节点与本地桥接后清理运行数据。
 - `installer/Taskato.iss`：Inno Setup 安装定义和 WebView2 Evergreen 检测。
 - `docs/release_Taskato_20260729.md`：运行时、升级、签名和回滚边界。

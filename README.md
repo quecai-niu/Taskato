@@ -101,7 +101,7 @@ Release 构建会检查 `src/Taskato.Web/dist/index.html`；缺失时会给出�
 生成经过完整检查的便携发布包：
 
 ```powershell
-.\scripts\build-release.ps1 -Version 2.20.0
+.\scripts\build-release.ps1 -Version 2.21.0
 ```
 
 运行时、安装包、升级和回滚策略见 [发布与恢复说明](docs/release_Taskato_20260729.md)。

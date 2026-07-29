@@ -1,8 +1,8 @@
 #ifndef MyAppVersion
-  #define MyAppVersion "2.20.0"
+  #define MyAppVersion "2.21.0"
 #endif
 #ifndef PublishDir
-  #define PublishDir "..\artifacts\release\2.20.0\portable"
+  #define PublishDir "..\artifacts\release\2.21.0\portable"
 #endif
 
 [Setup]

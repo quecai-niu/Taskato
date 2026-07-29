@@ -221,5 +221,5 @@ WPF 桌面壳层
 - `dotnet run --project src/TestProject/TestProject.csproj -c Release --no-build`：整窗 XAML、任务树、级联完成、有效总结、历史、桥接契约、层级限制和删除提升全部通过。
 - Release 输出中的 `Web/index.html` 已引用本次最新哈希资源。
 - 浏览器 1440 × 1024、1100 × 800、960 × 640 均无横向溢出，控制台无错误。
-- `scripts/build-release.ps1 -Version 2.20.0`：前后端检查、C# 回归、自包含发布、真实 WebView2 自动烟测、ZIP、SHA-256 与清单均通过。
+- `scripts/build-release.ps1 -Version 2.21.0`：前后端检查、C# 回归、自包含发布、真实 WebView2 自动烟测、ZIP、SHA-256 与清单均通过。
 - 隔离数据目录启动 Release `Taskato.exe`，自动断言 React 根节点、任务入口、WebView2 消息对象与无错误 Toast；WebView2 用户数据不会污染发布目录。

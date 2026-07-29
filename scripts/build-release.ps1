@@ -1,6 +1,7 @@
 param(
-    [string]$Version = "2.20.0",
-    [switch]$BuildInstaller
+    [string]$Version = "2.21.0",
+    [switch]$BuildInstaller,
+    [string]$InnoCompilerPath = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -56,6 +57,35 @@ Compress-Archive -Path (Join-Path $publishRoot "*") -DestinationPath $zipPath -F
 $checksum = (Get-FileHash -LiteralPath $zipPath -Algorithm SHA256).Hash.ToLowerInvariant()
 Set-Content -LiteralPath "$zipPath.sha256" -Value "$checksum  $(Split-Path -Leaf $zipPath)" -Encoding ascii
 
+$installerPath = $null
+$installerChecksum = $null
+if ($BuildInstaller) {
+    $compiler = if (-not [string]::IsNullOrWhiteSpace($InnoCompilerPath)) {
+        [System.IO.Path]::GetFullPath($InnoCompilerPath)
+    }
+    else {
+        (Get-Command iscc.exe -ErrorAction SilentlyContinue).Source
+    }
+    if (-not $compiler) {
+        throw "未找到 Inno Setup 编译器 iscc.exe；可通过 -InnoCompilerPath 指定便携或已安装的编译器。"
+    }
+    if (-not (Test-Path -LiteralPath $compiler)) {
+        throw "Inno Setup 编译器路径不存在：$compiler"
+    }
+    & $compiler "/DMyAppVersion=$Version" "/DPublishDir=$publishRoot" `
+        (Join-Path $repositoryRoot "installer\Taskato.iss")
+    if ($LASTEXITCODE -ne 0) {
+        throw "Inno Setup 编译失败，退出码：$LASTEXITCODE"
+    }
+    $installerPath = Join-Path $artifactsRoot "Taskato-$Version-win-x64-setup.exe"
+    if (-not (Test-Path -LiteralPath $installerPath)) {
+        throw "Inno Setup 未生成预期安装包：$installerPath"
+    }
+    $installerChecksum = (Get-FileHash -LiteralPath $installerPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    Set-Content -LiteralPath "$installerPath.sha256" `
+        -Value "$installerChecksum  $(Split-Path -Leaf $installerPath)" -Encoding ascii
+}
+
 $manifest = [ordered]@{
     version = $Version
     createdAt = [DateTimeOffset]::Now.ToString("O")
@@ -64,15 +94,10 @@ $manifest = [ordered]@{
     portableArchive = (Split-Path -Leaf $zipPath)
     sha256 = $checksum
 }
-$manifest | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $artifactsRoot "release-manifest.json") -Encoding utf8
-
-if ($BuildInstaller) {
-    $compiler = (Get-Command iscc.exe -ErrorAction SilentlyContinue).Source
-    if (-not $compiler) {
-        throw "未找到 Inno Setup 编译器 iscc.exe；便携包已经生成，可安装后重新执行 -BuildInstaller。"
-    }
-    & $compiler "/DMyAppVersion=$Version" "/DPublishDir=$publishRoot" `
-        (Join-Path $repositoryRoot "installer\Taskato.iss")
+if ($installerPath) {
+    $manifest.installer = Split-Path -Leaf $installerPath
+    $manifest.installerSha256 = $installerChecksum
 }
+$manifest | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $artifactsRoot "release-manifest.json") -Encoding utf8
 
 Write-Host "Taskato $Version 发布验证完成：$artifactsRoot"
