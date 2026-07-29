@@ -85,6 +85,7 @@ namespace Taskato.Services
     public class SettingsService
     {
         private readonly string _configPath;
+        public string ConfigPath => _configPath;
         public SettingsConfig Config { get; private set; } = new SettingsConfig();
 
         public SettingsService(string? configPath = null)

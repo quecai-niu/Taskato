@@ -1,6 +1,7 @@
 using System.IO;
 using System.Windows;
 using Microsoft.Web.WebView2.Core;
+using Taskato.Services;
 using Taskato.Services.WebBridge;
 
 namespace Taskato.Views
@@ -98,6 +99,7 @@ namespace Taskato.Views
 
         private void ShowInitializationError(Exception exception)
         {
+            DiagnosticsService.Log("WebView2 工作区初始化失败", exception);
             _initialized = false;
             WebView.Visibility = Visibility.Collapsed;
             LoadingPanel.Visibility = Visibility.Collapsed;

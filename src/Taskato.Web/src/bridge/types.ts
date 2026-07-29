@@ -1,6 +1,7 @@
 export interface TaskDto {
   id: number;
   title: string;
+  notes: string;
   parentId: number | null;
   depth: number;
   isCompleted: boolean;
@@ -24,12 +25,25 @@ export interface TaskActivityDto {
   id: string;
   taskId: number | null;
   title: string;
-  eventType: "created" | "completed" | "reopened";
+  eventType:
+    | "created"
+    | "updated"
+    | "moved"
+    | "completed"
+    | "reopened"
+    | "deleted"
+    | "migrationboundary";
   eventLabel: string;
   occurredAt: string;
   detail: string;
   tone: "neutral" | "success" | "warning";
-  canDelete: boolean;
+  canOpenTask: boolean;
+  isLegacyBackfill: boolean;
+}
+
+export interface GlobalSearchResult {
+  tasks: TaskDto[];
+  activities: TaskActivityDto[];
 }
 
 export interface TimerDto {

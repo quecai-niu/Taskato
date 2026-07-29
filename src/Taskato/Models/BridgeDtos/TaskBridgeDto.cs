@@ -4,6 +4,7 @@ namespace Taskato.Models.BridgeDtos
     public sealed record TaskBridgeDto(
         int Id,
         string Title,
+        string Notes,
         int? ParentId,
         int Depth,
         bool IsCompleted,
@@ -16,7 +17,7 @@ namespace Taskato.Models.BridgeDtos
         DateTime? CompletedAt,
         int? CompletionDurationMinutes);
 
-    /// <summary>由任务与不可变完成记录投影出的历史时间线条目。</summary>
+    /// <summary>由只追加活动记录投影出的历史时间线条目。</summary>
     public sealed record TaskActivityBridgeDto(
         string Id,
         int? TaskId,
@@ -26,7 +27,8 @@ namespace Taskato.Models.BridgeDtos
         DateTime OccurredAt,
         string Detail,
         string Tone,
-        bool CanDelete);
+        bool CanOpenTask,
+        bool IsLegacyBackfill);
 
     public sealed record TimerBridgeDto(
         string Id,

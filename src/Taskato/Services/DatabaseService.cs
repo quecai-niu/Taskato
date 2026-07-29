@@ -78,9 +78,17 @@ namespace Taskato.Services
                 await _db.ExecuteAsync("ALTER TABLE TaskItems ADD COLUMN ParentId INTEGER");
             }
 
+            var notesColCheck = await _db.ExecuteScalarAsync<int>(
+                "SELECT COUNT(*) FROM pragma_table_info('TaskItems') WHERE name='Notes'");
+            if (notesColCheck == 0)
+            {
+                await _db.ExecuteAsync("ALTER TABLE TaskItems ADD COLUMN Notes TEXT NOT NULL DEFAULT ''");
+            }
+
             await _db.ExecuteAsync(
                 "CREATE INDEX IF NOT EXISTS IX_TaskItems_ParentId ON TaskItems(ParentId)");
             await MigrateLegacyCompletionRecordsAsync();
+            await InitializeActivityRecordsAsync();
         }
 
         /// <summary>
@@ -91,6 +99,9 @@ namespace Taskato.Services
 
         public Task CloseAsync() => _db.CloseAsync();
 
+        public Task CreateBackupCopyAsync(string destinationPath) =>
+            _db.BackupAsync(destinationPath, "main");
+
         // ==================== 任务的 CRUD 操作 ====================
 
         /// <summary>
@@ -100,7 +111,21 @@ namespace Taskato.Services
         /// <returns>受影响的行数</returns>
         public async Task<int> AddTaskAsync(TaskItem task)
         {
-            var result = await _db.InsertAsync(task);
+            var result = 0;
+            await _db.RunInTransactionAsync(connection =>
+            {
+                result = connection.Insert(task);
+                if (result > 0)
+                {
+                    InsertActivityRecord(
+                        connection,
+                        task,
+                        TaskActivityType.Created,
+                        "创建为顶级任务",
+                        task.CreatedAt,
+                        CreatedActivitySourceKey(task.Id));
+                }
+            });
             if (result > 0) OnDataChanged?.Invoke(); // 触发全局刷新通知
             return result;
         }
@@ -110,10 +135,34 @@ namespace Taskato.Services
         /// </summary>
         public async Task<int> UpdateTaskAsync(TaskItem task)
         {
-            task.LastModifiedAt = DateTime.Now;
+            var result = 0;
+            await _db.RunInTransactionAsync(connection =>
+            {
+                var storedTask = connection.Find<TaskItem>(task.Id);
+                if (storedTask is null) return;
 
-            // 使用标准的 ORM 更新方法，避免手写 SQL 可能带来的参数绑定（如 DateTime?, bool）隐患
-            var result = await _db.UpdateAsync(task);
+                var changes = new List<string>();
+                if (!string.Equals(storedTask.Title, task.Title, StringComparison.Ordinal))
+                    changes.Add($"标题由“{storedTask.Title}”改为“{task.Title}”");
+                if (storedTask.Priority != task.Priority)
+                    changes.Add($"优先级由 {storedTask.Priority} 调整为 {task.Priority}");
+                if (!string.Equals(storedTask.Notes, task.Notes, StringComparison.Ordinal))
+                    changes.Add("更新任务笔记");
+
+                task.LastModifiedAt = DateTime.Now;
+                result = connection.Update(task);
+                if (result > 0 && changes.Count > 0)
+                {
+                    var tasks = connection.Table<TaskItem>().ToList();
+                    InsertActivityRecord(
+                        connection,
+                        task,
+                        TaskActivityType.Updated,
+                        string.Join("；", changes),
+                        task.LastModifiedAt,
+                        depthSnapshot: GetDepth(tasks, task.Id));
+                }
+            });
             
             if (result > 0) OnDataChanged?.Invoke(); // 触发全局刷新通知
             return result;

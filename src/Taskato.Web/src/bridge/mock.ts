@@ -14,6 +14,7 @@ let tasks: TaskDto[] = [
   {
     id: 1,
     title: "发布 Taskato 3.0",
+    notes: "发布前完成关键功能验证和交付说明。",
     parentId: null,
     depth: 0,
     isCompleted: false,
@@ -29,6 +30,7 @@ let tasks: TaskDto[] = [
   {
     id: 2,
     title: "确定新版信息架构",
+    notes: "",
     parentId: 1,
     depth: 1,
     isCompleted: true,
@@ -44,6 +46,7 @@ let tasks: TaskDto[] = [
   {
     id: 3,
     title: "重构任务工作区",
+    notes: "重点检查深层嵌套、选中状态和子任务输入焦点。",
     parentId: 1,
     depth: 1,
     isCompleted: false,
@@ -59,6 +62,7 @@ let tasks: TaskDto[] = [
   {
     id: 4,
     title: "实现详情编辑面板",
+    notes: "",
     parentId: 3,
     depth: 2,
     isCompleted: false,
@@ -74,6 +78,7 @@ let tasks: TaskDto[] = [
   {
     id: 5,
     title: "补充键盘快捷键",
+    notes: "",
     parentId: 3,
     depth: 2,
     isCompleted: false,
@@ -157,6 +162,7 @@ export class MockBridge implements BridgeApi {
         const created: TaskDto = {
           id: Math.max(0, ...tasks.map((task) => task.id)) + 1,
           title: String(params.title),
+          notes: "",
           parentId,
           depth: parent ? parent.depth + 1 : 0,
           isCompleted: false,
@@ -258,38 +264,24 @@ export class MockBridge implements BridgeApi {
       case "history.export":
         result = { exported: true };
         break;
+      case "search.global": {
+        const keyword = String(params.keyword ?? "").toLowerCase();
+        const matchingTasks = tasks.filter(
+          (task) =>
+            task.title.toLowerCase().includes(keyword) ||
+            task.notes.toLowerCase().includes(keyword),
+        );
+        result = {
+          tasks: matchingTasks,
+          activities: this.activities({ keyword }),
+        };
+        break;
+      }
       case "history.search":
         result = tasks;
         break;
       case "history.events": {
-        const keyword = String(params.keyword ?? "").toLowerCase();
-        const eventFilter = String(params.eventFilter ?? "all");
-        const events = tasks.map(
-          (task) =>
-            ({
-              id: `created-${task.id}`,
-              taskId: task.id,
-              title: task.title,
-              eventType: task.isCompleted ? "completed" : "created",
-              eventLabel: task.isCompleted ? "完成任务" : "创建任务",
-              occurredAt: task.completedAt ?? task.createdAt,
-              detail: task.isCompleted ? "浏览器预览完成记录" : "创建任务",
-              tone: task.isCompleted ? "success" : "neutral",
-              canDelete: true,
-            }) satisfies TaskActivityDto,
-        );
-        result = events
-          .filter(
-            (item) => eventFilter === "all" || item.eventType === eventFilter,
-          )
-          .filter(
-            (item) => !keyword || item.title.toLowerCase().includes(keyword),
-          )
-          .sort(
-            (left, right) =>
-              (params.sortDesc === false ? 1 : -1) *
-              left.occurredAt.localeCompare(right.occurredAt),
-          );
+        result = this.activities(params);
         break;
       }
       case "settings.get":
@@ -305,6 +297,15 @@ export class MockBridge implements BridgeApi {
         break;
       case "settings.previewSound":
         result = { played: settings.notificationSoundChoice !== 0 };
+        break;
+      case "app.backupData":
+        result = { created: true, fileName: "Taskato_浏览器预览.taskato-backup" };
+        break;
+      case "app.restoreData":
+        result = { staged: true, restartRequired: true };
+        break;
+      case "app.openLogsFolder":
+        result = { opened: true };
         break;
       case "pomodoro.list":
         result = {
@@ -423,5 +424,40 @@ export class MockBridge implements BridgeApi {
         },
       ],
     };
+  }
+
+  private activities(params: Record<string, unknown>): TaskActivityDto[] {
+    const keyword = String(params.keyword ?? "").toLowerCase();
+    const eventFilter = String(params.eventFilter ?? "all");
+    return tasks
+      .map(
+        (task) =>
+          ({
+            id: `created-${task.id}`,
+            taskId: task.id,
+            title: task.title,
+            eventType: task.isCompleted ? "completed" : "created",
+            eventLabel: task.isCompleted ? "完成任务" : "创建任务",
+            occurredAt: task.completedAt ?? task.createdAt,
+            detail: task.isCompleted ? "浏览器预览完成记录" : "创建任务",
+            tone: task.isCompleted ? "success" : "neutral",
+            canOpenTask: true,
+            isLegacyBackfill: false,
+          }) satisfies TaskActivityDto,
+      )
+      .filter(
+        (item) => eventFilter === "all" || item.eventType === eventFilter,
+      )
+      .filter(
+        (item) =>
+          !keyword ||
+          item.title.toLowerCase().includes(keyword) ||
+          item.detail.toLowerCase().includes(keyword),
+      )
+      .sort(
+        (left, right) =>
+          (params.sortDesc === false ? 1 : -1) *
+          left.occurredAt.localeCompare(right.occurredAt),
+      );
   }
 }

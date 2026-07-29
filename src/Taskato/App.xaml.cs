@@ -35,6 +35,7 @@ namespace Taskato
         /// <summary>番茄钟通知订阅协调器（全局单例）</summary>
         private PomodoroNotificationCoordinator _notificationCoordinator = null!;
         private WebBridgeService _webBridgeService = null!;
+        private MainViewModel _mainViewModel = null!;
 
         /// <summary>单例应用锁</summary>
         private static Mutex? _mutex;
@@ -62,9 +63,28 @@ namespace Taskato
             // ---- 0.1 初始化设置服务并应用主题颜色 ----
             // 自动化烟测可注入隔离数据目录；未设置时保持原有 exe/Data 行为。
             var dataDirectory = Environment.GetEnvironmentVariable("TASKATO_DATA_DIRECTORY");
+            var resolvedDataDirectory = string.IsNullOrWhiteSpace(dataDirectory)
+                ? System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data")
+                : System.IO.Path.GetFullPath(dataDirectory);
+            System.IO.Directory.CreateDirectory(resolvedDataDirectory);
+            DiagnosticsService.Initialize(resolvedDataDirectory);
+            try
+            {
+                // 恢复必须发生在设置和 SQLite 建立连接之前；失败时保留当前数据并继续启动。
+                DataBackupService.ApplyPendingRestore(resolvedDataDirectory);
+            }
+            catch (Exception exception)
+            {
+                DiagnosticsService.Log("应用备份恢复失败", exception);
+                MessageBox.Show(
+                    $"暂存的数据恢复未能应用，当前数据未被替换。\n\n{exception.Message}",
+                    "Taskato 数据恢复",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
             _settingsService = string.IsNullOrWhiteSpace(dataDirectory)
                 ? new SettingsService()
-                : new SettingsService(System.IO.Path.Combine(dataDirectory, "settings.json"));
+                : new SettingsService(System.IO.Path.Combine(resolvedDataDirectory, "settings.json"));
             ApplySavedTheme();
 
             // ---- 0.2 初始化飞书通知服务 ----
@@ -72,7 +92,7 @@ namespace Taskato
             // ---- 1. 初始化数据库 ----
             _dbService = string.IsNullOrWhiteSpace(dataDirectory)
                 ? new DatabaseService()
-                : new DatabaseService(System.IO.Path.Combine(dataDirectory, "taskato.db"));
+                : new DatabaseService(System.IO.Path.Combine(resolvedDataDirectory, "taskato.db"));
             await _dbService.InitializeAsync();
 
             // ---- 2. 初始化番茄钟（加载配置中的时长） ----
@@ -86,6 +106,8 @@ namespace Taskato
 
             // ---- 4. 创建主窗体和 ViewModel ----
             var mainVM = new MainViewModel(_dbService, _pomodoroService, _settingsService, _feishuService);
+            _mainViewModel = mainVM;
+            Microsoft.Win32.SystemEvents.PowerModeChanged += SystemEvents_PowerModeChanged;
             _notificationCoordinator = new PomodoroNotificationCoordinator(mainVM);
             var shellVM = new ShellViewModel(mainVM, _dbService, _settingsService);
             _webBridgeService = new WebBridgeService(_dbService, mainVM, _settingsService);
@@ -243,6 +265,7 @@ namespace Taskato
         protected override void OnExit(ExitEventArgs e)
         {
             SaveWindowPlacement();
+            Microsoft.Win32.SystemEvents.PowerModeChanged -= SystemEvents_PowerModeChanged;
             _trayService?.Dispose();
             _notificationCoordinator?.Dispose();
             _webBridgeService?.Dispose();
@@ -255,6 +278,21 @@ namespace Taskato
             _mutex = null;
             _ownsMutex = false;
             base.OnExit(e);
+        }
+
+        private void SystemEvents_PowerModeChanged(
+            object sender,
+            Microsoft.Win32.PowerModeChangedEventArgs e)
+        {
+            if (e.Mode != Microsoft.Win32.PowerModes.Resume || _mainViewModel is null) return;
+
+            // SystemEvents 可能来自非 UI 线程；计时状态与 WebView2 通知都必须回到 Dispatcher。
+            _ = Dispatcher.InvokeAsync(() =>
+            {
+                foreach (var timer in _mainViewModel.AllTimers)
+                    timer.RefreshElapsedTime();
+                DiagnosticsService.Log("系统从休眠恢复，已同步所有番茄钟。", null);
+            });
         }
     }
 }

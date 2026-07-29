@@ -32,6 +32,10 @@ namespace Taskato.Services
         /// 当前阶段的总时长（秒），用于计算进度条百分比
         /// </summary>
         private int _totalSeconds;
+        private readonly Func<DateTimeOffset> _clock;
+        private DateTimeOffset? _deadline;
+        private PomodoroState _pausedState = PomodoroState.Working;
+        private bool _restHalfwayRaised;
 
         // ==================== 可配置的时间参数 ====================
 
@@ -96,10 +100,14 @@ namespace Taskato.Services
         /// <summary>
         /// 构造函数 — 初始化计时器，设置每秒触发
         /// </summary>
-        public PomodoroService(int defaultWorkMinutes = 25, int defaultRestMinutes = 5)
+        public PomodoroService(
+            int defaultWorkMinutes = 25,
+            int defaultRestMinutes = 5,
+            Func<DateTimeOffset>? clock = null)
         {
             WorkMinutes = defaultWorkMinutes;
             RestMinutes = defaultRestMinutes;
+            _clock = clock ?? (() => DateTimeOffset.Now);
 
             _timer = new DispatcherTimer
             {
@@ -115,8 +123,11 @@ namespace Taskato.Services
         {
             _totalSeconds = WorkMinutes * 60;       // 总秒数
             _remainingSeconds = _totalSeconds;       // 剩余 = 总
+            _deadline = _clock().AddSeconds(_remainingSeconds);
+            _restHalfwayRaised = false;
             CurrentState = PomodoroState.Working;
             StateChanged?.Invoke(CurrentState);
+            PublishTick();
             _timer.Start();
         }
 
@@ -127,8 +138,11 @@ namespace Taskato.Services
         {
             _totalSeconds = RestMinutes * 60;
             _remainingSeconds = _totalSeconds;
+            _deadline = _clock().AddSeconds(_remainingSeconds);
+            _restHalfwayRaised = false;
             CurrentState = PomodoroState.Resting;
             StateChanged?.Invoke(CurrentState);
+            PublishTick();
             _timer.Start();
         }
 
@@ -139,16 +153,18 @@ namespace Taskato.Services
         {
             if (CurrentState == PomodoroState.Paused)
             {
-                // 恢复之前的状态（工作或休息）
-                CurrentState = _remainingSeconds > RestMinutes * 60
-                    ? PomodoroState.Working
-                    : PomodoroState.Working; // 简化处理，暂停恢复后都算工作中
+                CurrentState = _pausedState;
+                _deadline = _clock().AddSeconds(_remainingSeconds);
                 _timer.Start();
             }
             else if (CurrentState == PomodoroState.Working || CurrentState == PomodoroState.Resting)
             {
-                // 暂停
+                // 先按绝对截止时间结算，防止在系统唤醒后点击暂停时丢失休眠期间的时间。
+                RefreshElapsedTime();
+                if (CurrentState == PomodoroState.Idle) return;
+                _pausedState = CurrentState;
                 CurrentState = PomodoroState.Paused;
+                _deadline = null;
                 _timer.Stop();
             }
             StateChanged?.Invoke(CurrentState);
@@ -162,6 +178,8 @@ namespace Taskato.Services
             _timer.Stop();
             _remainingSeconds = 0;
             _totalSeconds = 0;
+            _deadline = null;
+            _restHalfwayRaised = false;
             CurrentState = PomodoroState.Idle;
             StateChanged?.Invoke(CurrentState);
 
@@ -174,43 +192,55 @@ namespace Taskato.Services
         /// </summary>
         private void OnTimerTick(object? sender, EventArgs e)
         {
-            _remainingSeconds--;
+            RefreshElapsedTime();
+        }
 
-            // 计算显示用的 分:秒
-            int minutes = _remainingSeconds / 60;
-            int seconds = _remainingSeconds % 60;
+        /// <summary>
+        /// 按绝对截止时间同步剩余时间。DispatcherTimer 仅用于刷新界面，因此系统休眠、
+        /// UI 线程繁忙或托盘驻留都不会让业务计时变慢；此方法也作为恢复事件和测试边界。
+        /// </summary>
+        public void RefreshElapsedTime()
+        {
+            if (CurrentState is not (PomodoroState.Working or PomodoroState.Resting) || _deadline is null)
+                return;
 
-            // 计算进度条百分比（1.0 = 刚开始，0.0 = 快结束）
-            double progress = _totalSeconds > 0
-                ? (double)_remainingSeconds / _totalSeconds
-                : 0;
+            var previousRemaining = _remainingSeconds;
+            _remainingSeconds = Math.Max(
+                0,
+                (int)Math.Ceiling((_deadline.Value - _clock()).TotalSeconds));
+            PublishTick();
 
-            // 通知 UI 更新
-            Tick?.Invoke(minutes, seconds, progress);
-
-            // 休息过半检测
-            if (CurrentState == PomodoroState.Resting && _remainingSeconds == _totalSeconds / 2)
+            if (CurrentState == PomodoroState.Resting &&
+                !_restHalfwayRaised &&
+                previousRemaining > _totalSeconds / 2 &&
+                _remainingSeconds <= _totalSeconds / 2)
             {
+                _restHalfwayRaised = true;
                 RestHalfway?.Invoke();
             }
 
-            // 倒计时结束
-            if (_remainingSeconds <= 0)
-            {
-                _timer.Stop();
-                var previousState = CurrentState;
-                CurrentState = PomodoroState.Idle;
-                StateChanged?.Invoke(CurrentState);
+            if (_remainingSeconds > 0) return;
 
-                // 根据之前的状态触发对应的完成事件
-                if (previousState == PomodoroState.Working)
-                    WorkCompleted?.Invoke();
-                else if (previousState == PomodoroState.Resting)
-                    RestCompleted?.Invoke();
+            _timer.Stop();
+            _deadline = null;
+            var previousState = CurrentState;
+            CurrentState = PomodoroState.Idle;
+            StateChanged?.Invoke(CurrentState);
+            if (previousState == PomodoroState.Working)
+                WorkCompleted?.Invoke();
+            else
+                RestCompleted?.Invoke();
+            Tick?.Invoke(WorkMinutes, 0, 1.0);
+        }
 
-                // 恢复面板为主页常驻的默认时长
-                Tick?.Invoke(WorkMinutes, 0, 1.0);
-            }
+        private void PublishTick()
+        {
+            var minutes = _remainingSeconds / 60;
+            var seconds = _remainingSeconds % 60;
+            var progress = _totalSeconds > 0
+                ? (double)_remainingSeconds / _totalSeconds
+                : 0;
+            Tick?.Invoke(minutes, seconds, progress);
         }
 
         /// <summary>

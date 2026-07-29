@@ -52,6 +52,14 @@ namespace Taskato.Models
             }
         }
 
+        private string _notes = string.Empty;
+        [MaxLength(4000)]
+        public string Notes
+        {
+            get => _notes;
+            set => SetProperty(ref _notes, value ?? string.Empty);
+        }
+
         private DateTime _lastModifiedAt = DateTime.Now;
         public DateTime LastModifiedAt { get => _lastModifiedAt; set => SetProperty(ref _lastModifiedAt, value); }
 

@@ -34,6 +34,27 @@ describe("MockBridge", () => {
       selected: false,
       path: "",
     });
+    await expect(bridge.request("app.backupData")).resolves.toEqual(
+      expect.objectContaining({ created: true }),
+    );
+    await expect(bridge.request("app.restoreData")).resolves.toEqual(
+      expect.objectContaining({ staged: true, restartRequired: true }),
+    );
+  });
+
+  it("全局搜索同时覆盖任务笔记和活动日志", async () => {
+    const bridge = new MockBridge();
+    const noteResult = await bridge.request<{
+      tasks: Array<{ id: number }>;
+      activities: Array<{ id: string }>;
+    }>("search.global", { keyword: "发布" });
+    expect(noteResult.tasks.length).toBeGreaterThan(0);
+
+    const activityResult = await bridge.request<{
+      tasks: Array<{ id: number }>;
+      activities: Array<{ id: string }>;
+    }>("search.global", { keyword: "浏览器" });
+    expect(activityResult.activities.length).toBeGreaterThan(0);
   });
 });
 

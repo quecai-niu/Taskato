@@ -152,5 +152,10 @@ namespace Taskato.ViewModels
 
         public void StartRest() => _pomodoroService.StartRest();
         public void StartWork() => _pomodoroService.StartWork();
+
+        /// <summary>
+        /// 在系统恢复或宿主重新激活时按绝对截止时间同步，避免休眠期间倒计时停滞。
+        /// </summary>
+        public void RefreshElapsedTime() => _pomodoroService.RefreshElapsedTime();
     }
 }

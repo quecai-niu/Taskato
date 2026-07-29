@@ -63,8 +63,21 @@ namespace Taskato.Services
                     OrderIndex = GetNextSiblingOrder(connection, storedParent.Id)
                 };
                 connection.Insert(createdTask);
+                InsertActivityRecord(
+                    connection,
+                    createdTask,
+                    TaskActivityType.Created,
+                    $"创建为“{storedParent.Title}”的子任务",
+                    createdTask.CreatedAt,
+                    CreatedActivitySourceKey(createdTask.Id),
+                    depthSnapshot: GetDepth(tasks.Append(createdTask).ToList(), createdTask.Id));
 
-                ReopenTaskAndAncestors(connection, tasks, storedParent.Id);
+                tasks.Add(createdTask);
+                ReopenTaskAndAncestors(
+                    connection,
+                    tasks,
+                    storedParent.Id,
+                    "新增未完成子任务，父级状态自动恢复为进行中");
             });
 
             if (createdTask is not null)
@@ -149,7 +162,11 @@ namespace Taskato.Services
             await _db.RunInTransactionAsync(connection =>
             {
                 var tasks = connection.Table<TaskItem>().ToList();
-                changedCount = ReopenTaskAndAncestors(connection, tasks, task.Id);
+                changedCount = ReopenTaskAndAncestors(
+                    connection,
+                    tasks,
+                    task.Id,
+                    "取消完成；原完成事实继续保留在历史记录中");
             });
 
             if (changedCount > 0)
@@ -202,10 +219,20 @@ namespace Taskato.Services
                 }
 
                 var oldParentId = task.ParentId;
+                var oldPath = BuildPath(tasks, task.Id);
                 task.ParentId = newParentId;
                 task.OrderIndex = GetNextSiblingOrder(connection, newParentId);
                 task.LastModifiedAt = DateTime.Now;
                 connection.Update(task);
+                var newPath = BuildPath(tasks, task.Id);
+                InsertActivityRecord(
+                    connection,
+                    task,
+                    TaskActivityType.Moved,
+                    $"由“{oldPath}”移动到“{newPath}”",
+                    task.LastModifiedAt,
+                    parentIdSnapshot: newParentId,
+                    depthSnapshot: GetDepth(tasks, task.Id));
 
                 RecalculateAncestorStates(connection, tasks, oldParentId, DateTime.Now);
                 if (newParentId != oldParentId)
@@ -233,9 +260,18 @@ namespace Taskato.Services
                     var directChildren = tasks.Where(t => t.ParentId == storedTask.Id).ToList();
                     foreach (var child in directChildren)
                     {
+                        var oldPath = BuildPath(tasks, child.Id);
                         child.ParentId = storedTask.ParentId;
                         child.LastModifiedAt = DateTime.Now;
                         connection.Update(child);
+                        InsertActivityRecord(
+                            connection,
+                            child,
+                            TaskActivityType.Moved,
+                            $"删除父任务后提升层级；原路径为“{oldPath}”",
+                            child.LastModifiedAt,
+                            parentIdSnapshot: child.ParentId,
+                            depthSnapshot: GetDepth(tasks, child.Id));
                         affectedRows++;
                     }
                 }
@@ -244,11 +280,28 @@ namespace Taskato.Services
                     var branchIds = GetDescendantIds(tasks, storedTask.Id);
                     foreach (var descendantId in branchIds.OrderByDescending(id => GetDepth(tasks, id)))
                     {
+                        var descendant = tasks.First(candidate => candidate.Id == descendantId);
+                        InsertActivityRecord(
+                            connection,
+                            descendant,
+                            TaskActivityType.Deleted,
+                            $"随任务分支“{storedTask.Title}”一并删除",
+                            DateTime.Now,
+                            depthSnapshot: GetDepth(tasks, descendant.Id));
                         affectedRows += connection.Delete<TaskItem>(descendantId);
                     }
                     tasks.RemoveAll(candidate => branchIds.Contains(candidate.Id));
                 }
 
+                InsertActivityRecord(
+                    connection,
+                    storedTask,
+                    TaskActivityType.Deleted,
+                    deleteMode == TaskDeleteMode.PromoteChildren
+                        ? "删除任务并将直属子任务提升一级"
+                        : "删除任务及其全部子任务",
+                    DateTime.Now,
+                    depthSnapshot: GetDepth(tasks.Append(storedTask).ToList(), storedTask.Id));
                 affectedRows += connection.Delete<TaskItem>(storedTask.Id);
                 tasks.RemoveAll(candidate => candidate.Id == storedTask.Id);
                 RecalculateAncestorStates(
@@ -364,6 +417,15 @@ namespace Taskato.Services
                 task.CompletionDurationMinutes,
                 triggerType);
             connection.Insert(record);
+            InsertActivityRecord(
+                connection,
+                task,
+                TaskActivityType.Completed,
+                CompletionDetail(record),
+                completedAt,
+                CompletionActivitySourceKey(record.Id),
+                record.Id,
+                depthSnapshot: record.DepthSnapshot);
             completedTaskIds.Add(task.Id);
         }
 
@@ -406,7 +468,8 @@ namespace Taskato.Services
         private static int ReopenTaskAndAncestors(
             SQLiteConnection connection,
             List<TaskItem> tasks,
-            int taskId)
+            int taskId,
+            string detail = "任务状态自动恢复为进行中")
         {
             var changedCount = 0;
             var current = tasks.FirstOrDefault(task => task.Id == taskId);
@@ -419,6 +482,13 @@ namespace Taskato.Services
                     current.CompletionDurationMinutes = null;
                     current.LastModifiedAt = DateTime.Now;
                     connection.Update(current);
+                    InsertActivityRecord(
+                        connection,
+                        current,
+                        TaskActivityType.Reopened,
+                        current.Id == taskId ? detail : "下级任务取消完成，父级状态自动恢复为进行中",
+                        current.LastModifiedAt,
+                        depthSnapshot: GetDepth(tasks, current.Id));
                     changedCount++;
                 }
 
@@ -454,7 +524,11 @@ namespace Taskato.Services
 
                 if (directChildren.Any(child => !child.IsCompleted))
                 {
-                    ReopenTaskAndAncestors(connection, tasks, current.Id);
+                    ReopenTaskAndAncestors(
+                        connection,
+                        tasks,
+                        current.Id,
+                        "任务树结构变化，父级状态自动恢复为进行中");
                     break;
                 }
 

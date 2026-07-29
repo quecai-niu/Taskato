@@ -16,11 +16,12 @@ namespace Taskato.Services.WebBridge
     /// WebView2 与 C# 业务层之间的唯一入口。网页只能调用这里显式列出的白名单方法，
     /// 从而避免把数据库连接、ViewModel 或任意 CLR 方法暴露给脚本。
     /// </summary>
-    public sealed class WebBridgeService : IDisposable
+    public sealed partial class WebBridgeService : IDisposable
     {
         private readonly DatabaseService _database;
         private readonly MainViewModel _taskWorkspace;
         private readonly SettingsService _settings;
+        private readonly DataBackupService _dataBackup;
         private readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web)
         {
             Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
@@ -36,6 +37,7 @@ namespace Taskato.Services.WebBridge
             _database = database;
             _taskWorkspace = taskWorkspace;
             _settings = settings;
+            _dataBackup = new DataBackupService(database, settings);
 
             _database.OnDataChanged += HandleDataChanged;
             _taskWorkspace.AllTimers.CollectionChanged += Timers_CollectionChanged;
@@ -86,6 +88,7 @@ namespace Taskato.Services.WebBridge
             {
                 // 不把堆栈发送到网页，避免泄露本地路径；调试器仍可观察原始异常。
                 Debug.WriteLine(exception);
+                DiagnosticsService.Log("WebBridge 请求失败", exception, request?.Method);
                 return WebBridgeResponse.Failure(request?.Id ?? string.Empty, "internal_error", "操作失败，请稍后重试。");
             }
         }
@@ -107,6 +110,7 @@ namespace Taskato.Services.WebBridge
                 "tasks.completeDialog" => await CompleteTaskWithNativeDialogAsync(request.Params),
                 "tasks.delete" => await DeleteTaskAsync(request.Params),
                 "tasks.move" => await MoveTaskAsync(request.Params),
+                "search.global" => await GlobalSearchAsync(request.Params),
                 "summary.get" => await GetSummaryAsync(request.Params),
                 "summary.candidates" => await GetSummaryCandidatesAsync(),
                 "summary.backfill" => await BackfillTaskAsync(request.Params),
@@ -120,6 +124,9 @@ namespace Taskato.Services.WebBridge
                 "settings.chooseSound" => ChooseCustomSound(),
                 "settings.previewSound" => PreviewSound(request.Params),
                 "app.openDataFolder" => OpenDataFolder(),
+                "app.openLogsFolder" => OpenLogsFolder(),
+                "app.backupData" => await BackupDataAsync(),
+                "app.restoreData" => await StageDataRestoreAsync(),
                 "pomodoro.list" => GetTimers(),
                 "pomodoro.command" => ExecuteTimerCommand(request.Params),
                 "window.minimize" or "window.maximize" or "window.close" or "window.drag" => ExecuteWindowCommand(request.Method),
@@ -189,12 +196,49 @@ namespace Taskato.Services.WebBridge
             }
             if (parameters.TryGetProperty("priority", out var priorityElement))
             {
-                if (!priorityElement.TryGetInt32(out var priority))
+                if (priorityElement.ValueKind != JsonValueKind.Number ||
+                    !priorityElement.TryGetInt32(out var priority))
                     throw new BridgeRequestException("invalid_params", "priority 必须是整数。");
                 task.Priority = Math.Clamp(priority, 0, 3);
             }
+            if (parameters.TryGetProperty("notes", out var notesElement))
+            {
+                if (notesElement.ValueKind != JsonValueKind.String)
+                    throw new BridgeRequestException("invalid_params", "notes 必须是字符串。");
+                var notes = notesElement.GetString() ?? string.Empty;
+                if (notes.Length > 4000)
+                    throw new BridgeRequestException("invalid_notes", "任务笔记不能超过 4000 个字符。");
+                task.Notes = notes;
+            }
             await _database.UpdateTaskAsync(task);
             return ToTaskDto(task);
+        }
+
+        private async Task<object> GlobalSearchAsync(JsonElement parameters)
+        {
+            var keyword = RequiredString(parameters, "keyword").Trim();
+            if (keyword.Length < 2)
+                throw new BridgeRequestException("keyword_too_short", "请输入至少两个字符。");
+
+            var allTasks = PrepareTaskTree(await _database.GetTaskTreeItemsAsync());
+            var existingTaskIds = allTasks.Select(task => task.Id).ToHashSet();
+            var tasks = allTasks
+                .Where(task =>
+                    task.Title.Contains(keyword, StringComparison.OrdinalIgnoreCase) ||
+                    task.Notes.Contains(keyword, StringComparison.OrdinalIgnoreCase))
+                .Take(12)
+                .Select(ToTaskDto)
+                .ToList();
+            var activities = (await _database.SearchActivityRecordsAsync(
+                    new DateTime(2000, 1, 1),
+                    DateTime.Today,
+                    keyword,
+                    "all",
+                    sortDescending: true))
+                .Take(12)
+                .Select(record => ToActivityDto(record, existingTaskIds))
+                .ToList();
+            return new { tasks, activities };
         }
 
         private async Task<object> ToggleTaskAsync(JsonElement parameters)
@@ -256,308 +300,6 @@ namespace Taskato.Services.WebBridge
             return new { moved = true };
         }
 
-        private async Task<object> GetSummaryAsync(JsonElement parameters)
-        {
-            var date = OptionalDate(parameters, "date") ?? DateTime.Today;
-            var viewModel = new DailySummaryViewModel(_database) { CurrentDate = date };
-            await viewModel.LoadSummaryAsync();
-            return new
-            {
-                date = date.ToString("yyyy-MM-dd"),
-                viewModel.SummaryLine,
-                viewModel.CompletedCount,
-                viewModel.LeafCompletedCount,
-                viewModel.ParentAchievementCount,
-                viewModel.HighPriorityCompleted,
-                viewModel.TotalDurationMinutes,
-                viewModel.TotalDurationDisplay,
-                groups = viewModel.CompletionGroups.Select(group => new
-                {
-                    group.TopLevelTaskId,
-                    group.Title,
-                    records = group.Records.Select(record => new
-                    {
-                        record.TaskId,
-                        record.TitleSnapshot,
-                        record.DepthSnapshot,
-                        record.PrioritySnapshot,
-                        record.KindDisplay,
-                        record.CompletedAt,
-                        record.DurationDisplay,
-                        exists = record.CurrentTask is not null
-                    })
-                })
-            };
-        }
-
-        private async Task<object> GetSummaryCandidatesAsync()
-        {
-            var candidateIds = (await _database.GetUncompletedLeafTasksAsync()).Select(task => task.Id).ToHashSet();
-            var tasks = PrepareTaskTree(await _database.GetTaskTreeItemsAsync());
-            return tasks.Where(task => candidateIds.Contains(task.Id)).Select(ToTaskDto).ToList();
-        }
-
-        private async Task<object> BackfillTaskAsync(JsonElement parameters)
-        {
-            var task = await FindTaskAsync(parameters);
-            if (task.IsCompleted)
-                throw new BridgeRequestException("already_completed", "任务已经完成，无需重复补充。");
-            var date = OptionalDate(parameters, "date") ?? DateTime.Today;
-            if (date.Date > DateTime.Today)
-                throw new BridgeRequestException("future_date", "不能为未来日期补充任务。");
-            var completedAt = date.Date.Add(OptionalTime(parameters, "time") ?? DateTime.Now.TimeOfDay);
-            var duration = OptionalInt(parameters, "durationMinutes");
-            if (duration is <= 0)
-                throw new BridgeRequestException("invalid_duration", "耗时必须是大于 0 的分钟数。");
-            var result = await _database.CompleteTaskWithCascadeAsync(
-                task, completedAt, duration, CompletionTrigger.Backfill);
-            if (!result.Succeeded)
-                throw new BridgeRequestException("invalid_task", "只能补充未完成的叶子任务。");
-            return new { completedTaskIds = result.CompletedTaskIds };
-        }
-
-        private async Task<object> CopySummaryAsync(JsonElement parameters)
-        {
-            var text = await BuildSummaryTextAsync(OptionalDate(parameters, "date") ?? DateTime.Today);
-            System.Windows.Clipboard.SetText(text);
-            return new { copied = true };
-        }
-
-        private async Task<object> ExportSummaryAsync(JsonElement parameters)
-        {
-            var date = OptionalDate(parameters, "date") ?? DateTime.Today;
-            var dialog = new Microsoft.Win32.SaveFileDialog
-            {
-                Filter = "文本文件|*.txt",
-                DefaultExt = ".txt",
-                FileName = $"Taskato_每日总结_{date:yyyyMMdd}"
-            };
-            if (dialog.ShowDialog() != true) return new { exported = false };
-            await File.WriteAllTextAsync(dialog.FileName, await BuildSummaryTextAsync(date), new UTF8Encoding(true));
-            return new { exported = true };
-        }
-
-        private async Task<string> BuildSummaryTextAsync(DateTime date)
-        {
-            var summary = (JsonElement)JsonSerializer.SerializeToElement(await GetSummaryAsync(
-                JsonSerializer.SerializeToElement(new { date = date.ToString("yyyy-MM-dd") })), _jsonOptions);
-            var builder = new StringBuilder();
-            builder.AppendLine($"{date:yyyy-MM-dd} 每日总结");
-            builder.AppendLine(summary.GetProperty("summaryLine").GetString());
-            foreach (var group in summary.GetProperty("groups").EnumerateArray())
-            {
-                builder.AppendLine();
-                builder.AppendLine($"[{group.GetProperty("title").GetString()}]");
-                foreach (var record in group.GetProperty("records").EnumerateArray())
-                    builder.AppendLine($"- {record.GetProperty("titleSnapshot").GetString()}（{record.GetProperty("kindDisplay").GetString()}）");
-            }
-            return builder.ToString();
-        }
-
-        private async Task<object> SearchHistoryAsync(JsonElement parameters)
-        {
-            var start = OptionalDate(parameters, "startDate") ?? DateTime.Today.AddMonths(-1);
-            var end = OptionalDate(parameters, "endDate") ?? DateTime.Today;
-            var tasks = await _database.SearchTasksAsync(
-                start, end,
-                OptionalString(parameters, "keyword") ?? string.Empty,
-                OptionalInt(parameters, "statusFilter") ?? 0,
-                OptionalString(parameters, "sortField") ?? "CreatedAt",
-                OptionalBool(parameters, "sortDesc") ?? true,
-                OptionalBool(parameters, "priorityFirst") ?? false);
-            return tasks.Select(ToTaskDto).ToList();
-        }
-
-        private async Task<object> GetHistoryEventsAsync(JsonElement parameters)
-        {
-            var start = OptionalDate(parameters, "startDate") ?? DateTime.Today.AddMonths(-1);
-            var end = OptionalDate(parameters, "endDate") ?? DateTime.Today;
-            if (end < start)
-                throw new BridgeRequestException("invalid_date_range", "结束日期不能早于开始日期。");
-
-            var keyword = OptionalString(parameters, "keyword") ?? string.Empty;
-            var eventFilter = OptionalString(parameters, "eventFilter") ?? "all";
-            var dayEnd = end.Date.AddDays(1);
-            var tasks = await _database.GetTaskTreeItemsAsync();
-            var records = await _database.GetCompletionRecordsBetweenAsync(start, end);
-            var allRecordsUntilEnd = await _database.GetCompletionRecordsBetweenAsync(new DateTime(2000, 1, 1), end);
-            var events = new List<TaskActivityBridgeDto>();
-
-            events.AddRange(tasks
-                .Where(task => task.CreatedAt >= start.Date && task.CreatedAt < dayEnd)
-                .Select(task => new TaskActivityBridgeDto(
-                    $"created-{task.Id}", task.Id, task.Title, "created", "创建任务",
-                    task.CreatedAt, task.ParentId.HasValue ? "创建为子任务" : "创建为顶级任务",
-                    "neutral", true)));
-
-            events.AddRange(records.Select(record => new TaskActivityBridgeDto(
-                $"completed-{record.Id}", record.TaskId, record.TitleSnapshot, "completed",
-                record.CompletionKind switch
-                {
-                    CompletionKind.TopLevelAchievement => "大任务完成",
-                    CompletionKind.ParentMilestone => "父级阶段完成",
-                    _ => "完成任务"
-                },
-                record.CompletedAt,
-                record.CurrentTask is null
-                    ? "任务随后已删除；完成事实仍保留"
-                    : record.DurationMinutes is > 0
-                        ? $"记录专注 {record.DurationMinutes} 分钟"
-                        : record.TriggerType == CompletionTrigger.AutomaticCascade
-                            ? "由全部子任务完成自动达成"
-                            : "完成记录",
-                "success", record.CurrentTask is not null)));
-
-            // 完成记录不可变；任务当前已恢复为未完成时，用最后修改时间投影一条取消完成事件。
-            // 它只进入历史时间线，不参与每日总结的有效完成统计。
-            var completedTaskIds = allRecordsUntilEnd.Select(record => record.TaskId).ToHashSet();
-            events.AddRange(tasks
-                .Where(task => !task.IsCompleted && completedTaskIds.Contains(task.Id))
-                .Where(task => task.LastModifiedAt >= start.Date && task.LastModifiedAt < dayEnd)
-                .Select(task => new TaskActivityBridgeDto(
-                    $"reopened-{task.Id}-{task.LastModifiedAt.Ticks}", task.Id, task.Title,
-                    "reopened", "取消完成", task.LastModifiedAt,
-                    "保留在历史中，不计入每日总结", "warning", true)));
-
-            var filteredEvents = events
-                .Where(item => eventFilter == "all" || item.EventType == eventFilter)
-                .Where(item => string.IsNullOrWhiteSpace(keyword) ||
-                    item.Title.Contains(keyword, StringComparison.OrdinalIgnoreCase) ||
-                    item.Detail.Contains(keyword, StringComparison.OrdinalIgnoreCase));
-            return (OptionalBool(parameters, "sortDesc") ?? true
-                    ? filteredEvents.OrderByDescending(item => item.OccurredAt)
-                    : filteredEvents.OrderBy(item => item.OccurredAt))
-                .ToList();
-        }
-
-        private async Task<object> ExportHistoryAsync(JsonElement parameters)
-        {
-            var events = (IEnumerable<TaskActivityBridgeDto>)await GetHistoryEventsAsync(parameters);
-            var dialog = new Microsoft.Win32.SaveFileDialog
-            {
-                Filter = "CSV 文件|*.csv",
-                DefaultExt = ".csv",
-                FileName = $"Taskato_历史任务_{DateTime.Now:yyyyMMdd_HHmmss}"
-            };
-            if (dialog.ShowDialog() != true) return new { exported = false };
-
-            var csv = new StringBuilder("发生时间,事件,任务标题,说明\r\n");
-            foreach (var item in events)
-                csv.AppendLine($"\"{item.OccurredAt:yyyy-MM-dd HH:mm:ss}\",\"{item.EventLabel}\",\"{item.Title.Replace("\"", "\"\"")}\",\"{item.Detail.Replace("\"", "\"\"")}\"");
-            await File.WriteAllTextAsync(dialog.FileName, csv.ToString(), new UTF8Encoding(true));
-            return new { exported = true };
-        }
-
-        private object GetSettings()
-        {
-            var c = _settings.Config;
-            return new
-            {
-                c.WorkMinutes, c.RestMinutes, c.ThemePrimaryColor, c.ThemeSecondaryColor,
-                c.AutoStartNextPomodoro, c.EnableToastTimer, c.ToastActionDelaySeconds,
-                c.EnableMultiplePomodoros, c.NotificationSoundChoice, c.CustomSoundPath,
-                c.FeishuEnabled, c.FeishuWebhookUrl, c.FeishuNotifyOnWork, c.FeishuNotifyOnRest,
-                c.FeishuRepeatEnabled, c.FeishuRestHalfwayEnabled, c.AutoShowDailySummary,
-                c.UseLegacyWorkspace,
-                autoStartEnabled = AutoStartService.IsAutoStartEnabled()
-            };
-        }
-
-        private object SaveSettings(JsonElement parameters)
-        {
-            var c = _settings.Config;
-            c.WorkMinutes = ClampedOptionalInt(parameters, "workMinutes", c.WorkMinutes, 1, 240);
-            c.RestMinutes = ClampedOptionalInt(parameters, "restMinutes", c.RestMinutes, 1, 120);
-            c.AutoStartNextPomodoro = OptionalBool(parameters, "autoStartNextPomodoro") ?? c.AutoStartNextPomodoro;
-            c.EnableToastTimer = OptionalBool(parameters, "enableToastTimer") ?? c.EnableToastTimer;
-            var toastDelay = OptionalDouble(parameters, "toastActionDelaySeconds") ?? c.ToastActionDelaySeconds;
-            c.ToastActionDelaySeconds = Math.Round(Math.Clamp(toastDelay, 0, 5) * 2) / 2;
-            c.EnableMultiplePomodoros = OptionalBool(parameters, "enableMultiplePomodoros") ?? c.EnableMultiplePomodoros;
-            c.NotificationSoundChoice = ClampedOptionalInt(parameters, "notificationSoundChoice", c.NotificationSoundChoice, 0, 5);
-            c.CustomSoundPath = OptionalString(parameters, "customSoundPath") ?? c.CustomSoundPath;
-            c.FeishuEnabled = OptionalBool(parameters, "feishuEnabled") ?? c.FeishuEnabled;
-            c.FeishuWebhookUrl = OptionalString(parameters, "feishuWebhookUrl") ?? c.FeishuWebhookUrl;
-            c.FeishuNotifyOnWork = OptionalBool(parameters, "feishuNotifyOnWork") ?? c.FeishuNotifyOnWork;
-            c.FeishuNotifyOnRest = OptionalBool(parameters, "feishuNotifyOnRest") ?? c.FeishuNotifyOnRest;
-            c.FeishuRepeatEnabled = OptionalBool(parameters, "feishuRepeatEnabled") ?? c.FeishuRepeatEnabled;
-            c.FeishuRestHalfwayEnabled = OptionalBool(parameters, "feishuRestHalfwayEnabled") ?? c.FeishuRestHalfwayEnabled;
-            c.AutoShowDailySummary = OptionalBool(parameters, "autoShowDailySummary") ?? c.AutoShowDailySummary;
-            c.UseLegacyWorkspace = OptionalBool(parameters, "useLegacyWorkspace") ?? c.UseLegacyWorkspace;
-            c.ThemePrimaryColor = ValidatedColor(parameters, "themePrimaryColor", c.ThemePrimaryColor);
-            c.ThemeSecondaryColor = ValidatedColor(parameters, "themeSecondaryColor", c.ThemeSecondaryColor);
-            if (OptionalBool(parameters, "autoStartEnabled") is { } autoStartEnabled)
-                AutoStartService.SetAutoStart(autoStartEnabled);
-            _settings.Save();
-            _taskWorkspace.ApplySettingsFromConfig();
-            ApplyNativeTheme(c.ThemePrimaryColor, c.ThemeSecondaryColor);
-            PostEvent("settings.changed", GetSettings());
-            return GetSettings();
-        }
-
-        private static void ApplyNativeTheme(string primaryValue, string secondaryValue)
-        {
-            var primary = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(primaryValue);
-            var secondary = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(secondaryValue);
-            var resources = System.Windows.Application.Current.Resources;
-            resources["ThemePrimaryColor"] = primary;
-            resources["ThemeSecondaryColor"] = secondary;
-            resources["ThemePrimaryBrush"] = new System.Windows.Media.SolidColorBrush(primary);
-            resources["ThemeGradientBrush"] = new System.Windows.Media.LinearGradientBrush(primary, secondary, 135);
-        }
-
-        private object ChooseCustomSound()
-        {
-            var dialog = new Microsoft.Win32.OpenFileDialog
-            {
-                Filter = "音频文件|*.wav;*.mp3;*.wma|所有文件|*.*",
-                Title = "选择自定义音效"
-            };
-            if (dialog.ShowDialog() != true) return new { selected = false, path = _settings.Config.CustomSoundPath };
-            _settings.Config.CustomSoundPath = dialog.FileName;
-            _settings.Config.NotificationSoundChoice = 5;
-            _settings.Save();
-            return new { selected = true, path = dialog.FileName };
-        }
-
-        private object PreviewSound(JsonElement parameters)
-        {
-            var soundChoice = ClampedOptionalInt(parameters, "notificationSoundChoice", _settings.Config.NotificationSoundChoice, 0, 5);
-            var customSoundPath = OptionalString(parameters, "customSoundPath") ?? _settings.Config.CustomSoundPath;
-            var paths = new Dictionary<int, string>
-            {
-                [1] = @"C:\Windows\Media\Windows Notify.wav",
-                [2] = @"C:\Windows\Media\Windows Ding.wav",
-                [3] = @"C:\Windows\Media\Windows Background.wav",
-                [4] = @"C:\Windows\Media\chimes.wav",
-                [5] = customSoundPath
-            };
-            if (!paths.TryGetValue(soundChoice, out var path) || !File.Exists(path))
-                return new { played = false };
-
-            if (path.EndsWith(".wav", StringComparison.OrdinalIgnoreCase))
-                new System.Media.SoundPlayer(path).Play();
-            else
-            {
-                _previewMediaPlayer?.Close();
-                _previewMediaPlayer = new System.Windows.Media.MediaPlayer();
-                _previewMediaPlayer.MediaEnded += (_, _) =>
-                {
-                    _previewMediaPlayer?.Close();
-                    _previewMediaPlayer = null;
-                };
-                _previewMediaPlayer.Open(new Uri(path, UriKind.Absolute));
-                _previewMediaPlayer.Play();
-            }
-            return new { played = true };
-        }
-
-        private object OpenDataFolder()
-        {
-            var path = Path.GetDirectoryName(_database.DatabasePath)!;
-            Process.Start(new ProcessStartInfo("explorer.exe", path) { UseShellExecute = true });
-            return new { opened = true };
-        }
-
         private object GetTimers() => new
         {
             activeId = TimerId(_taskWorkspace.CurrentActiveTimer),
@@ -605,9 +347,37 @@ namespace Taskato.Services.WebBridge
         }
 
         private TaskBridgeDto ToTaskDto(TaskItem task) => new(
-            task.Id, task.Title, task.ParentId, task.Depth, task.IsCompleted, task.Priority,
+            task.Id, task.Title, task.Notes, task.ParentId, task.Depth, task.IsCompleted, task.Priority,
             task.HasChildren, task.CanAddChild, task.CompletedLeafCount, task.TotalLeafCount,
             task.CreatedAt, task.CompletedAt, task.CompletionDurationMinutes);
+
+        private TaskActivityBridgeDto ToActivityDto(
+            TaskActivityRecord record,
+            IReadOnlySet<int>? existingTaskIds = null)
+        {
+            var (label, tone) = record.ActivityType switch
+            {
+                TaskActivityType.Created => ("创建任务", "neutral"),
+                TaskActivityType.Updated => ("编辑任务", "neutral"),
+                TaskActivityType.Moved => ("移动任务", "neutral"),
+                TaskActivityType.Completed => ("完成任务", "success"),
+                TaskActivityType.Reopened => ("取消完成", "warning"),
+                TaskActivityType.Deleted => ("删除任务", "warning"),
+                TaskActivityType.MigrationBoundary => ("日志边界", "neutral"),
+                _ => ("任务活动", "neutral")
+            };
+            return new TaskActivityBridgeDto(
+                $"activity-{record.Id}",
+                record.TaskId,
+                record.TitleSnapshot,
+                record.ActivityType.ToString().ToLowerInvariant(),
+                label,
+                record.OccurredAt,
+                record.DetailSnapshot,
+                tone,
+                record.TaskId.HasValue && (existingTaskIds?.Contains(record.TaskId.Value) ?? true),
+                record.IsLegacyBackfill);
+        }
 
         private static List<TaskItem> PrepareTaskTree(List<TaskItem> tasks)
         {
@@ -716,11 +486,21 @@ namespace Taskato.Services.WebBridge
         private static string? OptionalString(JsonElement element, string name) =>
             element.ValueKind == JsonValueKind.Object && element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
         private static int? OptionalInt(JsonElement element, string name) =>
-            element.ValueKind == JsonValueKind.Object && element.TryGetProperty(name, out var value) && value.TryGetInt32(out var result) ? result : null;
+            element.ValueKind == JsonValueKind.Object &&
+            element.TryGetProperty(name, out var value) &&
+            value.ValueKind == JsonValueKind.Number &&
+            value.TryGetInt32(out var result)
+                ? result
+                : null;
         private static bool? OptionalBool(JsonElement element, string name) =>
             element.ValueKind == JsonValueKind.Object && element.TryGetProperty(name, out var value) && value.ValueKind is JsonValueKind.True or JsonValueKind.False ? value.GetBoolean() : null;
         private static double? OptionalDouble(JsonElement element, string name) =>
-            element.ValueKind == JsonValueKind.Object && element.TryGetProperty(name, out var value) && value.TryGetDouble(out var result) ? result : null;
+            element.ValueKind == JsonValueKind.Object &&
+            element.TryGetProperty(name, out var value) &&
+            value.ValueKind == JsonValueKind.Number &&
+            value.TryGetDouble(out var result)
+                ? result
+                : null;
         private static DateTime? OptionalDate(JsonElement element, string name) =>
             DateTime.TryParse(OptionalString(element, name), out var value) ? value.Date : null;
         private static TimeSpan? OptionalTime(JsonElement element, string name) =>
