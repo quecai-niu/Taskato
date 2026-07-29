@@ -5,6 +5,8 @@ import {
   useRef,
   useState,
   type FormEvent,
+  type KeyboardEvent,
+  type PointerEvent,
 } from "react";
 import {
   ArrowCounterClockwise,
@@ -48,7 +50,7 @@ import {
 
 type TaskNode = TaskDto & { children: TaskNode[] };
 
-function buildTree(tasks: TaskDto[]): TaskNode[] {
+export function buildTree(tasks: TaskDto[]): TaskNode[] {
   const nodes = new Map(
     tasks.map((task) => [task.id, { ...task, children: [] } as TaskNode]),
   );
@@ -59,6 +61,44 @@ function buildTree(tasks: TaskDto[]): TaskNode[] {
     else roots.push(node);
   });
   return roots;
+}
+
+export function filterTasksWithAncestors(
+  tasks: TaskDto[],
+  keyword: string,
+): TaskDto[] {
+  const query = keyword.trim().toLocaleLowerCase();
+  if (!query) return tasks;
+  const byId = new Map(tasks.map((task) => [task.id, task]));
+  const visibleIds = new Set<number>();
+  for (const task of tasks) {
+    if (!task.title.toLocaleLowerCase().includes(query)) continue;
+    let current: TaskDto | undefined = task;
+    while (current && !visibleIds.has(current.id)) {
+      visibleIds.add(current.id);
+      current = current.parentId == null ? undefined : byId.get(current.parentId);
+    }
+  }
+  // 搜索结果保留祖先链，避免命中的子任务被错误提升成顶级任务。
+  return tasks.filter((task) => visibleIds.has(task.id));
+}
+
+const TREE_PANE_DEFAULT = 300;
+const TREE_PANE_MIN = 220;
+const TREE_PANE_MAX = 560;
+const INSPECTOR_PANE_DEFAULT = 310;
+const INSPECTOR_PANE_MIN = 250;
+const INSPECTOR_PANE_MAX = 560;
+const CANVAS_PANE_MIN = 360;
+const RESIZER_WIDTH = 24;
+
+function storedPaneWidth(key: string, fallback: number): number {
+  const value = Number(window.localStorage.getItem(key));
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+function clamp(value: number, minimum: number, maximum: number): number {
+  return Math.min(Math.max(value, minimum), Math.max(minimum, maximum));
 }
 function TaskTreeRow({
   task,
@@ -81,7 +121,9 @@ function TaskTreeRow({
     <>
       <div
         className={`tree-row ${selectedId === task.id ? "selected" : ""}`}
-        style={{ "--depth": task.depth } as React.CSSProperties}
+        style={
+          { "--depth-offset": `${task.depth * 17}px` } as React.CSSProperties
+        }
       >
         <button
           className="tree-expand"
@@ -214,6 +256,44 @@ export function TaskPage({
   const notesRequestVersion = useRef(0);
   const [completionTask, setCompletionTask] = useState<TaskDto | null>(null);
   const [parentCandidates, setParentCandidates] = useState<TaskDto[]>([]);
+  const workspaceRef = useRef<HTMLDivElement>(null);
+  const paneDrag = useRef<{
+    side: "tree" | "inspector";
+    pointerId: number;
+    startX: number;
+    startWidth: number;
+  } | null>(null);
+  const [treePaneWidth, setTreePaneWidth] = useState(() =>
+    storedPaneWidth("taskato.treePaneWidth", TREE_PANE_DEFAULT),
+  );
+  const [inspectorPaneWidth, setInspectorPaneWidth] = useState(() =>
+    storedPaneWidth("taskato.inspectorPaneWidth", INSPECTOR_PANE_DEFAULT),
+  );
+  useEffect(() => {
+    window.localStorage.setItem("taskato.treePaneWidth", String(treePaneWidth));
+  }, [treePaneWidth]);
+  useEffect(() => {
+    window.localStorage.setItem(
+      "taskato.inspectorPaneWidth",
+      String(inspectorPaneWidth),
+    );
+  }, [inspectorPaneWidth]);
+  useEffect(() => {
+    const fitPanesToWindow = () => {
+      const total = workspaceRef.current?.getBoundingClientRect().width ?? 0;
+      if (!total) return;
+      const available = total - CANVAS_PANE_MIN - RESIZER_WIDTH;
+      if (treePaneWidth + inspectorPaneWidth <= available) return;
+      // 缩小窗口时优先保住中央任务内容，并让左右栏都保持可操作的最小宽度。
+      const nextTree = clamp(available - INSPECTOR_PANE_MIN, TREE_PANE_MIN, TREE_PANE_MAX);
+      const nextInspector = clamp(available - nextTree, INSPECTOR_PANE_MIN, INSPECTOR_PANE_MAX);
+      setTreePaneWidth(nextTree);
+      setInspectorPaneWidth(nextInspector);
+    };
+    fitPanesToWindow();
+    window.addEventListener("resize", fitPanesToWindow);
+    return () => window.removeEventListener("resize", fitPanesToWindow);
+  }, [inspectorPaneWidth, treePaneWidth]);
   const [timerState, setTimerState] = useState<TimerListResult>({
     activeId: "",
     multipleEnabled: false,
@@ -276,12 +356,7 @@ export function TaskPage({
   }, [reportError, selectedId, tasks]);
 
   const filtered = useMemo(
-    () =>
-      filter
-        ? tasks.filter((task) =>
-            task.title.toLowerCase().includes(filter.toLowerCase()),
-          )
-        : tasks,
+    () => filterTasksWithAncestors(tasks, filter),
     [filter, tasks],
   );
   const roots = useMemo(() => buildTree(filtered), [filtered]);
@@ -445,6 +520,72 @@ export function TaskPage({
     }
   };
 
+  const availableWidth = () =>
+    workspaceRef.current?.getBoundingClientRect().width ?? window.innerWidth;
+  const resizePane = (side: "tree" | "inspector", width: number) => {
+    const total = availableWidth();
+    if (side === "tree") {
+      setTreePaneWidth(
+        clamp(
+          width,
+          TREE_PANE_MIN,
+          Math.min(
+            TREE_PANE_MAX,
+            total - inspectorPaneWidth - CANVAS_PANE_MIN - RESIZER_WIDTH,
+          ),
+        ),
+      );
+    } else {
+      setInspectorPaneWidth(
+        clamp(
+          width,
+          INSPECTOR_PANE_MIN,
+          Math.min(
+            INSPECTOR_PANE_MAX,
+            total - treePaneWidth - CANVAS_PANE_MIN - RESIZER_WIDTH,
+          ),
+        ),
+      );
+    }
+  };
+  const beginPaneResize =
+    (side: "tree" | "inspector") =>
+    (event: PointerEvent<HTMLDivElement>) => {
+      paneDrag.current = {
+        side,
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startWidth: side === "tree" ? treePaneWidth : inspectorPaneWidth,
+      };
+      event.currentTarget.setPointerCapture(event.pointerId);
+    };
+  const movePaneResize = (event: PointerEvent<HTMLDivElement>) => {
+    const drag = paneDrag.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const delta = event.clientX - drag.startX;
+    resizePane(
+      drag.side,
+      drag.startWidth + (drag.side === "tree" ? delta : -delta),
+    );
+  };
+  const finishPaneResize = (event: PointerEvent<HTMLDivElement>) => {
+    if (paneDrag.current?.pointerId !== event.pointerId) return;
+    event.currentTarget.releasePointerCapture(event.pointerId);
+    paneDrag.current = null;
+  };
+  const resizePaneByKeyboard =
+    (side: "tree" | "inspector") =>
+    (event: KeyboardEvent<HTMLDivElement>) => {
+      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+      event.preventDefault();
+      const delta = event.key === "ArrowRight" ? 12 : -12;
+      resizePane(
+        side,
+        (side === "tree" ? treePaneWidth : inspectorPaneWidth) +
+          (side === "tree" ? delta : -delta),
+      );
+    };
+
   useEffect(() => {
     if (!selected || notesDraft === selected.notes) {
       setNotesStatus("saved");
@@ -474,7 +615,16 @@ export function TaskPage({
   }, [load, notesDraft, reportError, selected?.id, selected?.notes]);
 
   return (
-    <div className="task-workspace page-enter">
+    <div
+      className="task-workspace page-enter"
+      ref={workspaceRef}
+      style={
+        {
+          "--tree-pane-width": `${treePaneWidth}px`,
+          "--inspector-pane-width": `${inspectorPaneWidth}px`,
+        } as React.CSSProperties
+      }
+    >
       <section className="tree-pane">
         <div className="pane-heading">
           <div>
@@ -529,6 +679,18 @@ export function TaskPage({
           />
         </form>
       </section>
+      <div
+        className="pane-resizer"
+        role="separator"
+        aria-label="调整任务树宽度"
+        aria-orientation="vertical"
+        tabIndex={0}
+        onPointerDown={beginPaneResize("tree")}
+        onPointerMove={movePaneResize}
+        onPointerUp={finishPaneResize}
+        onPointerCancel={finishPaneResize}
+        onKeyDown={resizePaneByKeyboard("tree")}
+      />
       <main className="task-canvas">
         {selected ? (
           <>
@@ -782,6 +944,18 @@ export function TaskPage({
           </div>
         )}
       </main>
+      <div
+        className="pane-resizer"
+        role="separator"
+        aria-label="调整任务详情宽度"
+        aria-orientation="vertical"
+        tabIndex={0}
+        onPointerDown={beginPaneResize("inspector")}
+        onPointerMove={movePaneResize}
+        onPointerUp={finishPaneResize}
+        onPointerCancel={finishPaneResize}
+        onKeyDown={resizePaneByKeyboard("inspector")}
+      />
       <aside className="inspector-pane">
         <section className="focus-panel">
           <div className="focus-heading">

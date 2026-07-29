@@ -14,7 +14,7 @@ namespace Taskato.Services.WebBridge
             var c = _settings.Config;
             return new
             {
-                c.WorkMinutes, c.RestMinutes, c.ThemePrimaryColor, c.ThemeSecondaryColor,
+                c.WorkMinutes, c.RestMinutes, c.ThemePrimaryColor, c.ThemeSecondaryColor, c.SelectedColorIndex,
                 c.AutoStartNextPomodoro, c.EnableToastTimer, c.ToastActionDelaySeconds,
                 c.EnableMultiplePomodoros, c.NotificationSoundChoice, c.CustomSoundPath,
                 c.FeishuEnabled, c.FeishuWebhookUrl, c.FeishuNotifyOnWork, c.FeishuNotifyOnRest,
@@ -28,7 +28,7 @@ namespace Taskato.Services.WebBridge
         {
             var c = _settings.Config;
             c.WorkMinutes = ClampedOptionalInt(parameters, "workMinutes", c.WorkMinutes, 1, 240);
-            c.RestMinutes = ClampedOptionalInt(parameters, "restMinutes", c.RestMinutes, 1, 120);
+            c.RestMinutes = ClampedOptionalInt(parameters, "restMinutes", c.RestMinutes, 1, 30);
             c.AutoStartNextPomodoro = OptionalBool(parameters, "autoStartNextPomodoro") ?? c.AutoStartNextPomodoro;
             c.EnableToastTimer = OptionalBool(parameters, "enableToastTimer") ?? c.EnableToastTimer;
             var toastDelay = OptionalDouble(parameters, "toastActionDelaySeconds") ?? c.ToastActionDelaySeconds;
@@ -46,6 +46,7 @@ namespace Taskato.Services.WebBridge
             c.UseLegacyWorkspace = OptionalBool(parameters, "useLegacyWorkspace") ?? c.UseLegacyWorkspace;
             c.ThemePrimaryColor = ValidatedColor(parameters, "themePrimaryColor", c.ThemePrimaryColor);
             c.ThemeSecondaryColor = ValidatedColor(parameters, "themeSecondaryColor", c.ThemeSecondaryColor);
+            c.SelectedColorIndex = ClampedOptionalInt(parameters, "selectedColorIndex", c.SelectedColorIndex, 0, 5);
             if (OptionalBool(parameters, "autoStartEnabled") is { } autoStartEnabled)
                 AutoStartService.SetAutoStart(autoStartEnabled);
             _settings.Save();
@@ -110,6 +111,26 @@ namespace Taskato.Services.WebBridge
                 _previewMediaPlayer.Play();
             }
             return new { played = true };
+        }
+
+        private async Task<object> TestFeishuAsync(JsonElement parameters)
+        {
+            var webhookUrl = OptionalString(parameters, "webhookUrl");
+            var sent = await _taskWorkspace.FeishuService.SendAsync(
+                "Taskato 测试消息",
+                "如果你收到这条消息，说明飞书 Webhook 配置成功！",
+                webhookUrl);
+            return new { sent };
+        }
+
+        private object OpenFeishuGuide()
+        {
+            var guide = new Taskato.Views.FeishuGuideWindow
+            {
+                Owner = System.Windows.Application.Current.MainWindow
+            };
+            guide.ShowDialog();
+            return new { shouldConfigure = guide.ShouldConfigure };
         }
 
         private object OpenDataFolder()

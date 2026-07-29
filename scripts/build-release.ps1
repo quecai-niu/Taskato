@@ -1,5 +1,5 @@
 param(
-    [string]$Version = "2.21.0",
+    [string]$Version = "2.22.0",
     [switch]$BuildInstaller,
     [string]$InnoCompilerPath = ""
 )

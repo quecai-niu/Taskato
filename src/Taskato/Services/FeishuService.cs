@@ -24,13 +24,20 @@ namespace Taskato.Services
         /// 发送飞书 post 格式消息
         /// </summary>
         /// <returns>是否发送成功</returns>
-        public async Task<bool> SendAsync(string title, string content)
+        public Task<bool> SendAsync(string title, string content) => SendAsync(title, content, null);
+
+        /// <summary>
+        /// 使用页面中尚未保存的 Webhook 发送测试消息；常规通知不传覆盖值，继续读取持久配置。
+        /// </summary>
+        public async Task<bool> SendAsync(string title, string content, string? webhookUrlOverride)
         {
-            // 环境变量优先
-            var webhookUrl = Environment.GetEnvironmentVariable("FEISHU_WEBHOOK_URL");
+            var webhookUrl = webhookUrlOverride;
+            // 非测试调用仍允许部署环境通过变量覆盖本地设置。
             if (string.IsNullOrWhiteSpace(webhookUrl))
             {
-                webhookUrl = _settings.Config.FeishuWebhookUrl;
+                webhookUrl = Environment.GetEnvironmentVariable("FEISHU_WEBHOOK_URL");
+                if (string.IsNullOrWhiteSpace(webhookUrl))
+                    webhookUrl = _settings.Config.FeishuWebhookUrl;
             }
 
             if (string.IsNullOrWhiteSpace(webhookUrl))

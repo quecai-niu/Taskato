@@ -5,14 +5,16 @@
 ## 应用入口
 
 - `src/Taskato/App.xaml.cs`：进程生命周期、依赖组装、托盘、工作区选择、恢复前置处理与系统休眠事件。
-- `src/Taskato/Views/WebShellWindow.xaml.cs`：WebView2 初始化、用户数据隔离、静态资源映射、自动烟测、进程失败反馈和旧 WPF 回退。
+- `src/Taskato/Views/WebShellWindow.xaml.cs`：WebView2 初始化、用户数据隔离、静态资源映射、原生窗口拖动、自动烟测、进程失败反馈和旧 WPF 回退。
 - `src/Taskato.Web/src/App.tsx`：React 应用级导航、全局浮层和错误边界。
 
 ## 前端工作区
 
 - `src/Taskato.Web/src/components/AppChrome.tsx`：导航栏、标题栏、全局搜索和通知中心。
 - `src/Taskato.Web/src/pages/WorkspacePages.tsx`：四个业务页面的稳定导出入口。
-- `src/Taskato.Web/src/pages/TaskPage.tsx`、`SummaryPage.tsx`、`HistoryPage.tsx`、`SettingsPage.tsx`：可独立渲染和测试的四个业务页面。
+- `src/Taskato.Web/src/pages/TaskPage.tsx`：保留祖先链的层级任务树、可持久化三栏分隔线、任务详情和番茄钟侧栏。
+- `src/Taskato.Web/src/pages/SettingsPage.tsx`：一比一承接旧版主题、番茄钟、系统、总结、提示音和飞书设置，并保留数据保护入口。
+- `src/Taskato.Web/src/pages/SummaryPage.tsx`、`HistoryPage.tsx`：可独立渲染和测试的总结与历史页面。
 - `src/Taskato.Web/src/ui.tsx`：页面标识、导航元数据、主题和共享按钮/刷新工具。
 - `src/Taskato.Web/src/bridge/`：WebView2 客户端、浏览器 Mock 与 TypeScript 契约。
 - `src/Taskato.Web/tests/`：桥接、应用框架和独立业务页面测试。
@@ -24,7 +26,7 @@
 - `src/Taskato/Services/DatabaseService.Activity.cs`：只追加活动日志、旧数据幂等回填和查询。
 - `src/Taskato/Services/WebBridge/WebBridgeService.cs`：协议入口、白名单分发、任务与番茄钟命令。
 - `WebBridgeService.Reporting.cs`：每日总结、历史和导出。
-- `WebBridgeService.Settings.cs`：设置、原生文件对话框、备份恢复和本地目录能力。
+- `WebBridgeService.Settings.cs`：完整设置、提示音/飞书测试、原生文件对话框、备份恢复和本地目录能力。
 
 ## 数据安全与稳定性
 

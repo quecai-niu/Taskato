@@ -100,6 +100,7 @@ export interface SettingsDto {
   restMinutes: number;
   themePrimaryColor: string;
   themeSecondaryColor: string;
+  selectedColorIndex: number;
   autoStartNextPomodoro: boolean;
   enableToastTimer: boolean;
   toastActionDelaySeconds: number;

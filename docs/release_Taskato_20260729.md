@@ -5,7 +5,7 @@
 在仓库根目录运行：
 
 ```powershell
-.\scripts\build-release.ps1 -Version 2.21.0
+.\scripts\build-release.ps1 -Version 2.22.0
 ```
 
 脚本按顺序执行前端依赖锁定安装、类型检查、自动化测试、生产构建、.NET Release 验证和 `win-x64` 发布，再以隔离数据目录启动真实 WebView2 宿主完成自动烟测，随后生成便携 ZIP、SHA-256 校验文件和发布清单。安装 Inno Setup 后可追加 `-BuildInstaller` 生成安装包；便携编译器可通过 `-InnoCompilerPath <ISCC.exe>` 显式指定。安装包及其 SHA-256 会一并写入发布清单。

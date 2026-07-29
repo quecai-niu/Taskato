@@ -123,6 +123,8 @@ namespace Taskato.Services.WebBridge
                 "settings.save" => SaveSettings(request.Params),
                 "settings.chooseSound" => ChooseCustomSound(),
                 "settings.previewSound" => PreviewSound(request.Params),
+                "settings.testFeishu" => await TestFeishuAsync(request.Params),
+                "settings.openFeishuGuide" => OpenFeishuGuide(),
                 "app.openDataFolder" => OpenDataFolder(),
                 "app.openLogsFolder" => OpenLogsFolder(),
                 "app.backupData" => await BackupDataAsync(),

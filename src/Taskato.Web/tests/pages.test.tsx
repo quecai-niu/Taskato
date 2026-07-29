@@ -7,6 +7,8 @@ import {
   SummaryPage,
   TaskPage,
 } from "../src/pages/WorkspacePages";
+import { buildTree, filterTasksWithAncestors } from "../src/pages/TaskPage";
+import type { TaskDto } from "../src/bridge";
 
 describe("独立业务页面", () => {
   let host: HTMLDivElement;
@@ -42,6 +44,22 @@ describe("独立业务页面", () => {
     expect(host.textContent).toContain("项目与任务");
     expect(host.textContent).toContain("当前专注");
     expect(host.textContent).toContain("任务笔记");
+    expect(host.querySelectorAll('[role="separator"]')).toHaveLength(2);
+  });
+
+  it("任务筛选保留祖先链，不会把子任务提升成顶级", () => {
+    const makeTask = (id: number, title: string, parentId: number | null, depth: number) =>
+      ({ id, title, parentId, depth } as TaskDto);
+    const tasks = [
+      makeTask(1, "父任务", null, 0),
+      makeTask(2, "命中的子任务", 1, 1),
+      makeTask(3, "无关任务", null, 0),
+    ];
+    const filtered = filterTasksWithAncestors(tasks, "命中");
+    const roots = buildTree(filtered);
+    expect(filtered.map((task) => task.id)).toEqual([1, 2]);
+    expect(roots).toHaveLength(1);
+    expect(roots[0].children[0].id).toBe(2);
   });
 
   it("总结、历史和设置页可分别独立加载", async () => {
@@ -57,6 +75,10 @@ describe("独立业务页面", () => {
 
     await renderAndFlush(<SettingsPage reportError={() => undefined} />);
     expect(host.textContent).toContain("应用设置");
+    expect(host.textContent).toContain("主题颜色");
+    expect(host.textContent).toContain("番茄钟时长");
+    expect(host.textContent).toContain("提示音");
+    expect(host.textContent).toContain("飞书通知");
     expect(host.textContent).toContain("备份与恢复");
   });
 });

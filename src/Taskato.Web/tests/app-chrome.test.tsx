@@ -4,7 +4,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   GlobalSearchDialog,
   NotificationCenter,
+  TopBar,
 } from "../src/components/AppChrome";
+import { bridge } from "../src/bridge";
 
 describe("应用框架交互", () => {
   let host: HTMLDivElement;
@@ -63,5 +65,17 @@ describe("应用框架交互", () => {
     expect(host.textContent).toContain("最近通知");
     expect(host.textContent).toContain("完成任务");
     expect(host.textContent).toContain("查看完整历史");
+  });
+
+  it("标题栏空白区域请求原生拖动，按钮区域不会误触发", async () => {
+    const request = vi.spyOn(bridge, "request");
+    await act(async () => {
+      root.render(<TopBar activePage="tasks" onSearch={() => undefined} onNotifications={() => undefined} />);
+    });
+    host.querySelector<HTMLElement>(".top-bar")?.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, button: 0 }));
+    expect(request).toHaveBeenCalledWith("window.drag");
+    request.mockClear();
+    host.querySelector<HTMLElement>(".search-command")?.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, button: 0 }));
+    expect(request).not.toHaveBeenCalled();
   });
 });

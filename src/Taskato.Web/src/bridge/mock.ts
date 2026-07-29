@@ -99,6 +99,7 @@ const settings: SettingsDto = {
   restMinutes: 5,
   themePrimaryColor: "#7775F5",
   themeSecondaryColor: "#A855F7",
+  selectedColorIndex: 0,
   autoStartNextPomodoro: false,
   enableToastTimer: true,
   toastActionDelaySeconds: 1.5,
@@ -297,6 +298,12 @@ export class MockBridge implements BridgeApi {
         break;
       case "settings.previewSound":
         result = { played: settings.notificationSoundChoice !== 0 };
+        break;
+      case "settings.testFeishu":
+        result = { sent: Boolean(params.webhookUrl) };
+        break;
+      case "settings.openFeishuGuide":
+        result = { shouldConfigure: true };
         break;
       case "app.backupData":
         result = { created: true, fileName: "Taskato_浏览器预览.taskato-backup" };

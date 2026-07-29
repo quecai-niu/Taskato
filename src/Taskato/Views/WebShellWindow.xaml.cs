@@ -1,6 +1,8 @@
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Windows;
+using System.Windows.Interop;
 using Microsoft.Web.WebView2.Core;
 using Taskato.Services;
 using Taskato.Services.WebBridge;
@@ -15,6 +17,17 @@ namespace Taskato.Views
         private bool _initialized;
         private bool _coreConfigured;
         private bool _smokeCompleted;
+
+        // WebView2 会接管鼠标消息，桥接回调到达 WPF 时 DragMove 已经失去按下态；
+        // 因此按 Win32 标题栏拖动协议把当前窗口交还给系统窗口管理器。
+        private const int WmNcLeftButtonDown = 0x00A1;
+        private const int HitTestCaption = 2;
+
+        [DllImport("user32.dll")]
+        private static extern bool ReleaseCapture();
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr SendMessage(IntPtr windowHandle, int message, IntPtr wParam, IntPtr lParam);
 
         public bool IsAppShuttingDown { get; set; }
         public event Action? LegacyWorkspaceRequested;
@@ -103,10 +116,17 @@ namespace Taskato.Views
                 case "maximize": WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized; break;
                 case "close": Hide(); break;
                 case "drag":
-                    try { DragMove(); }
-                    catch (InvalidOperationException) { /* 鼠标释放后迟到的拖动消息无需处理。 */ }
+                    BeginNativeWindowDrag();
                     break;
             }
+        }
+
+        private void BeginNativeWindowDrag()
+        {
+            var windowHandle = new WindowInteropHelper(this).Handle;
+            if (windowHandle == IntPtr.Zero) return;
+            ReleaseCapture();
+            SendMessage(windowHandle, WmNcLeftButtonDown, new IntPtr(HitTestCaption), IntPtr.Zero);
         }
 
         private void ShowInitializationError(Exception exception)

@@ -98,6 +98,7 @@ export function TopBar({
   const title =
     navItems.find((item) => item.id === activePage)?.label ?? "任务";
   const drag = (event: MouseEvent<HTMLElement>) => {
+    if (event.button !== 0) return;
     if ((event.target as HTMLElement).closest("button,input")) return;
     void bridge.request("window.drag");
   };
