@@ -230,16 +230,27 @@ namespace Taskato
         private void RestoreWindowPlacement(Window window)
         {
             var config = _settingsService.Config;
-            var area = SystemParameters.WorkArea;
-            window.Width = Math.Min(window.Width, area.Width);
-            window.Height = Math.Min(window.Height, area.Height);
+            var workAreas = System.Windows.Forms.Screen.AllScreens
+                .Select(screen => new WindowPlacementCalculator.WorkArea(
+                    screen.WorkingArea.Left,
+                    screen.WorkingArea.Top,
+                    screen.WorkingArea.Width,
+                    screen.WorkingArea.Height,
+                    screen.Primary))
+                .ToList();
+            var placement = WindowPlacementCalculator.Calculate(
+                config.WindowWidth,
+                config.WindowHeight,
+                config.WindowLeft,
+                config.WindowTop,
+                workAreas);
 
-            if (config.WindowLeft.HasValue && config.WindowTop.HasValue)
-            {
-                window.WindowStartupLocation = WindowStartupLocation.Manual;
-                window.Left = Math.Clamp(config.WindowLeft.Value, area.Left, Math.Max(area.Left, area.Right - window.Width));
-                window.Top = Math.Clamp(config.WindowTop.Value, area.Top, Math.Max(area.Top, area.Bottom - window.Height));
-            }
+            // 显式恢复尺寸和屏幕位置；旧实现只保存尺寸却从未重新应用。
+            window.WindowStartupLocation = WindowStartupLocation.Manual;
+            window.Width = placement.Width;
+            window.Height = placement.Height;
+            window.Left = placement.Left;
+            window.Top = placement.Top;
 
             if (config.IsWindowMaximized)
                 window.WindowState = WindowState.Maximized;

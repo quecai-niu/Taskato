@@ -19,6 +19,7 @@ internal static class Program
     {
         RunWorkspaceXamlSmokeTest();
         RunPomodoroElapsedTimeTests();
+        RunWindowPlacementTests();
 
         var testDirectory = Path.Combine(Path.GetTempPath(), "TaskatoTests");
         Directory.CreateDirectory(testDirectory);
@@ -29,6 +30,7 @@ internal static class Program
         {
             database = new DatabaseService(databasePath);
             await database.InitializeAsync();
+            await RunNotificationCoordinatorTestsAsync(database, testDirectory);
 
             var root = await AddTaskAsync(database, "发布新版本");
             var phase = await database.AddChildTaskAsync(root, "登录模块")
@@ -368,6 +370,107 @@ internal static class Program
         now = now.AddSeconds(60);
         service.RefreshElapsedTime();
         Assert(restCompleted == 1, "恢复后应延续休息状态并按剩余时间完成。");
+
+        var completedCycles = 0;
+        var longRunningClock = new DateTimeOffset(2026, 7, 29, 0, 0, 0, TimeSpan.Zero);
+        var longRunning = new PomodoroService(1, 1, () => longRunningClock);
+        longRunning.WorkCompleted += () => completedCycles++;
+        for (var cycle = 0; cycle < 1440; cycle++)
+        {
+            longRunning.StartWork();
+            longRunningClock = longRunningClock.AddMinutes(1);
+            longRunning.RefreshElapsedTime();
+        }
+        Assert(completedCycles == 1440,
+            "模拟连续 24 小时的计时循环时，每轮只能产生一次完成事件。");
+    }
+
+    private static void RunWindowPlacementTests()
+    {
+        var screens = new[]
+        {
+            new WindowPlacementCalculator.WorkArea(0, 0, 1920, 1040, IsPrimary: true),
+            new WindowPlacementCalculator.WorkArea(1920, 0, 2560, 1400)
+        };
+
+        var secondScreen = WindowPlacementCalculator.Calculate(
+            1280, 820, 2200, 120, screens);
+        Assert(secondScreen.Left == 2200 && secondScreen.Top == 120,
+            "仍与第二屏相交的窗口应恢复到原显示器。");
+
+        var oversized = WindowPlacementCalculator.Calculate(
+            6000, 3000, 2100, -300, screens);
+        Assert(oversized.Width == 2560 && oversized.Height == 1400 && oversized.Top == 0,
+            "超出工作区的窗口尺寸和坐标必须约束在目标屏幕内。");
+
+        var disconnected = WindowPlacementCalculator.Calculate(
+            1280, 820, 7000, 100, screens);
+        Assert(disconnected.Left == 3200 && disconnected.Top == 100,
+            "屏幕拔除后应移动到距离原窗口最近的剩余工作区边缘。");
+
+        var firstLaunch = WindowPlacementCalculator.Calculate(
+            1280, 820, null, null, screens);
+        Assert(firstLaunch.Left == 320 && firstLaunch.Top == 110,
+            "首次启动应在主屏工作区居中。");
+    }
+
+    private static async Task RunNotificationCoordinatorTestsAsync(
+        DatabaseService database,
+        string testDirectory)
+    {
+        var settingsPath = Path.Combine(
+            testDirectory,
+            $"notification-settings-{Guid.NewGuid():N}.json");
+        try
+        {
+            var now = new DateTimeOffset(2026, 7, 29, 9, 0, 0, TimeSpan.Zero);
+            var timerService = new PomodoroService(1, 2, () => now);
+            var settings = new SettingsService(settingsPath);
+            var viewModel = new MainViewModel(
+                database,
+                timerService,
+                settings,
+                new FeishuService(settings));
+            var workNotifications = 0;
+            var restNotifications = 0;
+            var halfwayNotifications = 0;
+            using var coordinator = new PomodoroNotificationCoordinator(
+                viewModel,
+                _ => workNotifications++,
+                _ => restNotifications++,
+                _ => halfwayNotifications++);
+            var timer = viewModel.AllTimers[0];
+
+            timer.StartWork();
+            now = now.AddMinutes(1);
+            timer.RefreshElapsedTime();
+            timer.RefreshElapsedTime();
+            Assert(workNotifications == 1,
+                "同一次工作完成只能由通知协调器分发一次。");
+
+            timer.StartRest();
+            now = now.AddMinutes(1);
+            timer.RefreshElapsedTime();
+            Assert(halfwayNotifications == 1,
+                "同一次休息过半只能分发一次通知。");
+            now = now.AddMinutes(1);
+            timer.RefreshElapsedTime();
+            Assert(restNotifications == 1,
+                "同一次休息完成只能分发一次通知。");
+
+            coordinator.Dispose();
+            timer.StartWork();
+            now = now.AddMinutes(1);
+            timer.RefreshElapsedTime();
+            Assert(workNotifications == 1,
+                "通知协调器释放后必须解除全部计时器订阅。");
+        }
+        finally
+        {
+            if (File.Exists(settingsPath)) File.Delete(settingsPath);
+        }
+
+        await Task.CompletedTask;
     }
 
     private static void RunWorkspaceXamlSmokeTest()

@@ -1,8 +1,8 @@
 #ifndef MyAppVersion
-  #define MyAppVersion "2.19.0"
+  #define MyAppVersion "2.20.0"
 #endif
 #ifndef PublishDir
-  #define PublishDir "..\artifacts\release\2.19.0\portable"
+  #define PublishDir "..\artifacts\release\2.20.0\portable"
 #endif
 
 [Setup]
@@ -54,18 +54,18 @@ begin
 end;
 
 function InitializeSetup: Boolean;
-var
-  ResultCode: Integer;
 begin
   Result := True;
   if not WebView2IsInstalled then
   begin
-    if not DownloadTemporaryFile(
-      'https://go.microsoft.com/fwlink/p/?LinkId=2124703',
-      'MicrosoftEdgeWebview2Setup.exe',
-      '',
-      @OnDownloadProgress) then
-    begin
+    try
+      DownloadTemporaryFile(
+        'https://go.microsoft.com/fwlink/p/?LinkId=2124703',
+        'MicrosoftEdgeWebview2Setup.exe',
+        '',
+        @OnDownloadProgress);
+    except
+      Log('WebView2 Runtime 下载失败：' + GetExceptionMessage);
       MsgBox('无法下载 WebView2 Runtime，安装已取消。请检查网络后重试。', mbError, MB_OK);
       Result := False;
     end;

@@ -5,16 +5,17 @@
 ## 应用入口
 
 - `src/Taskato/App.xaml.cs`：进程生命周期、依赖组装、托盘、工作区选择、恢复前置处理与系统休眠事件。
-- `src/Taskato/Views/WebShellWindow.xaml.cs`：WebView2 初始化、静态资源映射、进程失败反馈和旧 WPF 回退。
+- `src/Taskato/Views/WebShellWindow.xaml.cs`：WebView2 初始化、用户数据隔离、静态资源映射、自动烟测、进程失败反馈和旧 WPF 回退。
 - `src/Taskato.Web/src/App.tsx`：React 应用级导航、全局浮层和错误边界。
 
 ## 前端工作区
 
 - `src/Taskato.Web/src/components/AppChrome.tsx`：导航栏、标题栏、全局搜索和通知中心。
-- `src/Taskato.Web/src/pages/WorkspacePages.tsx`：任务、每日总结、历史和设置页面。
+- `src/Taskato.Web/src/pages/WorkspacePages.tsx`：四个业务页面的稳定导出入口。
+- `src/Taskato.Web/src/pages/TaskPage.tsx`、`SummaryPage.tsx`、`HistoryPage.tsx`、`SettingsPage.tsx`：可独立渲染和测试的四个业务页面。
 - `src/Taskato.Web/src/ui.tsx`：页面标识、导航元数据、主题和共享按钮/刷新工具。
 - `src/Taskato.Web/src/bridge/`：WebView2 客户端、浏览器 Mock 与 TypeScript 契约。
-- `src/Taskato.Web/tests/`：桥接和应用框架组件测试。
+- `src/Taskato.Web/tests/`：桥接、应用框架和独立业务页面测试。
 
 ## C# 业务与桥接
 
@@ -30,11 +31,14 @@
 - `src/Taskato/Services/DataBackupService.cs`：备份归档、校验、暂存恢复和回滚副本。
 - `src/Taskato/Services/DiagnosticsService.cs`：本地崩溃日志和保留期清理。
 - `src/Taskato/Services/PomodoroService.cs`：基于绝对截止时间的工作/休息计时。
+- `src/Taskato/Services/PomodoroNotificationCoordinator.cs`：通知订阅、阶段去重与生命周期释放。
+- `src/Taskato/Services/WindowPlacementCalculator.cs`：多屏工作区选择、屏幕断开降级与窗口边界约束。
 - `src/Taskato/Models/TaskActivityRecord.cs`：不可变活动类型和事件快照。
 
 ## 验证与发布
 
-- `src/TestProject/Program.cs`：XAML、任务树、日志、迁移、备份、桥接和休眠回归测试。
-- `scripts/build-release.ps1`：前后端验证、Windows x64 发布、便携包、校验和与清单。
+- `src/TestProject/Program.cs`：XAML、任务树、日志、迁移、备份、桥接、窗口归位、通知生命周期和长期计时回归测试。
+- `scripts/build-release.ps1`：前后端验证、自包含 Windows x64 发布、真实 WebView2 烟测、便携包、校验和与清单。
+- `scripts/test-webview-smoke.ps1`：以隔离数据目录启动发布程序，验证 React 根节点与本地桥接后清理运行数据。
 - `installer/Taskato.iss`：Inno Setup 安装定义和 WebView2 Evergreen 检测。
 - `docs/release_Taskato_20260729.md`：运行时、升级、签名和回滚边界。

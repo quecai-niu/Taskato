@@ -48,7 +48,7 @@ WPF 桌面壳层
 ### 4.1 前端
 
 - [x] `src/Taskato.Web/package.json`：React、TypeScript、Vite 和图标依赖。
-- [x] 应用壳层和四个页面组件：首轮迁移集中在 `src/Taskato.Web/src/App.tsx`。
+- [x] 应用壳层位于 `App.tsx`/`components/AppChrome.tsx`，四个业务页面分别位于 `pages/TaskPage.tsx`、`SummaryPage.tsx`、`HistoryPage.tsx` 和 `SettingsPage.tsx`。
 - [x] 任务树、当前任务和番茄钟工作区。
 - [x] 每日总结。
 - [x] 历史记录与事件时间线。
@@ -133,7 +133,7 @@ WPF 桌面壳层
 - [x] Web UI 设为默认入口，保留明确的旧界面回退开关。
 - [ ] 连续稳定使用并完成手工 QA 后，再删除旧 WPF 大页面。
 - [x] 保留真正适合原生弹窗的流程：任务完成、确认、Toast 和系统文件选择。
-- [x] 更新 README 和交接文档；仓库当前没有 `REPO_MAP.md`，因此无项目地图可同步。
+- [x] 更新 README、交接文档、项目记忆和 `REPO_MAP.md`。
 
 验收：常规使用只有一个 WebView2 主窗口，退出和托盘行为无回归。
 
@@ -144,9 +144,9 @@ WPF 桌面壳层
 - [x] `dotnet build Taskato.sln`：C# 与 WPF 宿主构建。
 - [x] `dotnet run --project src/TestProject/TestProject.csproj`：现有数据库业务回归。
 - [x] C# 桥接契约测试：正常响应、未知方法、无效参数和异常序列化。
-- [x] WebView2 启动冒烟：导航完成、入口页面加载、JS/C# 双向消息成功。
+- [x] WebView2 启动冒烟：发布流水线自动启动真实宿主，验证导航完成、React 根节点、入口页面和 JS/C# 双向消息成功。
 - [x] 窗口 QA：1440 × 1024、1100 × 800、960 × 640。
-- [x] 手工流程（本次可独立验证范围）：浏览器覆盖任务输入隔离、任务新增、番茄钟、总结、历史和设置；真实 Release WebView2 覆盖启动握手、创建任务、详情/笔记、全局搜索和关闭到托盘后进程存活。系统通知、真实休眠硬件和长期驻留保留为发布候选版观察项。
+- [x] 手工流程（本次可独立验证范围）：浏览器覆盖任务输入隔离、任务新增、番茄钟、总结、历史和设置；真实 Release WebView2 覆盖启动握手、创建任务、详情/笔记、全局搜索和关闭到托盘后进程存活。另以自动化覆盖通知去重/释放、休眠时间跳变、24 小时加速计时和双屏坐标算法；真实休眠硬件和长期驻留仍保留为发布候选版观察项。
 
 ## 7. 风险与控制
 
@@ -187,10 +187,10 @@ WPF 桌面壳层
 
 ### 11.1 前端文件组织
 
-- 原计划：立即按 `app/pages/styles` 拆分目录。
-- 实际调整：首轮迁移把应用壳层和四个页面组件集中在 `src/Taskato.Web/src/App.tsx`，桥接仍独立放在 `src/bridge/`，样式集中在 `styles.css`。
-- 原因：先保持已确认原型的布局与交互整体性，减少迁移过程中跨文件状态漂移；后续可在不改变协议的情况下纯重构拆分。
-- 验证：TypeScript 严格类型检查、Vite 生产构建和四页浏览器烟测通过。
+- 原计划：按应用壳、页面和样式职责拆分目录。
+- 实际调整：首轮曾把页面集中实现；成熟度收口时已将桌面框架迁入 `components/AppChrome.tsx`，四个业务页面分别迁入独立文件，`WorkspacePages.tsx` 仅保留稳定导出，样式继续集中在 `styles.css`。
+- 原因：保留现有桥接和页面内部状态边界，同时消除 2000 行以上聚合模块及重复应用框架代码，使页面可以独立渲染测试。
+- 验证：TypeScript 严格检查、3 个测试文件共 10 项测试、Vite 生产构建和真实 WebView2 自动烟测通过。
 
 ### 11.2 C# Bridge 处理器组织
 
@@ -201,24 +201,25 @@ WPF 桌面壳层
 
 ### 11.3 取消完成历史
 
-- 原计划：历史页增加事件时间线，同时回滚方案不修改数据库格式。
-- 实际调整：不新增表；使用不可变 `TaskCompletionRecords`、当前任务状态和 `LastModifiedAt` 投影“完成”和“取消完成”事件。
-- 原因：满足日志可见、每日总结不显示取消记录的产品规则，同时保持旧数据库零迁移兼容。
-- 验证：数据库回归断言历史完成记录不被删除、每日总结过滤无效完成，并验证 `history.events` 可查询取消完成事件。
+- 原计划：历史页增加可靠事件时间线，同时每日总结只保留当前有效完成。
+- 实际调整：新增只追加 `TaskActivityRecords`，在同一 SQLite 事务中记录创建、编辑、移动、完成、取消完成和删除；旧数据仅回填可证明事实并写入迁移边界。
+- 原因：`LastModifiedAt` 无法证明取消完成的真实发生时间，继续投影会损害历史可信度；幂等迁移则兼顾旧库兼容。
+- 验证：数据库回归断言重复初始化不增加回填数量、取消完成保留独立事件且不再进入每日总结。
 
 ## 12. 2026-07-28 验证证据
 
-- `npm test`：2 个测试文件、8 个测试全部通过。
+- `npm test`：3 个测试文件、10 个测试全部通过。
 
 ### 2026-07-29 成熟度收口
 
-- `App.tsx` 已改为只负责应用级导航、全局浮层和错误边界；桌面框架移入 `components/AppChrome.tsx`，共享 UI 移入 `ui.tsx`，业务页面导出自 `pages/WorkspacePages.tsx`。
+- `App.tsx` 已改为只负责应用级导航、全局浮层和错误边界；桌面框架移入 `components/AppChrome.tsx`，共享 UI 移入 `ui.tsx`，四个业务页面已拆成独立文件并由 `pages/WorkspacePages.tsx` 统一导出。
 - `WebBridgeService` 已按核心协议、总结/历史和设置/数据副作用拆分，白名单路由仍保持唯一入口。
 - 历史页已切换为只追加活动日志，不再使用 `LastModifiedAt` 推导取消完成。
 - 新增备份恢复、崩溃诊断、休眠同步计时、发布脚本和安装定义；完整证据见成熟度审计实施记录。
 - `npm run build`：TypeScript 检查与 Vite 生产构建通过。
-- `dotnet build Taskato.sln -c Release`：0 警告、0 错误。
+- `dotnet build Taskato.sln -c Release`：0 错误；保留现有第三方 `SQLitePCLRaw` 的 1 项 `NETSDK1206` RID 警告。
 - `dotnet run --project src/TestProject/TestProject.csproj -c Release --no-build`：整窗 XAML、任务树、级联完成、有效总结、历史、桥接契约、层级限制和删除提升全部通过。
 - Release 输出中的 `Web/index.html` 已引用本次最新哈希资源。
 - 浏览器 1440 × 1024、1100 × 800、960 × 640 均无横向溢出，控制台无错误。
-- 隔离数据目录启动 Release `Taskato.exe`，WebView2 可访问性树出现“数据已连接”，证明本地资源导航和 `app.ready` 双向握手成功。
+- `scripts/build-release.ps1 -Version 2.20.0`：前后端检查、C# 回归、自包含发布、真实 WebView2 自动烟测、ZIP、SHA-256 与清单均通过。
+- 隔离数据目录启动 Release `Taskato.exe`，自动断言 React 根节点、任务入口、WebView2 消息对象与无错误 Toast；WebView2 用户数据不会污染发布目录。
