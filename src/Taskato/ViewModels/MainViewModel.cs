@@ -32,6 +32,8 @@ namespace Taskato.ViewModels
 
         /// <summary>飞书通知服务</summary>
         private readonly FeishuService _feishuService;
+        private readonly PomodoroStateStore? _pomodoroStateStore;
+        private bool _isRestoringPomodoroState;
         public FeishuService FeishuService => _feishuService;
 
         /// <summary>是否开启弹窗计时器（透传配置）</summary>
@@ -196,19 +198,26 @@ namespace Taskato.ViewModels
         /// <param name="dbService">数据库服务</param>
         /// <param name="pomodoroService">番茄钟服务</param>
         /// <param name="settingsService">设置服务</param>
-        public MainViewModel(DatabaseService dbService, PomodoroService pomodoroService, SettingsService settingsService, FeishuService feishuService)
+        public MainViewModel(
+            DatabaseService dbService,
+            PomodoroService pomodoroService,
+            SettingsService settingsService,
+            FeishuService feishuService,
+            PomodoroStateStore? pomodoroStateStore = null)
         {
             _dbService = dbService;
             _pomodoroService = pomodoroService;
             _settingsService = settingsService;
             _feishuService = feishuService;
+            _pomodoroStateStore = pomodoroStateStore;
 
             // 初始化主番茄钟并添加到列表
             var mainTimer = new PomodoroTimerViewModel(_pomodoroService, "主番茄钟", newWorkMinutes => 
             {
                 _settingsService.Config.WorkMinutes = newWorkMinutes;
                 _settingsService.Save();
-            });
+                SavePomodoroState();
+            }, SavePomodoroState);
             AllTimers.Add(mainTimer);
             CurrentActiveTimer = mainTimer;
 
@@ -224,8 +233,9 @@ namespace Taskato.ViewModels
                     {
                         _settingsService.Config.AdditionalTimersWorkMinutes[index] = newWorkMinutes;
                         _settingsService.Save();
+                        SavePomodoroState();
                     }
-                });
+                }, SavePomodoroState);
                 AllTimers.Add(timerVM);
             }
 
@@ -295,6 +305,7 @@ namespace Taskato.ViewModels
                         _settingsService.Config.AdditionalTimersWorkMinutes.RemoveAt(index);
                         _settingsService.Save();
                     }
+                    SavePomodoroState();
                 }
             });
 
@@ -375,22 +386,22 @@ namespace Taskato.ViewModels
         /// </summary>
         private async Task ToggleTaskAsync(TaskItem task)
         {
-            if (task.HasChildren)
+            if (!task.IsCompleted && task.HasChildren)
             {
                 var remaining = Math.Max(0, task.TotalLeafCount - task.CompletedLeafCount);
-                var message = remaining > 0
-                    ? $"“{task.DisplayTitle}”还有 {remaining} 个叶子任务未完成，请先完成子任务。"
-                    : "父任务由子任务状态自动维护；如需重新打开，请取消一个叶子任务的完成状态。";
-                MessageBox.Show(
-                    Application.Current?.MainWindow,
-                    message,
-                    "父任务状态",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
-                task.IsExpanded = true;
-                _collapsedTaskIds.Remove(task.Id);
-                RefreshFlattenedTasks();
-                return;
+                if (remaining > 0)
+                {
+                    MessageBox.Show(
+                        Application.Current?.MainWindow,
+                        $"“{task.DisplayTitle}”还有 {remaining} 个叶子任务未完成，请先完成子任务。",
+                        "父任务状态",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                    task.IsExpanded = true;
+                    _collapsedTaskIds.Remove(task.Id);
+                    RefreshFlattenedTasks();
+                    return;
+                }
             }
 
             if (!task.IsCompleted)
@@ -399,7 +410,7 @@ namespace Taskato.ViewModels
                 if (!Views.TaskCompletionDialog.TryShowForCompletion(owner, task, out var durationMinutes))
                     return;
 
-                await _dbService.CompleteTaskWithCascadeAsync(
+                await _dbService.CompleteTaskWithHierarchyValidationAsync(
                     task,
                     DateTime.Now,
                     durationMinutes,
@@ -407,7 +418,7 @@ namespace Taskato.ViewModels
                 return;
             }
 
-            await _dbService.ReopenTaskWithAncestorsAsync(task);
+            await _dbService.ReopenTaskWithHierarchyRulesAsync(task);
         }
 
         public async Task AddChildTaskAsync(TaskItem parent)
@@ -617,6 +628,7 @@ namespace Taskato.ViewModels
 
             // 同步多组模式的状态
             OnPropertyChanged(nameof(IsMultiMode));
+            SavePomodoroState();
         }
 
         /// <summary>设置页保存后，把可即时生效的配置同步到正在运行的计时器和绑定属性。</summary>
@@ -633,6 +645,7 @@ namespace Taskato.ViewModels
             OnPropertyChanged(nameof(EnableToastTimer));
             OnPropertyChanged(nameof(NotificationSoundChoice));
             OnPropertyChanged(nameof(FeishuEnabled));
+            SavePomodoroState();
         }
 
         /// <summary>
@@ -671,16 +684,54 @@ namespace Taskato.ViewModels
                 {
                     _settingsService.Config.AdditionalTimersWorkMinutes[index] = newWorkMinutes;
                     _settingsService.Save();
+                    SavePomodoroState();
                 }
-            });
+            }, SavePomodoroState);
             AllTimers.Add(timerVM);
             
             // 更新配置并保存
             _settingsService.Config.AdditionalTimersWorkMinutes.Add(_settingsService.Config.WorkMinutes);
             _settingsService.Save();
+            SavePomodoroState();
 
             // 自动选中新添加的计时器
             CurrentActiveTimer = timerVM;
+        }
+
+        /// <summary>
+        /// 通知协调器完成订阅后再恢复，关闭期间到期的计时器才能走与在线到期相同的提醒链路。
+        /// </summary>
+        public void RestorePomodoroState()
+        {
+            if (_pomodoroStateStore is null) return;
+
+            _isRestoringPomodoroState = true;
+            try
+            {
+                var snapshots = _pomodoroStateStore.Load()
+                    .Where(snapshot => !string.IsNullOrWhiteSpace(snapshot.SlotId))
+                    .GroupBy(snapshot => snapshot.SlotId, StringComparer.Ordinal)
+                    .ToDictionary(group => group.Key, group => group.Last(), StringComparer.Ordinal);
+                for (var index = 0; index < AllTimers.Count; index++)
+                {
+                    if (snapshots.TryGetValue($"timer-{index}", out var snapshot))
+                        AllTimers[index].Restore(snapshot);
+                }
+            }
+            finally
+            {
+                _isRestoringPomodoroState = false;
+            }
+
+            // 跨越截止时间后会变成“等待处理”，恢复结束立即覆盖旧的运行中快照。
+            SavePomodoroState();
+        }
+
+        public void SavePomodoroState()
+        {
+            if (_pomodoroStateStore is null || _isRestoringPomodoroState) return;
+            _pomodoroStateStore.Save(AllTimers.Select((timer, index) =>
+                timer.CreateSnapshot($"timer-{index}")));
         }
     }
 }

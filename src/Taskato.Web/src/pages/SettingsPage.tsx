@@ -149,10 +149,15 @@ export function SettingsPage({ reportError }: { reportError(error: unknown): voi
   const testFeishu = async () => {
     setFeishuTestStatus("正在发送…");
     try {
-      const result = await bridge.request<{ sent: boolean }>("settings.testFeishu", { webhookUrl: settings.feishuWebhookUrl });
-      setFeishuTestStatus(result.sent ? "发送成功" : "发送失败，请检查 Webhook");
+      const result = await bridge.request<{
+        sent: boolean;
+        errorCode: string;
+        message: string;
+      }>("settings.testFeishu", { webhookUrl: settings.feishuWebhookUrl });
+      setFeishuTestStatus(result.message);
+      if (!result.sent) reportError(new Error(result.message));
     } catch (error) {
-      setFeishuTestStatus("发送失败");
+      setFeishuTestStatus("发送失败，请查看右下角错误说明。");
       reportError(error);
     }
   };

@@ -207,7 +207,10 @@ namespace Taskato.Services
         {
             if (_pomodoroMenuItem != null)
             {
-                _pomodoroMenuItem.Header = CreateCuteHeader("🍅", $"专注小统计: {minutes:D2}:{seconds:D2}", "#FFA502");
+                var prefix = _pomodoroService.CurrentState == PomodoroService.PomodoroState.CompletionPending
+                    ? "+"
+                    : string.Empty;
+                _pomodoroMenuItem.Header = CreateCuteHeader("🍅", $"专注小统计: {prefix}{minutes:D2}:{seconds:D2}", "#FFA502");
             }
         }
 
@@ -223,6 +226,7 @@ namespace Taskato.Services
                     PomodoroService.PomodoroState.Working => "专注中",
                     PomodoroService.PomodoroState.Paused => "已暂停",
                     PomodoroService.PomodoroState.Resting => "休息中",
+                    PomodoroService.PomodoroState.CompletionPending => "等待处理",
                     _ => "空闲"
                 };
                 _pomodoroMenuItem.Header = CreateCuteHeader("🍅", $"专注小统计: {stateText}", "#FFA502");

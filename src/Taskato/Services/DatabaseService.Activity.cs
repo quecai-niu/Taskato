@@ -135,8 +135,8 @@ namespace Taskato.Services
 
         private static string CompletionDetail(TaskCompletionRecord record) => record.CompletionKind switch
         {
-            CompletionKind.TopLevelAchievement => "全部子任务完成，达成大任务成果",
-            CompletionKind.ParentMilestone => "全部直属子任务完成，达成父级阶段成果",
+            CompletionKind.TopLevelAchievement => "手动确认大任务完成",
+            CompletionKind.ParentMilestone => "手动确认父级阶段完成",
             _ when record.DurationMinutes is > 0 => $"完成任务，记录专注 {record.DurationMinutes} 分钟",
             _ => "完成任务"
         };

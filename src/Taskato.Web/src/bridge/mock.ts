@@ -10,6 +10,68 @@ import type {
 } from "./types";
 
 const now = new Date().toISOString();
+
+function recalculateTaskStats(items: TaskDto[]): TaskDto[] {
+  const childrenByParent = new Map<number, TaskDto[]>();
+  items.forEach((task) => {
+    if (task.parentId == null) return;
+    const children = childrenByParent.get(task.parentId) ?? [];
+    children.push(task);
+    childrenByParent.set(task.parentId, children);
+  });
+  const counts = new Map<number, { completed: number; total: number }>();
+  const countLeaves = (task: TaskDto): { completed: number; total: number } => {
+    const cached = counts.get(task.id);
+    if (cached) return cached;
+    const children = childrenByParent.get(task.id) ?? [];
+    const result = children.length
+      ? children
+          .map(countLeaves)
+          .reduce(
+            (sum, child) => ({
+              completed: sum.completed + child.completed,
+              total: sum.total + child.total,
+            }),
+            { completed: 0, total: 0 },
+          )
+      : { completed: task.isCompleted ? 1 : 0, total: 1 };
+    counts.set(task.id, result);
+    return result;
+  };
+
+  items.forEach(countLeaves);
+  return items.map((task) => {
+    const children = childrenByParent.get(task.id) ?? [];
+    const count = counts.get(task.id)!;
+    return {
+      ...task,
+      hasChildren: children.length > 0,
+      completedLeafCount: count.completed,
+      totalLeafCount: count.total,
+    };
+  });
+}
+
+function reopenTaskAndAncestors(items: TaskDto[], taskId: number): TaskDto[] {
+  const byId = new Map(items.map((task) => [task.id, task]));
+  const reopenedIds = new Set<number>();
+  let current = byId.get(taskId);
+  while (current) {
+    reopenedIds.add(current.id);
+    current = current.parentId == null ? undefined : byId.get(current.parentId);
+  }
+  return items.map((task) =>
+    reopenedIds.has(task.id)
+      ? {
+          ...task,
+          isCompleted: false,
+          completedAt: null,
+          completionDurationMinutes: null,
+        }
+      : task,
+  );
+}
+
 let tasks: TaskDto[] = [
   {
     id: 1,
@@ -178,6 +240,8 @@ export class MockBridge implements BridgeApi {
           completionDurationMinutes: null,
         };
         tasks = [...tasks, created];
+        if (parentId != null) tasks = reopenTaskAndAncestors(tasks, parentId);
+        tasks = recalculateTaskStats(tasks);
         result = created;
         this.emit("tasks.changed", {});
         break;
@@ -203,17 +267,37 @@ export class MockBridge implements BridgeApi {
       }
       case "tasks.toggle": {
         const id = Number(params.taskId);
-        tasks = tasks.map((task) =>
-          task.id === id
-            ? {
-                ...task,
-                isCompleted:
-                  typeof params.completed === "boolean"
-                    ? params.completed
-                    : !task.isCompleted,
-              }
-            : task,
-        );
+        const currentTask = tasks.find((task) => task.id === id);
+        if (!currentTask) throw new Error("任务不存在。");
+        const completed =
+          typeof params.completed === "boolean"
+            ? params.completed
+            : !currentTask.isCompleted;
+        if (
+          completed &&
+          currentTask.hasChildren &&
+          currentTask.completedLeafCount < currentTask.totalLeafCount
+        ) {
+          throw new Error(
+            `父任务还有 ${currentTask.totalLeafCount - currentTask.completedLeafCount} 个叶子任务未完成。`,
+          );
+        }
+        tasks = completed
+          ? tasks.map((task) =>
+              task.id === id
+                ? {
+                    ...task,
+                    isCompleted: true,
+                    completedAt: now,
+                    completionDurationMinutes:
+                      typeof params.durationMinutes === "number"
+                        ? params.durationMinutes
+                        : null,
+                  }
+                : task,
+            )
+          : reopenTaskAndAncestors(tasks, id);
+        tasks = recalculateTaskStats(tasks);
         result = {
           completed: tasks.find((task) => task.id === id)?.isCompleted,
         };
@@ -239,12 +323,15 @@ export class MockBridge implements BridgeApi {
             ? { ...task, parentId, depth: parent ? parent.depth + 1 : 0 }
             : task,
         );
+        if (parentId != null) tasks = reopenTaskAndAncestors(tasks, parentId);
+        tasks = recalculateTaskStats(tasks);
         result = { moved: true };
         this.emit("tasks.changed", {});
         break;
       }
       case "tasks.delete":
         tasks = tasks.filter((task) => task.id !== Number(params.taskId));
+        tasks = recalculateTaskStats(tasks);
         result = { affected: 1 };
         this.emit("tasks.changed", {});
         break;
@@ -301,7 +388,9 @@ export class MockBridge implements BridgeApi {
         result = { played: settings.notificationSoundChoice !== 0 };
         break;
       case "settings.testFeishu":
-        result = { sent: Boolean(params.webhookUrl) };
+        result = Boolean(params.webhookUrl)
+          ? { sent: true, errorCode: "", message: "测试消息已发送。" }
+          : { sent: false, errorCode: "invalid_url", message: "请先填写有效的 Webhook URL。" };
         break;
       case "settings.openFeishuGuide":
         result = { shouldConfigure: true };
@@ -372,6 +461,17 @@ export class MockBridge implements BridgeApi {
                 canStop: false,
                 canRest: false,
               };
+            if (command === "increase" || command === "decrease") {
+              const workMinutes = Math.min(
+                240,
+                Math.max(1, timer.workMinutes + (command === "increase" ? 5 : -5)),
+              );
+              return {
+                ...timer,
+                workMinutes,
+                display: `${String(workMinutes).padStart(2, "0")}:00`,
+              };
+            }
             return timer;
           });
         }

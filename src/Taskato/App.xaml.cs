@@ -99,16 +99,25 @@ namespace Taskato
             _pomodoroService = new PomodoroService(
                 _settingsService.Config.WorkMinutes, 
                 _settingsService.Config.RestMinutes);
+            var pomodoroStateStore = new PomodoroStateStore(
+                System.IO.Path.Combine(resolvedDataDirectory, "pomodoro-state.json"));
 
             // ---- 3. 初始化系统托盘 ----
             _trayService = new TrayService(_pomodoroService);
             _trayService.Initialize();
 
             // ---- 4. 创建主窗体和 ViewModel ----
-            var mainVM = new MainViewModel(_dbService, _pomodoroService, _settingsService, _feishuService);
+            var mainVM = new MainViewModel(
+                _dbService,
+                _pomodoroService,
+                _settingsService,
+                _feishuService,
+                pomodoroStateStore);
             _mainViewModel = mainVM;
             Microsoft.Win32.SystemEvents.PowerModeChanged += SystemEvents_PowerModeChanged;
             _notificationCoordinator = new PomodoroNotificationCoordinator(mainVM);
+            // 必须先建立通知订阅再恢复，否则关闭期间到期的完成事件会在启动时丢失。
+            mainVM.RestorePomodoroState();
             var shellVM = new ShellViewModel(mainVM, _dbService, _settingsService);
             _webBridgeService = new WebBridgeService(_dbService, mainVM, _settingsService);
 
@@ -230,14 +239,18 @@ namespace Taskato
         private void RestoreWindowPlacement(Window window)
         {
             var config = _settingsService.Config;
-            var workAreas = System.Windows.Forms.Screen.AllScreens
-                .Select(screen => new WindowPlacementCalculator.WorkArea(
-                    screen.WorkingArea.Left,
-                    screen.WorkingArea.Top,
-                    screen.WorkingArea.Width,
-                    screen.WorkingArea.Height,
-                    screen.Primary))
-                .ToList();
+            var primaryWorkArea = SystemParameters.WorkArea;
+            var workAreas = new[]
+            {
+                // WPF 的 Left/Top/Width/Height 使用设备无关单位；SystemParameters.WorkArea 与其坐标系一致。
+                // WinForms Screen 返回物理像素，在高 DPI 显示器上直接赋值会把窗口推向右下角。
+                new WindowPlacementCalculator.WorkArea(
+                    primaryWorkArea.Left,
+                    primaryWorkArea.Top,
+                    primaryWorkArea.Width,
+                    primaryWorkArea.Height,
+                    IsPrimary: true)
+            };
             var placement = WindowPlacementCalculator.Calculate(
                 config.WindowWidth,
                 config.WindowHeight,
@@ -252,9 +265,9 @@ namespace Taskato
             window.Height = placement.Height;
             window.Left = placement.Left;
             window.Top = placement.Top;
-
-            if (config.IsWindowMaximized)
-                window.WindowState = WindowState.Maximized;
+            // “启动居中”是稳定的用户预期，因此不再恢复上次最大化状态；用户仍可在启动后主动最大化。
+            window.WindowState = WindowState.Normal;
+            WindowWorkAreaService.Attach(window);
         }
 
         private void SaveWindowPlacement()
@@ -277,6 +290,7 @@ namespace Taskato
         protected override void OnExit(ExitEventArgs e)
         {
             SaveWindowPlacement();
+            _mainViewModel?.SavePomodoroState();
             Microsoft.Win32.SystemEvents.PowerModeChanged -= SystemEvents_PowerModeChanged;
             _trayService?.Dispose();
             _notificationCoordinator?.Dispose();

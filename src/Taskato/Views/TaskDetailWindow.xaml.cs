@@ -16,7 +16,7 @@ namespace Taskato.Views
 
     /// <summary>
     /// 任务详情与树形管理入口。状态变更直接调用 DatabaseService，
-    /// 避免详情页绕过完成记录和父级级联规则。
+    /// 避免详情页绕过完成记录和父级手动完成校验。
     /// </summary>
     public partial class TaskDetailWindow : Window
     {
@@ -117,30 +117,36 @@ namespace Taskato.Views
         private async void StatusBadge_Click(object sender, MouseButtonEventArgs e)
         {
             var allTasks = await _dbService.GetTaskTreeItemsAsync();
-            if (allTasks.Any(task => task.ParentId == OriginalTask.Id))
+            var hasChildren = allTasks.Any(task => task.ParentId == OriginalTask.Id);
+            if (!OriginalTask.IsCompleted && hasChildren)
             {
                 var remaining = CountUncompletedLeaves(allTasks, OriginalTask.Id);
-                MessageBox.Show(
-                    this,
-                    remaining > 0
-                        ? $"父任务还有 {remaining} 个叶子任务未完成，请先完成子任务。"
-                        : "父任务由子任务自动完成；如需重开，请取消一个叶子任务的完成状态。",
-                    "父任务状态",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
-                e.Handled = true;
-                return;
+                if (remaining > 0)
+                {
+                    MessageBox.Show(
+                        this,
+                        $"父任务还有 {remaining} 个叶子任务未完成，请先完成子任务。",
+                        "父任务状态",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Information);
+                    e.Handled = true;
+                    return;
+                }
             }
 
             if (!OriginalTask.IsCompleted)
             {
-                if (!TaskCompletionDialog.TryShowForCompletion(this, OriginalTask, out var durationMinutes))
+                if (!TaskCompletionDialog.TryShowForCompletion(
+                        this,
+                        OriginalTask,
+                        out var durationMinutes,
+                        hasChildren))
                 {
                     e.Handled = true;
                     return;
                 }
 
-                await _dbService.CompleteTaskWithCascadeAsync(
+                await _dbService.CompleteTaskWithHierarchyValidationAsync(
                     OriginalTask,
                     DateTime.Now,
                     durationMinutes,
@@ -148,7 +154,7 @@ namespace Taskato.Views
             }
             else
             {
-                await _dbService.ReopenTaskWithAncestorsAsync(OriginalTask);
+                await _dbService.ReopenTaskWithHierarchyRulesAsync(OriginalTask);
             }
 
             await ReloadCurrentTaskAsync();

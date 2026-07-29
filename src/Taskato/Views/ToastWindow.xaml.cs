@@ -42,6 +42,7 @@ namespace Taskato.Views
         /// <summary>弹窗计时器</summary>
         private System.Windows.Threading.DispatcherTimer? _elapsedTimer;
         private int _secondsElapsed = 0;
+        private DateTimeOffset _elapsedStartedAtUtc;
 
         /// <summary>操作按钮延迟启用计时器</summary>
         private System.Windows.Threading.DispatcherTimer? _actionDelayTimer;
@@ -76,7 +77,8 @@ namespace Taskato.Views
         /// <param name="customSoundPath">自定义音效路径</param>
         public ToastWindow(string title, string subtitle,
             Action? onRest, Action? onContinue, bool showTimer = false, bool isRestComplete = false,
-            double actionDelaySeconds = 1.5, int soundChoice = 3, string customSoundPath = "")
+            double actionDelaySeconds = 1.5, int soundChoice = 3, string customSoundPath = "",
+            int initialElapsedSeconds = 0)
         {
             InitializeComponent();
 
@@ -93,8 +95,10 @@ namespace Taskato.Views
             // 如果启用了计时器，则初始化并启动
             if (showTimer)
             {
+                _secondsElapsed = Math.Max(0, initialElapsedSeconds);
+                _elapsedStartedAtUtc = DateTimeOffset.UtcNow.AddSeconds(-_secondsElapsed);
                 ElapsedTimerText.Visibility = Visibility.Visible;
-                ElapsedTimerText.Text = "已显示 00:00";
+                ElapsedTimerText.Text = FormatElapsed(_secondsElapsed);
                 
                 _elapsedTimer = new System.Windows.Threading.DispatcherTimer
                 {
@@ -102,10 +106,11 @@ namespace Taskato.Views
                 };
                 _elapsedTimer.Tick += (s, e) =>
                 {
-                    _secondsElapsed++;
-                    int m = _secondsElapsed / 60;
-                    int sec = _secondsElapsed % 60;
-                    ElapsedTimerText.Text = $"已显示 {m:D2}:{sec:D2}";
+                    // 使用绝对时间而非累加 Tick，系统休眠或 UI 忙碌后仍能显示真实经过时长。
+                    _secondsElapsed = Math.Max(
+                        0,
+                        (int)Math.Floor((DateTimeOffset.UtcNow - _elapsedStartedAtUtc).TotalSeconds));
+                    ElapsedTimerText.Text = FormatElapsed(_secondsElapsed);
                 };
                 _elapsedTimer.Start();
             }
@@ -120,6 +125,16 @@ namespace Taskato.Views
 
             // 播放提示音 (使用 Windows 默认现代通知音)
             PlayNotificationSound();
+        }
+
+        private static string FormatElapsed(int totalSeconds)
+        {
+            var elapsed = TimeSpan.FromSeconds(Math.Max(0, totalSeconds));
+            if (elapsed.TotalDays >= 1)
+                return $"已过去 {(int)elapsed.TotalDays} 天 {elapsed.Hours:D2}:{elapsed.Minutes:D2}:{elapsed.Seconds:D2}";
+            if (elapsed.TotalHours >= 1)
+                return $"已过去 {(int)elapsed.TotalHours:D2}:{elapsed.Minutes:D2}:{elapsed.Seconds:D2}";
+            return $"已过去 {elapsed.Minutes:D2}:{elapsed.Seconds:D2}";
         }
 
         private void PlayNotificationSound()

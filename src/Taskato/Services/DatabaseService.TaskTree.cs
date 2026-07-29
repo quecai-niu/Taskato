@@ -85,7 +85,7 @@ namespace Taskato.Services
             return createdTask;
         }
 
-        public async Task<TaskCompletionResult> CompleteTaskWithCascadeAsync(
+        public async Task<TaskCompletionResult> CompleteTaskWithHierarchyValidationAsync(
             TaskItem task,
             DateTime completedAt,
             int? durationMinutes,
@@ -99,12 +99,15 @@ namespace Taskato.Services
                 if (storedTask is null) return;
 
                 var children = tasks.Where(t => t.ParentId == storedTask.Id).ToList();
-                if (children.Count > 0)
+                var uncompletedDescendantCount = children.Count == 0
+                    ? 0
+                    : CountUncompletedLeaves(tasks, storedTask.Id);
+                if (uncompletedDescendantCount > 0)
                 {
                     operationResult = new TaskCompletionResult
                     {
                         Succeeded = false,
-                        UncompletedDescendantCount = CountUncompletedLeaves(tasks, storedTask.Id)
+                        UncompletedDescendantCount = uncompletedDescendantCount
                     };
                     return;
                 }
@@ -119,31 +122,6 @@ namespace Taskato.Services
                     triggerType,
                     completedTaskIds);
 
-                var parentId = storedTask.ParentId;
-                while (parentId.HasValue)
-                {
-                    var parent = tasks.FirstOrDefault(t => t.Id == parentId.Value);
-                    if (parent is null) break;
-
-                    var directChildren = tasks.Where(t => t.ParentId == parent.Id).ToList();
-                    if (directChildren.Count == 0 || directChildren.Any(t => !t.IsCompleted))
-                        break;
-
-                    if (!parent.IsCompleted)
-                    {
-                        MarkTaskCompleted(
-                            connection,
-                            tasks,
-                            parent,
-                            completedAt,
-                            null,
-                            CompletionTrigger.AutomaticCascade,
-                            completedTaskIds);
-                    }
-
-                    parentId = parent.ParentId;
-                }
-
                 operationResult = new TaskCompletionResult
                 {
                     Succeeded = true,
@@ -156,17 +134,27 @@ namespace Taskato.Services
             return operationResult;
         }
 
-        public async Task<int> ReopenTaskWithAncestorsAsync(TaskItem task)
+        public async Task<int> ReopenTaskWithHierarchyRulesAsync(TaskItem task)
         {
             var changedCount = 0;
             await _db.RunInTransactionAsync(connection =>
             {
                 var tasks = connection.Table<TaskItem>().ToList();
-                changedCount = ReopenTaskAndAncestors(
-                    connection,
-                    tasks,
-                    task.Id,
-                    "取消完成；原完成事实继续保留在历史记录中");
+                var storedTask = tasks.FirstOrDefault(candidate => candidate.Id == task.Id);
+                if (storedTask is null) return;
+
+                var hasChildren = tasks.Any(candidate => candidate.ParentId == storedTask.Id);
+                changedCount = hasChildren
+                    ? ReopenSingleTask(
+                        connection,
+                        tasks,
+                        storedTask,
+                        "取消完成；原完成事实继续保留在历史记录中")
+                    : ReopenTaskAndAncestors(
+                        connection,
+                        tasks,
+                        storedTask.Id,
+                        "取消完成；原完成事实继续保留在历史记录中");
             });
 
             if (changedCount > 0)
@@ -234,9 +222,9 @@ namespace Taskato.Services
                     parentIdSnapshot: newParentId,
                     depthSnapshot: GetDepth(tasks, task.Id));
 
-                RecalculateAncestorStates(connection, tasks, oldParentId, DateTime.Now);
+                RecalculateAncestorStates(connection, tasks, oldParentId);
                 if (newParentId != oldParentId)
-                    RecalculateAncestorStates(connection, tasks, newParentId, DateTime.Now);
+                    RecalculateAncestorStates(connection, tasks, newParentId);
 
                 result = new TaskMoveResult { Succeeded = true };
             });
@@ -307,8 +295,7 @@ namespace Taskato.Services
                 RecalculateAncestorStates(
                     connection,
                     tasks,
-                    storedTask.ParentId,
-                    DateTime.Now);
+                    storedTask.ParentId);
             });
 
             if (affectedRows > 0)
@@ -500,16 +487,39 @@ namespace Taskato.Services
             return changedCount;
         }
 
+        private static int ReopenSingleTask(
+            SQLiteConnection connection,
+            List<TaskItem> tasks,
+            TaskItem task,
+            string detail)
+        {
+            if (!task.IsCompleted && !task.CompletedAt.HasValue && !task.CompletionDurationMinutes.HasValue)
+                return 0;
+
+            // 父级成果由各层独立确认；取消当前父任务不能清除已经手动确认的祖先成果。
+            task.IsCompleted = false;
+            task.CompletedAt = null;
+            task.CompletionDurationMinutes = null;
+            task.LastModifiedAt = DateTime.Now;
+            connection.Update(task);
+            InsertActivityRecord(
+                connection,
+                task,
+                TaskActivityType.Reopened,
+                detail,
+                task.LastModifiedAt,
+                depthSnapshot: GetDepth(tasks, task.Id));
+            return 1;
+        }
+
         private static void RecalculateAncestorStates(
             SQLiteConnection connection,
             List<TaskItem> tasks,
-            int? startTaskId,
-            DateTime changedAt)
+            int? startTaskId)
         {
+            // 结构变化只能使已完成父任务失效；即使所有叶子均已完成，也必须等待用户手动确认父任务。
             var currentId = startTaskId;
             var visited = new HashSet<int>();
-            var completedTaskIds = new List<int>();
-
             while (currentId.HasValue && visited.Add(currentId.Value))
             {
                 var current = tasks.FirstOrDefault(task => task.Id == currentId.Value);
@@ -522,7 +532,7 @@ namespace Taskato.Services
                     continue;
                 }
 
-                if (directChildren.Any(child => !child.IsCompleted))
+                if (CountUncompletedLeaves(tasks, current.Id) > 0)
                 {
                     ReopenTaskAndAncestors(
                         connection,
@@ -530,18 +540,6 @@ namespace Taskato.Services
                         current.Id,
                         "任务树结构变化，父级状态自动恢复为进行中");
                     break;
-                }
-
-                if (!current.IsCompleted)
-                {
-                    MarkTaskCompleted(
-                        connection,
-                        tasks,
-                        current,
-                        changedAt,
-                        null,
-                        CompletionTrigger.AutomaticCascade,
-                        completedTaskIds);
                 }
 
                 currentId = current.ParentId;

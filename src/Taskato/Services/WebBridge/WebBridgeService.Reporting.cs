@@ -65,7 +65,7 @@ namespace Taskato.Services.WebBridge
             var duration = OptionalInt(parameters, "durationMinutes");
             if (duration is <= 0)
                 throw new BridgeRequestException("invalid_duration", "耗时必须是大于 0 的分钟数。");
-            var result = await _database.CompleteTaskWithCascadeAsync(
+            var result = await _database.CompleteTaskWithHierarchyValidationAsync(
                 task, completedAt, duration, CompletionTrigger.Backfill);
             if (!result.Succeeded)
                 throw new BridgeRequestException("invalid_task", "只能补充未完成的叶子任务。");

@@ -213,18 +213,20 @@
                                VerticalAlignment="Center"/>
                 </StackPanel>
 
-                <TextBlock Text="耗时（分钟）"
-                           FontSize="12"
-                           FontWeight="SemiBold"
-                           Foreground="{StaticResource TextMutedBrush}"
-                           Margin="0,0,0,6"/>
-                <TextBox x:Name="DurationBox"
-                         Style="{StaticResource DarkTextBox}"
-                         Height="36"
-                         Padding="10,7"
-                         MaxLength="4"
-                         PreviewTextInput="DurationBox_PreviewTextInput"
-                         DataObject.Pasting="DurationBox_Pasting"/>
+                <StackPanel x:Name="DurationPanel">
+                    <TextBlock Text="耗时（分钟）"
+                               FontSize="12"
+                               FontWeight="SemiBold"
+                               Foreground="{StaticResource TextMutedBrush}"
+                               Margin="0,0,0,6"/>
+                    <TextBox x:Name="DurationBox"
+                             Style="{StaticResource DarkTextBox}"
+                             Height="36"
+                             Padding="10,7"
+                             MaxLength="4"
+                             PreviewTextInput="DurationBox_PreviewTextInput"
+                             DataObject.Pasting="DurationBox_Pasting"/>
+                </StackPanel>
 
                 <TextBlock x:Name="ErrorText"
                            Visibility="Collapsed"

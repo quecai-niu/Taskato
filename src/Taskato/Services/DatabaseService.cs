@@ -173,7 +173,7 @@ namespace Taskato.Services
         /// </summary>
         public async Task<int> CompleteTaskAsync(TaskItem task, DateTime completedAt, int? durationMinutes)
         {
-            var result = await CompleteTaskWithCascadeAsync(
+            var result = await CompleteTaskWithHierarchyValidationAsync(
                 task,
                 completedAt,
                 durationMinutes,

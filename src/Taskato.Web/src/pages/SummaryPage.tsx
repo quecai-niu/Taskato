@@ -285,7 +285,7 @@ function BackfillDialog({
             <X size={19} />
           </IconButton>
         </header>
-        <p>选择未完成叶子任务；由此达成的父级成果会自动记录。</p>
+        <p>选择未完成叶子任务；补充完成后，父任务仍需手动确认。</p>
         <div className="task-choice-list">
           {tasks.map((task) => (
             <button

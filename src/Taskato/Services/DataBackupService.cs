@@ -12,6 +12,7 @@ namespace Taskato.Services
     {
         private const string DatabaseEntryName = "taskato.db";
         private const string SettingsEntryName = "settings.json";
+        private const string PomodoroStateEntryName = "pomodoro-state.json";
         private const string ManifestEntryName = "manifest.json";
         private const string PendingDirectoryName = "RestorePending";
 
@@ -46,6 +47,16 @@ namespace Taskato.Services
                     File.Copy(
                         _settings.ConfigPath,
                         Path.Combine(temporaryDirectory, SettingsEntryName),
+                        overwrite: true);
+                }
+                var pomodoroStatePath = Path.Combine(
+                    Path.GetDirectoryName(_settings.ConfigPath)!,
+                    PomodoroStateEntryName);
+                if (File.Exists(pomodoroStatePath))
+                {
+                    File.Copy(
+                        pomodoroStatePath,
+                        Path.Combine(temporaryDirectory, PomodoroStateEntryName),
                         overwrite: true);
                 }
 
@@ -90,6 +101,7 @@ namespace Taskato.Services
                 {
                     DatabaseEntryName,
                     SettingsEntryName,
+                    PomodoroStateEntryName,
                     ManifestEntryName
                 };
                 foreach (var entry in archive.Entries)
@@ -102,7 +114,8 @@ namespace Taskato.Services
                     }
                     var maximumLength = entry.FullName.Equals(DatabaseEntryName, StringComparison.OrdinalIgnoreCase)
                         ? 512L * 1024 * 1024
-                        : entry.FullName.Equals(SettingsEntryName, StringComparison.OrdinalIgnoreCase)
+                        : entry.FullName.Equals(SettingsEntryName, StringComparison.OrdinalIgnoreCase) ||
+                          entry.FullName.Equals(PomodoroStateEntryName, StringComparison.OrdinalIgnoreCase)
                             ? 2L * 1024 * 1024
                             : 1024L * 1024;
                     if (entry.Length > maximumLength)
@@ -139,6 +152,7 @@ namespace Taskato.Services
 
             var pendingDatabasePath = Path.Combine(pendingDirectory, DatabaseEntryName);
             var pendingSettingsPath = Path.Combine(pendingDirectory, SettingsEntryName);
+            var pendingPomodoroStatePath = Path.Combine(pendingDirectory, PomodoroStateEntryName);
             ValidateDatabase(pendingDatabasePath);
 
             var rollbackDirectory = Path.Combine(
@@ -151,6 +165,9 @@ namespace Taskato.Services
             CopyIfExists(
                 Path.Combine(dataDirectory, SettingsEntryName),
                 Path.Combine(rollbackDirectory, SettingsEntryName));
+            CopyIfExists(
+                Path.Combine(dataDirectory, PomodoroStateEntryName),
+                Path.Combine(rollbackDirectory, PomodoroStateEntryName));
 
             File.Copy(
                 pendingDatabasePath,
@@ -162,6 +179,16 @@ namespace Taskato.Services
                     pendingSettingsPath,
                     Path.Combine(dataDirectory, SettingsEntryName),
                     overwrite: true);
+            }
+            var targetPomodoroStatePath = Path.Combine(dataDirectory, PomodoroStateEntryName);
+            if (File.Exists(pendingPomodoroStatePath))
+            {
+                File.Copy(pendingPomodoroStatePath, targetPomodoroStatePath, overwrite: true);
+            }
+            else if (File.Exists(targetPomodoroStatePath))
+            {
+                // 旧版备份没有运行状态时必须清空当前计时，避免恢复出与备份设置不一致的旧截止时间。
+                File.Delete(targetPomodoroStatePath);
             }
 
             Directory.Delete(pendingDirectory, recursive: true);

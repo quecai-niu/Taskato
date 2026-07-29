@@ -71,13 +71,15 @@ namespace Taskato.Services
 
         private void ShowWorkCompleted(PomodoroTimerViewModel timer)
         {
+            var elapsedSeconds = timer.CompletionElapsedSeconds;
             new ToastWindow(
                 $"{timer.TimerName} 时间到！", "你已完成专注工作，要休息一下吗？",
                 () => timer.StartRest(), () => timer.StartWork(),
-                _viewModel.EnableToastTimer,
+                _viewModel.EnableToastTimer || timer.IsRecoveredCompletion,
                 actionDelaySeconds: _viewModel.ToastActionDelaySeconds,
                 soundChoice: _viewModel.NotificationSoundChoice,
-                customSoundPath: _viewModel.CustomSoundPath).Show();
+                customSoundPath: _viewModel.CustomSoundPath,
+                initialElapsedSeconds: elapsedSeconds).Show();
             _ = NotifyFeishuAsync(
                 _viewModel.FeishuEnabled && _viewModel.FeishuNotifyOnWork,
                 $"{timer.TimerName} 时间到！", "你已完成专注工作，要休息一下吗？");
@@ -85,13 +87,15 @@ namespace Taskato.Services
 
         private void ShowRestCompleted(PomodoroTimerViewModel timer)
         {
+            var elapsedSeconds = timer.CompletionElapsedSeconds;
             new ToastWindow(
                 $"{timer.TimerName} 休息结束！", "精力充沛了吗？开始新一轮专注吧！",
-                null, () => timer.StartWork(), _viewModel.EnableToastTimer,
+                null, () => timer.StartWork(), _viewModel.EnableToastTimer || timer.IsRecoveredCompletion,
                 isRestComplete: true,
                 actionDelaySeconds: _viewModel.ToastActionDelaySeconds,
                 soundChoice: _viewModel.NotificationSoundChoice,
-                customSoundPath: _viewModel.CustomSoundPath).Show();
+                customSoundPath: _viewModel.CustomSoundPath,
+                initialElapsedSeconds: elapsedSeconds).Show();
             _ = NotifyFeishuAsync(
                 _viewModel.FeishuEnabled && _viewModel.FeishuNotifyOnRest,
                 $"{timer.TimerName} 休息结束！", "精力充沛了吗？开始新一轮专注吧！");

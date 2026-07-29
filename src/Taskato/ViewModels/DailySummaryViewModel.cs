@@ -46,7 +46,7 @@ namespace Taskato.ViewModels
         }
 
         private int _completedCount;
-        /// <summary>当天完成记录总数，包含叶子任务与自动完成的父级成果。</summary>
+        /// <summary>当天完成记录总数，包含叶子任务与用户手动确认的父级成果。</summary>
         public int CompletedCount
         {
             get => _completedCount;
@@ -124,7 +124,7 @@ namespace Taskato.ViewModels
             var dayLabel = CurrentDate.Date == DateTime.Today ? "今天" : "这一天";
             SummaryLine = CompletedCount == 0
                 ? $"{dayLabel}没有完成任务记录。"
-                : $"{dayLabel}完成了 {LeafCompletedCount} 个叶子任务，并达成 {ParentAchievementCount} 个父级成果。";
+                : $"{dayLabel}完成了 {LeafCompletedCount} 个叶子任务，并手动确认 {ParentAchievementCount} 个父级成果。";
 
             CompletionGroups.Clear();
             foreach (var group in records
@@ -201,7 +201,7 @@ namespace Taskato.ViewModels
                 return;
             }
 
-            await _dbService.CompleteTaskWithCascadeAsync(
+            await _dbService.CompleteTaskWithHierarchyValidationAsync(
                 selectedTask,
                 BuildCompletionTime(completionDate),
                 durationMinutes,

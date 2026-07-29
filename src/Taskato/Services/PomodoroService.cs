@@ -34,6 +34,8 @@ namespace Taskato.Services
         private int _totalSeconds;
         private readonly Func<DateTimeOffset> _clock;
         private DateTimeOffset? _deadline;
+        private DateTimeOffset? _completedAt;
+        private PomodoroState? _completedPhase;
         private PomodoroState _pausedState = PomodoroState.Working;
         private bool _restHalfwayRaised;
 
@@ -59,13 +61,16 @@ namespace Taskato.Services
             /// <summary>已暂停 — 暂时停止倒计时</summary>
             Paused,
             /// <summary>休息中 — 正在倒计时休息时间</summary>
-            Resting
+            Resting,
+            /// <summary>本阶段已到期，等待用户选择休息、继续或停止</summary>
+            CompletionPending
         }
 
         /// <summary>
         /// 当前状态
         /// </summary>
         public PomodoroState CurrentState { get; private set; } = PomodoroState.Idle;
+        public bool IsRecoveredCompletion { get; private set; }
 
         // ==================== 事件回调 ====================
 
@@ -94,6 +99,22 @@ namespace Taskato.Services
         /// 状态变更时触发 — 用于更新 UI 上的状态标签
         /// </summary>
         public event Action<PomodoroState>? StateChanged;
+
+        /// <summary>开始、暂停、恢复、停止或到期时触发，供宿主持久化稳定状态边界。</summary>
+        public event Action? PersistenceRequested;
+
+        public int CompletionElapsedSeconds
+        {
+            get
+            {
+                if (_completedAt is null) return 0;
+                var elapsedSeconds = (_clock().ToUniversalTime() - _completedAt.Value).TotalSeconds;
+                if (elapsedSeconds <= 0) return 0;
+                return elapsedSeconds >= int.MaxValue
+                    ? int.MaxValue
+                    : (int)Math.Floor(elapsedSeconds);
+            }
+        }
 
         // ==================== 构造与方法 ====================
 
@@ -124,11 +145,15 @@ namespace Taskato.Services
             _totalSeconds = WorkMinutes * 60;       // 总秒数
             _remainingSeconds = _totalSeconds;       // 剩余 = 总
             _deadline = _clock().AddSeconds(_remainingSeconds);
+            _completedAt = null;
+            _completedPhase = null;
+            IsRecoveredCompletion = false;
             _restHalfwayRaised = false;
             CurrentState = PomodoroState.Working;
             StateChanged?.Invoke(CurrentState);
             PublishTick();
             _timer.Start();
+            PersistenceRequested?.Invoke();
         }
 
         /// <summary>
@@ -139,11 +164,15 @@ namespace Taskato.Services
             _totalSeconds = RestMinutes * 60;
             _remainingSeconds = _totalSeconds;
             _deadline = _clock().AddSeconds(_remainingSeconds);
+            _completedAt = null;
+            _completedPhase = null;
+            IsRecoveredCompletion = false;
             _restHalfwayRaised = false;
             CurrentState = PomodoroState.Resting;
             StateChanged?.Invoke(CurrentState);
             PublishTick();
             _timer.Start();
+            PersistenceRequested?.Invoke();
         }
 
         /// <summary>
@@ -161,13 +190,14 @@ namespace Taskato.Services
             {
                 // 先按绝对截止时间结算，防止在系统唤醒后点击暂停时丢失休眠期间的时间。
                 RefreshElapsedTime();
-                if (CurrentState == PomodoroState.Idle) return;
+                if (CurrentState is not (PomodoroState.Working or PomodoroState.Resting)) return;
                 _pausedState = CurrentState;
                 CurrentState = PomodoroState.Paused;
                 _deadline = null;
                 _timer.Stop();
             }
             StateChanged?.Invoke(CurrentState);
+            PersistenceRequested?.Invoke();
         }
 
         /// <summary>
@@ -179,12 +209,16 @@ namespace Taskato.Services
             _remainingSeconds = 0;
             _totalSeconds = 0;
             _deadline = null;
+            _completedAt = null;
+            _completedPhase = null;
+            IsRecoveredCompletion = false;
             _restHalfwayRaised = false;
             CurrentState = PomodoroState.Idle;
             StateChanged?.Invoke(CurrentState);
 
             // 触发最后一次 Tick 更新 UI，恢复到随时准备工作的倒计时长
             Tick?.Invoke(WorkMinutes, 0, 1.0);
+            PersistenceRequested?.Invoke();
         }
 
         /// <summary>
@@ -201,9 +235,16 @@ namespace Taskato.Services
         /// </summary>
         public void RefreshElapsedTime()
         {
+            if (CurrentState == PomodoroState.CompletionPending)
+            {
+                PublishCompletionElapsed();
+                return;
+            }
+
             if (CurrentState is not (PomodoroState.Working or PomodoroState.Resting) || _deadline is null)
                 return;
 
+            var completedAt = _deadline.Value.ToUniversalTime();
             var previousRemaining = _remainingSeconds;
             _remainingSeconds = Math.Max(
                 0,
@@ -221,16 +262,95 @@ namespace Taskato.Services
 
             if (_remainingSeconds > 0) return;
 
-            _timer.Stop();
             _deadline = null;
             var previousState = CurrentState;
-            CurrentState = PomodoroState.Idle;
+            _completedAt = completedAt;
+            _completedPhase = previousState;
+            CurrentState = PomodoroState.CompletionPending;
             StateChanged?.Invoke(CurrentState);
+            PublishCompletionElapsed();
+            // 到期后继续每秒刷新“已过去”时间，直到用户明确选择下一步。
+            _timer.Start();
+            PersistenceRequested?.Invoke();
             if (previousState == PomodoroState.Working)
                 WorkCompleted?.Invoke();
             else
                 RestCompleted?.Invoke();
-            Tick?.Invoke(WorkMinutes, 0, 1.0);
+        }
+
+        public PomodoroRuntimeSnapshot CreateSnapshot(string slotId) => new()
+        {
+            SlotId = slotId,
+            State = CurrentState,
+            PausedState = _pausedState,
+            CompletedPhase = _completedPhase,
+            RemainingSeconds = _remainingSeconds,
+            TotalSeconds = _totalSeconds,
+            DeadlineUtc = _deadline?.ToUniversalTime(),
+            CompletedAtUtc = _completedAt?.ToUniversalTime(),
+            RestHalfwayRaised = _restHalfwayRaised,
+            WorkMinutes = WorkMinutes,
+            RestMinutes = RestMinutes
+        };
+
+        /// <summary>
+        /// 恢复已验证的快照。完成事件只在本次恢复中触发一次，后续界面刷新不会重复弹窗。
+        /// </summary>
+        public void Restore(PomodoroRuntimeSnapshot snapshot)
+        {
+            _timer.Stop();
+            // 缺失字段会反序列化为 0；此时沿用设置中的时长，而不是意外改成一分钟。
+            if (snapshot.WorkMinutes is >= 1 and <= 240) WorkMinutes = snapshot.WorkMinutes;
+            if (snapshot.RestMinutes is >= 1 and <= 240) RestMinutes = snapshot.RestMinutes;
+            _remainingSeconds = Math.Max(0, snapshot.RemainingSeconds);
+            _totalSeconds = Math.Max(0, snapshot.TotalSeconds);
+            _deadline = snapshot.DeadlineUtc?.ToUniversalTime();
+            _completedAt = snapshot.CompletedAtUtc?.ToUniversalTime();
+            _completedPhase = snapshot.CompletedPhase;
+            _pausedState = snapshot.PausedState is PomodoroState.Working or PomodoroState.Resting
+                ? snapshot.PausedState
+                : PomodoroState.Working;
+            _restHalfwayRaised = snapshot.RestHalfwayRaised;
+            CurrentState = snapshot.State;
+            IsRecoveredCompletion = false;
+
+            if (CurrentState is PomodoroState.Working or PomodoroState.Resting)
+            {
+                if (_deadline is null)
+                {
+                    Stop();
+                    return;
+                }
+                StateChanged?.Invoke(CurrentState);
+                PublishTick();
+                _timer.Start();
+                IsRecoveredCompletion = _deadline.Value <= _clock().ToUniversalTime();
+                RefreshElapsedTime();
+                return;
+            }
+
+            if (CurrentState == PomodoroState.Paused)
+            {
+                _deadline = null;
+                StateChanged?.Invoke(CurrentState);
+                PublishTick();
+                return;
+            }
+
+            if (CurrentState == PomodoroState.CompletionPending &&
+                _completedAt is not null &&
+                _completedPhase is PomodoroState.Working or PomodoroState.Resting)
+            {
+                IsRecoveredCompletion = true;
+                StateChanged?.Invoke(CurrentState);
+                PublishCompletionElapsed();
+                _timer.Start();
+                if (_completedPhase == PomodoroState.Working) WorkCompleted?.Invoke();
+                else RestCompleted?.Invoke();
+                return;
+            }
+
+            Stop();
         }
 
         private void PublishTick()
@@ -241,6 +361,12 @@ namespace Taskato.Services
                 ? (double)_remainingSeconds / _totalSeconds
                 : 0;
             Tick?.Invoke(minutes, seconds, progress);
+        }
+
+        private void PublishCompletionElapsed()
+        {
+            var elapsed = CompletionElapsedSeconds;
+            Tick?.Invoke(elapsed / 60, elapsed % 60, 0);
         }
 
         /// <summary>

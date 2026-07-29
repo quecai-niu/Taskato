@@ -53,6 +53,8 @@ namespace Taskato.ViewModels
         public bool IsWorkingState => _pomodoroService.CurrentState == PomodoroService.PomodoroState.Working;
         public bool IsRestingState => _pomodoroService.CurrentState == PomodoroService.PomodoroState.Resting;
         public bool IsPaused => _pomodoroService.CurrentState == PomodoroService.PomodoroState.Paused;
+        public int CompletionElapsedSeconds => _pomodoroService.CompletionElapsedSeconds;
+        public bool IsRecoveredCompletion => _pomodoroService.IsRecoveredCompletion;
 
         public int WorkMinutes
         {
@@ -90,7 +92,11 @@ namespace Taskato.ViewModels
         public ICommand IncreaseTimeCommand { get; }
         public ICommand DecreaseTimeCommand { get; }
 
-        public PomodoroTimerViewModel(PomodoroService pomodoroService, string name = "番茄钟", Action<int>? onTimeAdjusted = null)
+        public PomodoroTimerViewModel(
+            PomodoroService pomodoroService,
+            string name = "番茄钟",
+            Action<int>? onTimeAdjusted = null,
+            Action? onRuntimeStateChanged = null)
         {
             _pomodoroService = pomodoroService;
             _timerName = name;
@@ -99,8 +105,11 @@ namespace Taskato.ViewModels
 
             _pomodoroService.Tick += (m, s, p) =>
             {
-                TimerDisplay = $"{m:D2}:{s:D2}";
+                TimerDisplay = CurrentState == PomodoroService.PomodoroState.CompletionPending
+                    ? $"+{m:D2}:{s:D2}"
+                    : $"{m:D2}:{s:D2}";
                 Progress = p;
+                OnPropertyChanged(nameof(CompletionElapsedSeconds));
             };
 
             _pomodoroService.StateChanged += state =>
@@ -111,6 +120,7 @@ namespace Taskato.ViewModels
                     PomodoroService.PomodoroState.Working => "专注中",
                     PomodoroService.PomodoroState.Paused => "已暂停",
                     PomodoroService.PomodoroState.Resting => "休息中",
+                    PomodoroService.PomodoroState.CompletionPending => "等待处理",
                     _ => "未知"
                 };
                 IsStarted = state != PomodoroService.PomodoroState.Idle;
@@ -118,14 +128,21 @@ namespace Taskato.ViewModels
                 OnPropertyChanged(nameof(IsWorkingState));
                 OnPropertyChanged(nameof(IsRestingState));
                 OnPropertyChanged(nameof(IsPaused));
+                OnPropertyChanged(nameof(CompletionElapsedSeconds));
             };
 
             _pomodoroService.WorkCompleted += () => WorkCompleted?.Invoke();
             _pomodoroService.RestCompleted += () => RestCompleted?.Invoke();
             _pomodoroService.RestHalfway += () => RestHalfway?.Invoke();
+            if (onRuntimeStateChanged is not null)
+                _pomodoroService.PersistenceRequested += onRuntimeStateChanged;
 
             StartWorkCommand = new RelayCommand(_ => _pomodoroService.StartWork(), _ => CurrentState == PomodoroService.PomodoroState.Idle || CurrentState == PomodoroService.PomodoroState.Paused);
-            PauseCommand = new RelayCommand(_ => _pomodoroService.TogglePause(), _ => IsStarted);
+            PauseCommand = new RelayCommand(
+                _ => _pomodoroService.TogglePause(),
+                _ => CurrentState is PomodoroService.PomodoroState.Working or
+                    PomodoroService.PomodoroState.Resting or
+                    PomodoroService.PomodoroState.Paused);
             StopCommand = new RelayCommand(_ => _pomodoroService.Stop(), _ => IsStarted);
             EarlyRestCommand = new RelayCommand(_ => _pomodoroService.StartRest(), _ => IsWorkingState);
 
@@ -157,5 +174,11 @@ namespace Taskato.ViewModels
         /// 在系统恢复或宿主重新激活时按绝对截止时间同步，避免休眠期间倒计时停滞。
         /// </summary>
         public void RefreshElapsedTime() => _pomodoroService.RefreshElapsedTime();
+
+        public PomodoroRuntimeSnapshot CreateSnapshot(string slotId) =>
+            _pomodoroService.CreateSnapshot(slotId);
+
+        public void Restore(PomodoroRuntimeSnapshot snapshot) =>
+            _pomodoroService.Restore(snapshot);
     }
 }

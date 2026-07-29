@@ -12,6 +12,7 @@ namespace Taskato.Models
     public enum CompletionTrigger
     {
         Manual = 0,
+        // 仅用于识别旧版本已经写入的历史记录；新版本不再自动完成父任务。
         AutomaticCascade = 1,
         Backfill = 2,
         LegacyMigration = 3

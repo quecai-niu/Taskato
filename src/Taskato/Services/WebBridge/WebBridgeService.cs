@@ -251,14 +251,14 @@ namespace Taskato.Services.WebBridge
                 return new { completed = task.IsCompleted };
             if (!desiredCompleted)
             {
-                await _database.ReopenTaskWithAncestorsAsync(task);
+                await _database.ReopenTaskWithHierarchyRulesAsync(task);
                 return new { completed = false };
             }
 
             var duration = OptionalInt(parameters, "durationMinutes");
             if (duration is <= 0)
                 throw new BridgeRequestException("invalid_duration", "耗时必须是大于 0 的分钟数。");
-            var result = await _database.CompleteTaskWithCascadeAsync(
+            var result = await _database.CompleteTaskWithHierarchyValidationAsync(
                 task, DateTime.Now, duration, CompletionTrigger.Manual);
             if (!result.Succeeded)
                 throw new BridgeRequestException("parent_has_open_leaves", "父任务不能直接完成，请先完成所有叶子任务。");
@@ -269,13 +269,16 @@ namespace Taskato.Services.WebBridge
         {
             var task = await FindTaskAsync(parameters);
             if (task.IsCompleted) return new { completed = true, cancelled = false };
+            var hasChildren = (await _database.GetTaskTreeItemsAsync())
+                .Any(candidate => candidate.ParentId == task.Id);
             if (!Taskato.Views.TaskCompletionDialog.TryShowForCompletion(
                     System.Windows.Application.Current.MainWindow,
                     task,
-                    out var durationMinutes))
+                    out var durationMinutes,
+                    hasChildren))
                 return new { completed = false, cancelled = true };
 
-            var result = await _database.CompleteTaskWithCascadeAsync(
+            var result = await _database.CompleteTaskWithHierarchyValidationAsync(
                 task, DateTime.Now, durationMinutes, CompletionTrigger.Manual);
             if (!result.Succeeded)
                 throw new BridgeRequestException("parent_has_open_leaves", "父任务不能直接完成，请先完成所有叶子任务。");
@@ -320,6 +323,8 @@ namespace Taskato.Services.WebBridge
                 case "pause": ExecuteTimerCommand(timer.PauseCommand, "当前状态不能暂停或继续。"); break;
                 case "stop": ExecuteTimerCommand(timer.StopCommand, "当前状态不能停止计时。"); break;
                 case "rest": ExecuteTimerCommand(timer.EarlyRestCommand, "只有工作计时中才能提前休息。"); break;
+                case "increase": ExecuteTimerCommand(timer.IncreaseTimeCommand, "只能在计时器空闲时调整时长。"); break;
+                case "decrease": ExecuteTimerCommand(timer.DecreaseTimeCommand, "只能在计时器空闲时调整时长。"); break;
                 case "add":
                     if (!_settings.Config.EnableMultiplePomodoros)
                         throw new BridgeRequestException("feature_disabled", "请先在设置中开启多组番茄钟。");

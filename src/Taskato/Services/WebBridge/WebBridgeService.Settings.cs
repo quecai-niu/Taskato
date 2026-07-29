@@ -122,12 +122,9 @@ namespace Taskato.Services.WebBridge
 
         private async Task<object> TestFeishuAsync(JsonElement parameters)
         {
-            var webhookUrl = OptionalString(parameters, "webhookUrl");
-            var sent = await _taskWorkspace.FeishuService.SendAsync(
-                "Taskato 测试消息",
-                "如果你收到这条消息，说明飞书 Webhook 配置成功！",
-                webhookUrl);
-            return new { sent };
+            var webhookUrl = OptionalString(parameters, "webhookUrl") ?? string.Empty;
+            var result = await _taskWorkspace.FeishuService.TestAsync(webhookUrl);
+            return new { result.Sent, result.ErrorCode, result.Message };
         }
 
         private object OpenFeishuGuide()

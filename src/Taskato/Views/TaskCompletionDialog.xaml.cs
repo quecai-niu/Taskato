@@ -22,10 +22,14 @@ namespace Taskato.Views
             VisualEffects.Initialize(this);
         }
 
-        public static bool TryShowForCompletion(Window? owner, TaskItem task, out int? durationMinutes)
+        public static bool TryShowForCompletion(
+            Window? owner,
+            TaskItem task,
+            out int? durationMinutes,
+            bool? hasChildren = null)
         {
             var dialog = new TaskCompletionDialog();
-            dialog.ConfigureForCompletion(task);
+            dialog.ConfigureForCompletion(task, hasChildren ?? task.HasChildren);
             AttachOwner(dialog, owner);
 
             var accepted = dialog.ShowDialog() == true;
@@ -56,17 +60,21 @@ namespace Taskato.Views
                 dialog.Owner = owner;
         }
 
-        private void ConfigureForCompletion(TaskItem task)
+        private void ConfigureForCompletion(TaskItem task, bool hasChildren)
         {
-            HeaderText.Text = "完成任务";
-            DescriptionText.Text = "记录这次完成的实际耗时；不确定可以留空。";
+            HeaderText.Text = hasChildren ? "完成父任务" : "完成任务";
+            DescriptionText.Text = hasChildren
+                ? "所有叶子任务已经完成；确认后才会记录这项父级成果。"
+                : "记录这次完成的实际耗时；不确定可以留空。";
             ConfirmButton.Content = "确认完成";
             TaskPickerPanel.Visibility = Visibility.Collapsed;
             SingleTaskPanel.Visibility = Visibility.Visible;
             TaskTitleText.Text = task.DisplayTitle;
             CompletionDateText.Text = FormatDate(DateTime.Today);
             SelectedTask = task;
-            DurationBox.Focus();
+            DurationPanel.Visibility = hasChildren ? Visibility.Collapsed : Visibility.Visible;
+            if (hasChildren) ConfirmButton.Focus();
+            else DurationBox.Focus();
         }
 
         private void ConfigureForBackfill(DateTime completionDate, IReadOnlyList<TaskItem> tasks)
@@ -76,6 +84,7 @@ namespace Taskato.Views
             ConfirmButton.Content = "确认补充";
             TaskPickerPanel.Visibility = Visibility.Visible;
             SingleTaskPanel.Visibility = Visibility.Collapsed;
+            DurationPanel.Visibility = Visibility.Visible;
             CompletionDateText.Text = FormatDate(completionDate);
             TaskComboBox.ItemsSource = tasks
                 .OrderByDescending(t => t.Priority)

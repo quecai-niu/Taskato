@@ -93,7 +93,7 @@
                                    Foreground="#888888" HorizontalAlignment="Center"
                                    Margin="0,0,0,8" TextWrapping="Wrap" TextAlignment="Center"/>
 
-                        <!-- 计时器显示 (弹窗已出现时长) -->
+                        <!-- 从番茄钟原截止时间开始计算的已过去时长；恢复过期提醒时会带入关闭期间的时间。 -->
                         <TextBlock x:Name="ElapsedTimerText" FontSize="14" FontWeight="SemiBold"
                                    Foreground="#BBBBBB" HorizontalAlignment="Center"
                                    Margin="0,0,0,16" Visibility="Collapsed"/>

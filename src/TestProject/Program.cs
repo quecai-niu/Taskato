@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -19,7 +20,9 @@ internal static class Program
     {
         RunWorkspaceXamlSmokeTest();
         RunPomodoroElapsedTimeTests();
+        RunPomodoroPersistenceTests();
         RunWindowPlacementTests();
+        RunFeishuResponseTests();
 
         var testDirectory = Path.Combine(Path.GetTempPath(), "TaskatoTests");
         Directory.CreateDirectory(testDirectory);
@@ -40,7 +43,7 @@ internal static class Program
             var leafTwo = await database.AddChildTaskAsync(phase, "调整按钮")
                 ?? throw new InvalidOperationException("创建第二个叶子任务失败。");
 
-            var firstResult = await database.CompleteTaskWithCascadeAsync(
+            var firstResult = await database.CompleteTaskWithHierarchyValidationAsync(
                 leafOne,
                 DateTime.Today.AddHours(9),
                 25,
@@ -48,24 +51,49 @@ internal static class Program
             Assert(firstResult.Succeeded, "第一个叶子任务应完成成功。");
             Assert(firstResult.CompletedTaskIds.Count == 1, "部分完成时不应提前完成父任务。");
 
-            var secondResult = await database.CompleteTaskWithCascadeAsync(
+            var secondResult = await database.CompleteTaskWithHierarchyValidationAsync(
                 leafTwo,
                 DateTime.Today.AddHours(10),
                 15,
                 CompletionTrigger.Manual);
             Assert(secondResult.Succeeded, "最后一个叶子任务应完成成功。");
-            Assert(secondResult.CompletedTaskIds.Count == 3, "最后一个叶子任务应级联完成两级父任务。");
+            Assert(secondResult.CompletedTaskIds.Count == 1, "完成叶子任务只能完成当前任务。");
+
+            var afterLeavesCompleted = await database.GetTaskTreeItemsAsync();
+            Assert(!afterLeavesCompleted.Single(task => task.Id == phase.Id).IsCompleted &&
+                   !afterLeavesCompleted.Single(task => task.Id == root.Id).IsCompleted,
+                "全部叶子完成后，所有父任务仍应等待用户手动确认。");
+
+            var phaseCompletion = await database.CompleteTaskWithHierarchyValidationAsync(
+                afterLeavesCompleted.Single(task => task.Id == phase.Id),
+                DateTime.Today.AddHours(10).AddMinutes(5),
+                null,
+                CompletionTrigger.Manual);
+            Assert(phaseCompletion.Succeeded && phaseCompletion.CompletedTaskIds.SequenceEqual(new[] { phase.Id }),
+                "全部叶子完成后应允许手动完成当前父任务。");
+            Assert(!(await database.GetTaskTreeItemsAsync()).Single(task => task.Id == root.Id).IsCompleted,
+                "手动完成中间父任务不得继续完成顶级祖先。");
+
+            var rootCompletion = await database.CompleteTaskWithHierarchyValidationAsync(
+                root,
+                DateTime.Today.AddHours(10).AddMinutes(10),
+                null,
+                CompletionTrigger.Manual);
+            Assert(rootCompletion.Succeeded && rootCompletion.CompletedTaskIds.SequenceEqual(new[] { root.Id }),
+                "全部后代叶子完成后应允许手动完成顶级任务。");
 
             var firstCompletionRecords = await database.GetCompletionRecordsOnAsync(DateTime.Today);
-            Assert(firstCompletionRecords.Count == 4, "每日总结应包含两个叶子和两个父级成果。");
+            Assert(firstCompletionRecords.Count == 4, "每日总结应包含两个叶子和两个手动确认的父级成果。");
             Assert(firstCompletionRecords.Count(record => record.CompletionKind == CompletionKind.LeafTask) == 2,
                 "叶子完成记录数量错误。");
             Assert(firstCompletionRecords.Count(record => record.CompletionKind != CompletionKind.LeafTask) == 2,
                 "父级成果记录数量错误。");
+            Assert(firstCompletionRecords.All(record => record.TriggerType == CompletionTrigger.Manual),
+                "叶子和父任务的完成记录都必须来自用户手动确认。");
             Assert(firstCompletionRecords.Sum(record => record.DurationMinutes ?? 0) == 40,
                 "父级成果不应重复累计耗时。");
 
-            await database.ReopenTaskWithAncestorsAsync(leafTwo);
+            await database.ReopenTaskWithHierarchyRulesAsync(leafTwo);
             var reopenedTasks = await database.GetTaskTreeItemsAsync();
             Assert(!reopenedTasks.Single(task => task.Id == leafTwo.Id).IsCompleted, "叶子任务应重新打开。");
             Assert(!reopenedTasks.Single(task => task.Id == phase.Id).IsCompleted, "阶段任务应重新打开。");
@@ -84,13 +112,24 @@ internal static class Program
                 "每日总结应保留仍然有效的叶子完成记录。");
 
             leafTwo = reopenedTasks.Single(task => task.Id == leafTwo.Id);
-            await database.CompleteTaskWithCascadeAsync(
+            await database.CompleteTaskWithHierarchyValidationAsync(
                 leafTwo,
                 DateTime.Today.AddHours(11),
                 10,
                 CompletionTrigger.Manual);
+            var afterLeafRecompleted = await database.GetTaskTreeItemsAsync();
+            await database.CompleteTaskWithHierarchyValidationAsync(
+                afterLeafRecompleted.Single(task => task.Id == phase.Id),
+                DateTime.Today.AddHours(11).AddMinutes(5),
+                null,
+                CompletionTrigger.Manual);
+            await database.CompleteTaskWithHierarchyValidationAsync(
+                afterLeafRecompleted.Single(task => task.Id == root.Id),
+                DateTime.Today.AddHours(11).AddMinutes(10),
+                null,
+                CompletionTrigger.Manual);
             Assert((await database.GetCompletionRecordsOnAsync(DateTime.Today)).Count == 7,
-                "再次完成应新增叶子与父级完成记录。");
+                "再次手动完成应分别新增叶子与父级完成记录。");
 
             var recompletedSummary = new DailySummaryViewModel(database);
             await recompletedSummary.LoadSummaryAsync();
@@ -106,7 +145,7 @@ internal static class Program
             Assert(!afterAddTasks.Single(task => task.Id == root.Id).IsCompleted,
                 "新增未完成子任务后祖先任务应重新打开。");
 
-            var blockedParentCompletion = await database.CompleteTaskWithCascadeAsync(
+            var blockedParentCompletion = await database.CompleteTaskWithHierarchyValidationAsync(
                 afterAddTasks.Single(task => task.Id == phase.Id),
                 DateTime.Today.AddHours(12),
                 null,
@@ -140,15 +179,22 @@ internal static class Program
                 ?? throw new InvalidOperationException("创建已完成子任务失败。");
             var removedPendingChild = await database.AddChildTaskAsync(structureParent, "待删除子任务")
                 ?? throw new InvalidOperationException("创建待删除子任务失败。");
-            await database.CompleteTaskWithCascadeAsync(
+            await database.CompleteTaskWithHierarchyValidationAsync(
                 finishedChild,
                 DateTime.Today.AddHours(13),
                 null,
                 CompletionTrigger.Manual);
             await database.DeleteTaskAsync(removedPendingChild, TaskDeleteMode.DeleteBranch);
             var afterStructureDelete = await database.GetTaskTreeItemsAsync();
-            Assert(afterStructureDelete.Single(task => task.Id == structureParent.Id).IsCompleted,
-                "删除最后一个未完成子任务后，父任务应按剩余子任务重新计算为完成。");
+            Assert(!afterStructureDelete.Single(task => task.Id == structureParent.Id).IsCompleted,
+                "删除最后一个未完成子任务后，父任务仍应等待手动完成。");
+            var structureParentCompletion = await database.CompleteTaskWithHierarchyValidationAsync(
+                afterStructureDelete.Single(task => task.Id == structureParent.Id),
+                DateTime.Today.AddHours(13).AddMinutes(5),
+                null,
+                CompletionTrigger.Manual);
+            Assert(structureParentCompletion.Succeeded,
+                "结构变化后全部叶子完成时，应允许手动完成父任务。");
 
             var incompleteMovedTask = await AddTaskAsync(database, "移动进来的未完成任务");
             var moveIntoCompletedParent = await database.MoveTaskAsync(
@@ -158,6 +204,33 @@ internal static class Program
             var afterIncompleteMove = await database.GetTaskTreeItemsAsync();
             Assert(!afterIncompleteMove.Single(task => task.Id == structureParent.Id).IsCompleted,
                 "移入未完成子任务后，已完成父任务应重新打开。");
+
+            var independentRoot = await AddTaskAsync(database, "独立确认顶级任务");
+            var independentParent = await database.AddChildTaskAsync(independentRoot, "独立确认中间父任务")
+                ?? throw new InvalidOperationException("创建独立确认父任务失败。");
+            var independentLeaf = await database.AddChildTaskAsync(independentParent, "独立确认叶子任务")
+                ?? throw new InvalidOperationException("创建独立确认叶子任务失败。");
+            await database.CompleteTaskWithHierarchyValidationAsync(
+                independentLeaf,
+                DateTime.Today.AddHours(14),
+                null,
+                CompletionTrigger.Manual);
+            await database.CompleteTaskWithHierarchyValidationAsync(
+                independentParent,
+                DateTime.Today.AddHours(14).AddMinutes(5),
+                null,
+                CompletionTrigger.Manual);
+            await database.CompleteTaskWithHierarchyValidationAsync(
+                independentRoot,
+                DateTime.Today.AddHours(14).AddMinutes(10),
+                null,
+                CompletionTrigger.Manual);
+            await database.ReopenTaskWithHierarchyRulesAsync(independentParent);
+            var afterParentReopened = await database.GetTaskTreeItemsAsync();
+            Assert(!afterParentReopened.Single(task => task.Id == independentParent.Id).IsCompleted,
+                "取消中间父任务时应重新打开当前父任务。");
+            Assert(afterParentReopened.Single(task => task.Id == independentRoot.Id).IsCompleted,
+                "取消中间父任务不得清除顶级任务独立确认的完成状态。");
 
             root = afterIncompleteMove.Single(task => task.Id == root.Id);
             root.Title = "发布新版本（已改名）";
@@ -178,7 +251,7 @@ internal static class Program
             Assert(activityTypes.Contains(TaskActivityType.Created), "活动日志必须记录任务创建。");
             Assert(activityTypes.Contains(TaskActivityType.Updated), "活动日志必须记录标题和笔记编辑。");
             Assert(activityTypes.Contains(TaskActivityType.Moved), "活动日志必须记录层级移动。");
-            Assert(activityTypes.Contains(TaskActivityType.Completed), "活动日志必须记录完成及父级成果。");
+            Assert(activityTypes.Contains(TaskActivityType.Completed), "活动日志必须记录手动完成的叶子及父级成果。");
             Assert(activityTypes.Contains(TaskActivityType.Reopened), "活动日志必须记录取消完成。");
             Assert(activityTypes.Contains(TaskActivityType.Deleted), "活动日志必须记录删除。");
 
@@ -218,6 +291,7 @@ internal static class Program
                 "重复初始化不得生成重复活动记录。");
 
             var backupSettingsPath = Path.Combine(testDirectory, $"backup-settings-{Guid.NewGuid():N}.json");
+            var backupPomodoroStatePath = Path.Combine(testDirectory, "pomodoro-state.json");
             var backupArchivePath = Path.Combine(testDirectory, $"backup-{Guid.NewGuid():N}.taskato-backup");
             var restoreDirectory = Path.Combine(testDirectory, $"restore-{Guid.NewGuid():N}");
             try
@@ -225,6 +299,10 @@ internal static class Program
                 var backupSettings = new SettingsService(backupSettingsPath);
                 backupSettings.Config.WorkMinutes = 42;
                 backupSettings.Save();
+                new PomodoroStateStore(backupPomodoroStatePath).Save(new[]
+                {
+                    new PomodoroService(42, 5).CreateSnapshot("timer-0")
+                });
                 var backupService = new DataBackupService(database, backupSettings);
                 await backupService.CreateArchiveAsync(backupArchivePath);
                 Assert(File.Exists(backupArchivePath), "数据备份应创建归档文件。");
@@ -240,10 +318,13 @@ internal static class Program
                 await restoredDatabase.CloseAsync();
                 Assert(File.Exists(Path.Combine(restoreDirectory, "settings.json")),
                     "恢复应包含设置文件。");
+                Assert(File.Exists(Path.Combine(restoreDirectory, "pomodoro-state.json")),
+                    "恢复应包含番茄钟运行状态文件。");
             }
             finally
             {
                 if (File.Exists(backupSettingsPath)) File.Delete(backupSettingsPath);
+                if (File.Exists(backupPomodoroStatePath)) File.Delete(backupPomodoroStatePath);
                 if (File.Exists(backupArchivePath)) File.Delete(backupArchivePath);
                 if (Directory.Exists(restoreDirectory)) Directory.Delete(restoreDirectory, recursive: true);
             }
@@ -299,6 +380,29 @@ internal static class Program
                     Method = "tasks.list"
                 });
                 Assert(taskList.Ok && taskList.Result is not null, "任务查询桥接必须返回 DTO 快照。");
+
+                var taskCountBeforeAdd = (await database.GetTaskTreeItemsAsync()).Count;
+                var validAdd = await bridge.ProcessRequestAsync(new WebBridgeRequest
+                {
+                    Id = "task-add-visible-composer",
+                    Method = "tasks.add",
+                    Params = JsonSerializer.SerializeToElement(new { title = "常驻入口任务", priority = 3 })
+                });
+                var tasksAfterVisibleAdd = await database.GetTaskTreeItemsAsync();
+                Assert(validAdd.Ok && tasksAfterVisibleAdd.Count == taskCountBeforeAdd + 1 &&
+                       tasksAfterVisibleAdd.Single(task => task.Title == "常驻入口任务").Priority == 3,
+                    "常驻新增入口必须真正写入顶级任务及其所选优先级。");
+
+                var initialWorkMinutes = pomodoro.WorkMinutes;
+                var increaseTimer = await bridge.ProcessRequestAsync(new WebBridgeRequest
+                {
+                    Id = "pomodoro-increase",
+                    Method = "pomodoro.command",
+                    Params = JsonSerializer.SerializeToElement(new { command = "increase", timerId = "timer-0" })
+                });
+                Assert(increaseTimer.Ok && pomodoro.WorkMinutes == initialWorkMinutes + 5 &&
+                       settings.Config.WorkMinutes == initialWorkMinutes + 5,
+                    "网页番茄钟增时命令必须更新运行时并持久化主计时器时长。");
 
                 var globalSearch = await bridge.ProcessRequestAsync(new WebBridgeRequest
                 {
@@ -357,7 +461,7 @@ internal static class Program
                 if (File.Exists(bridgeSettingsPath)) File.Delete(bridgeSettingsPath);
             }
 
-            Console.WriteLine("PASS: 整窗 XAML、任务树、级联完成、只追加活动日志、桥接契约、层级限制和删除提升测试全部通过。");
+            Console.WriteLine("PASS: 整窗 XAML、任务树、父任务手动完成、只追加活动日志、桥接契约、层级限制和删除提升测试全部通过。");
         }
         finally
         {
@@ -385,6 +489,9 @@ internal static class Program
         Assert(workCompleted == 1, "休眠跨过截止时间后应只完成一次工作计时。");
         service.RefreshElapsedTime();
         Assert(workCompleted == 1, "重复同步不应重复发送工作完成通知。");
+        service.TogglePause();
+        Assert(service.CurrentState == PomodoroService.PomodoroState.CompletionPending,
+            "截止瞬间点击暂停不得把等待处理状态错误改成暂停。");
 
         service.StartRest();
         now = now.AddSeconds(61);
@@ -411,6 +518,86 @@ internal static class Program
         }
         Assert(completedCycles == 1440,
             "模拟连续 24 小时的计时循环时，每轮只能产生一次完成事件。");
+    }
+
+    private static void RunPomodoroPersistenceTests()
+    {
+        var testRoot = Path.Combine(Path.GetTempPath(), $"Taskato-Pomodoro-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(testRoot);
+        var statePath = Path.Combine(testRoot, "pomodoro-state.json");
+        try
+        {
+            var now = new DateTimeOffset(2026, 7, 29, 9, 0, 0, TimeSpan.Zero);
+            var store = new PomodoroStateStore(statePath);
+            var main = new PomodoroService(1, 5, () => now);
+            var additional = new PomodoroService(2, 5, () => now);
+            main.StartWork();
+            additional.StartRest();
+            store.Save(new[]
+            {
+                main.CreateSnapshot("timer-0"),
+                additional.CreateSnapshot("timer-1")
+            });
+
+            var saved = store.Load();
+            Assert(saved.Count == 2 && saved.Select(snapshot => snapshot.SlotId)
+                    .SequenceEqual(new[] { "timer-0", "timer-1" }),
+                "主番茄钟和附加番茄钟必须分别保存。");
+            Assert(!File.Exists(statePath + ".tmp"), "原子保存完成后不应遗留临时文件。");
+
+            now = now.AddSeconds(20);
+            var resumed = new PomodoroService(25, 5, () => now);
+            resumed.Restore(saved.Single(snapshot => snapshot.SlotId == "timer-0"));
+            var resumedSnapshot = resumed.CreateSnapshot("timer-0");
+            Assert(resumed.CurrentState == PomodoroService.PomodoroState.Working &&
+                   resumedSnapshot.RemainingSeconds == 40,
+                "软件关闭期间仍应按绝对截止时间消耗运行中计时。");
+
+            resumed.TogglePause();
+            var pausedSnapshot = resumed.CreateSnapshot("timer-0");
+            now = now.AddHours(3);
+            var pausedRestore = new PomodoroService(25, 5, () => now);
+            pausedRestore.Restore(pausedSnapshot);
+            Assert(pausedRestore.CurrentState == PomodoroService.PomodoroState.Paused &&
+                   pausedRestore.CreateSnapshot("timer-0").RemainingSeconds == 40,
+                "暂停后关闭软件不应继续消耗剩余时间。");
+
+            var expiredClock = new DateTimeOffset(2026, 7, 29, 10, 0, 0, TimeSpan.Zero);
+            var expiring = new PomodoroService(1, 5, () => expiredClock);
+            expiring.StartWork();
+            var runningSnapshot = expiring.CreateSnapshot("timer-0");
+            expiredClock = expiredClock.AddSeconds(75);
+            var expired = new PomodoroService(25, 5, () => expiredClock);
+            var recoveredNotifications = 0;
+            expired.WorkCompleted += () => recoveredNotifications++;
+            expired.Restore(runningSnapshot);
+            Assert(expired.CurrentState == PomodoroService.PomodoroState.CompletionPending &&
+                   expired.CompletionElapsedSeconds == 15 && expired.IsRecoveredCompletion &&
+                   recoveredNotifications == 1,
+                "关闭期间到期后应进入等待处理，并从原截止时间计算已过去时长。");
+            expired.RefreshElapsedTime();
+            Assert(recoveredNotifications == 1, "恢复后的界面刷新不得重复触发完成提醒。");
+
+            var pendingSnapshot = expired.CreateSnapshot("timer-0");
+            expiredClock = expiredClock.AddSeconds(15);
+            var pendingRestore = new PomodoroService(25, 5, () => expiredClock);
+            var pendingNotifications = 0;
+            pendingRestore.WorkCompleted += () => pendingNotifications++;
+            pendingRestore.Restore(pendingSnapshot);
+            Assert(pendingRestore.CompletionElapsedSeconds == 30 && pendingNotifications == 1,
+                "等待处理状态再次启动时应延续超时计时，并只恢复一次提醒。");
+
+            File.WriteAllText(statePath, "{损坏的 JSON");
+            Assert(store.Load().Count == 0, "损坏的状态文件必须安全降级为空状态。");
+            File.WriteAllText(statePath, "{\"Version\":1,\"Timers\":null}");
+            Assert(store.Load().Count == 0, "计时器列表为 null 时必须安全降级为空状态。");
+            File.WriteAllText(statePath, "{\"Version\":1,\"Timers\":[null]}");
+            Assert(store.Load().Count == 0, "计时器列表中的 null 快照必须被安全过滤。");
+        }
+        finally
+        {
+            if (Directory.Exists(testRoot)) Directory.Delete(testRoot, recursive: true);
+        }
     }
 
     private static void RunWindowPlacementTests()
@@ -442,6 +629,29 @@ internal static class Program
             "首次启动应在主屏工作区居中。");
     }
 
+    private static void RunFeishuResponseTests()
+    {
+        var modernSuccess = FeishuService.InterpretResponse(
+            HttpStatusCode.OK,
+            "{\"code\":0,\"msg\":\"success\"}");
+        Assert(modernSuccess.Sent, "新版飞书 code=0 响应应识别为发送成功。");
+
+        var legacySuccess = FeishuService.InterpretResponse(
+            HttpStatusCode.OK,
+            "{\"StatusCode\":0,\"StatusMessage\":\"success\"}");
+        Assert(legacySuccess.Sent, "旧版飞书 StatusCode=0 响应应识别为发送成功。");
+
+        var rejected = FeishuService.InterpretResponse(
+            HttpStatusCode.OK,
+            "{\"code\":19024,\"msg\":\"Key Words Not Found\"}");
+        Assert(!rejected.Sent && rejected.ErrorCode == "feishu_error" && rejected.Message.Contains("Key Words"),
+            "飞书业务错误应保留可操作的错误说明。");
+
+        var httpError = FeishuService.InterpretResponse(HttpStatusCode.NotFound, "{}");
+        Assert(!httpError.Sent && httpError.ErrorCode == "http_error",
+            "HTTP 错误应与飞书业务错误区分。");
+    }
+
     private static async Task RunNotificationCoordinatorTestsAsync(
         DatabaseService database,
         string testDirectory)
@@ -449,6 +659,9 @@ internal static class Program
         var settingsPath = Path.Combine(
             testDirectory,
             $"notification-settings-{Guid.NewGuid():N}.json");
+        var statePath = Path.Combine(
+            testDirectory,
+            $"notification-pomodoro-{Guid.NewGuid():N}.json");
         try
         {
             var now = new DateTimeOffset(2026, 7, 29, 9, 0, 0, TimeSpan.Zero);
@@ -492,10 +705,63 @@ internal static class Program
             timer.RefreshElapsedTime();
             Assert(workNotifications == 1,
                 "通知协调器释放后必须解除全部计时器订阅。");
+
+            var restoredSettings = new SettingsService(settingsPath);
+            restoredSettings.Config.AdditionalTimersWorkMinutes = new List<int> { 2 };
+            restoredSettings.Save();
+            var stateStore = new PomodoroStateStore(statePath);
+            var completedAt = DateTimeOffset.UtcNow.AddSeconds(-30);
+            stateStore.Save(new[]
+            {
+                new PomodoroRuntimeSnapshot
+                {
+                    SlotId = "timer-0",
+                    State = PomodoroService.PomodoroState.CompletionPending,
+                    CompletedPhase = PomodoroService.PomodoroState.Working,
+                    CompletedAtUtc = completedAt,
+                    WorkMinutes = 1,
+                    RestMinutes = 2,
+                    TotalSeconds = 60
+                },
+                new PomodoroRuntimeSnapshot
+                {
+                    SlotId = "timer-1",
+                    State = PomodoroService.PomodoroState.CompletionPending,
+                    CompletedPhase = PomodoroService.PomodoroState.Resting,
+                    CompletedAtUtc = completedAt,
+                    WorkMinutes = 2,
+                    RestMinutes = 2,
+                    TotalSeconds = 120
+                }
+            });
+            var restoredViewModel = new MainViewModel(
+                database,
+                new PomodoroService(1, 2),
+                restoredSettings,
+                new FeishuService(restoredSettings),
+                stateStore);
+            var restoredWorkNotifications = 0;
+            var restoredRestNotifications = 0;
+            using var restoredCoordinator = new PomodoroNotificationCoordinator(
+                restoredViewModel,
+                _ => restoredWorkNotifications++,
+                _ => restoredRestNotifications++,
+                _ => { });
+            restoredViewModel.RestorePomodoroState();
+            Assert(restoredViewModel.AllTimers.Count == 2 &&
+                   restoredViewModel.AllTimers.All(timer =>
+                       timer.CurrentState == PomodoroService.PomodoroState.CompletionPending),
+                "主番茄钟和附加番茄钟必须分别恢复等待处理状态。");
+            Assert(restoredViewModel.AllTimers.All(timer =>
+                       timer.StatusText == "等待处理" && timer.TimerDisplay.StartsWith('+')),
+                "恢复到期后网页和旧版界面都应显示等待状态及正向超时时间。");
+            Assert(restoredWorkNotifications == 1 && restoredRestNotifications == 1,
+                "恢复时每个到期计时器必须各分发一次对应提醒。");
         }
         finally
         {
             if (File.Exists(settingsPath)) File.Delete(settingsPath);
+            if (File.Exists(statePath)) File.Delete(statePath);
         }
 
         await Task.CompletedTask;
