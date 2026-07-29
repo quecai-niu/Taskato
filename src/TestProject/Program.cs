@@ -323,6 +323,34 @@ internal static class Program
                        timeline.Result is IEnumerable<TaskActivityBridgeDto> timelineRows &&
                        timelineRows.Any(item => item.EventType == "reopened"),
                     "取消完成必须能在历史时间线中查询到。");
+
+                var appearance = await bridge.ProcessRequestAsync(new WebBridgeRequest
+                {
+                    Id = "settings-appearance",
+                    Method = "settings.save",
+                    Params = JsonSerializer.SerializeToElement(new { appearanceMode = "light" })
+                });
+                Assert(appearance.Ok && settings.Config.AppearanceMode == "light",
+                    "日间模式必须通过 C# 设置桥接持久化。");
+
+                var invalidAppearance = await bridge.ProcessRequestAsync(new WebBridgeRequest
+                {
+                    Id = "settings-appearance-invalid",
+                    Method = "settings.save",
+                    Params = JsonSerializer.SerializeToElement(new { appearanceMode = "unknown" })
+                });
+                Assert(!invalidAppearance.Ok && invalidAppearance.Error?.Code == "invalid_appearance",
+                    "未知外观模式必须返回结构化校验错误。");
+
+                string? requestedWindowCommand = null;
+                bridge.WindowCommandRequested += command => requestedWindowCommand = command;
+                var legacySwitch = await bridge.ProcessRequestAsync(new WebBridgeRequest
+                {
+                    Id = "window-legacy",
+                    Method = "window.useLegacy"
+                });
+                Assert(legacySwitch.Ok && requestedWindowCommand == "useLegacy",
+                    "设置页的立即切换操作必须到达原生窗口宿主。");
             }
             finally
             {

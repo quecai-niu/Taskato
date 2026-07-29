@@ -118,6 +118,10 @@ namespace Taskato.Views
                 case "drag":
                     BeginNativeWindowDrag();
                     break;
+                case "useLegacy":
+                    // 先让桥接返回 accepted，再关闭 WebView2；否则网页侧的请求会在窗口切换中永久等待。
+                    _ = Dispatcher.BeginInvoke(() => LegacyWorkspaceRequested?.Invoke());
+                    break;
             }
         }
 

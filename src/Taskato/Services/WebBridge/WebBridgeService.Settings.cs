@@ -14,7 +14,8 @@ namespace Taskato.Services.WebBridge
             var c = _settings.Config;
             return new
             {
-                c.WorkMinutes, c.RestMinutes, c.ThemePrimaryColor, c.ThemeSecondaryColor, c.SelectedColorIndex,
+                c.WorkMinutes, c.RestMinutes, c.AppearanceMode,
+                c.ThemePrimaryColor, c.ThemeSecondaryColor, c.SelectedColorIndex,
                 c.AutoStartNextPomodoro, c.EnableToastTimer, c.ToastActionDelaySeconds,
                 c.EnableMultiplePomodoros, c.NotificationSoundChoice, c.CustomSoundPath,
                 c.FeishuEnabled, c.FeishuWebhookUrl, c.FeishuNotifyOnWork, c.FeishuNotifyOnRest,
@@ -29,6 +30,12 @@ namespace Taskato.Services.WebBridge
             var c = _settings.Config;
             c.WorkMinutes = ClampedOptionalInt(parameters, "workMinutes", c.WorkMinutes, 1, 240);
             c.RestMinutes = ClampedOptionalInt(parameters, "restMinutes", c.RestMinutes, 1, 30);
+            if (OptionalString(parameters, "appearanceMode") is { } appearanceMode)
+            {
+                c.AppearanceMode = appearanceMode is "dark" or "light"
+                    ? appearanceMode
+                    : throw new BridgeRequestException("invalid_appearance", "外观模式只支持 dark 或 light。");
+            }
             c.AutoStartNextPomodoro = OptionalBool(parameters, "autoStartNextPomodoro") ?? c.AutoStartNextPomodoro;
             c.EnableToastTimer = OptionalBool(parameters, "enableToastTimer") ?? c.EnableToastTimer;
             var toastDelay = OptionalDouble(parameters, "toastActionDelaySeconds") ?? c.ToastActionDelaySeconds;

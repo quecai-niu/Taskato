@@ -97,6 +97,7 @@ const settings: SettingsDto = {
   autoStartEnabled: false,
   workMinutes: 25,
   restMinutes: 5,
+  appearanceMode: "dark",
   themePrimaryColor: "#7775F5",
   themeSecondaryColor: "#A855F7",
   selectedColorIndex: 0,

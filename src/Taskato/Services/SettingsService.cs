@@ -12,6 +12,10 @@ namespace Taskato.Services
     {
         public int WorkMinutes { get; set; } = 25;
         public int RestMinutes { get; set; } = 5;
+
+        /// <summary>网页工作区外观模式；仅允许 dark 或 light，旧配置默认使用夜间模式。</summary>
+        public string AppearanceMode { get; set; } = "dark";
+
         public string ThemePrimaryColor { get; set; } = "#6366F1";
         public string ThemeSecondaryColor { get; set; } = "#A855F7";
         public int SelectedColorIndex { get; set; } = 0;

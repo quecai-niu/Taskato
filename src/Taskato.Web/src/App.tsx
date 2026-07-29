@@ -29,6 +29,9 @@ export function App() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [requestedTaskId, setRequestedTaskId] = useState<number | null>(null);
+  const [appearanceMode, setAppearanceMode] = useState<"dark" | "light">(
+    "dark",
+  );
   const reportError = useCallback((value: unknown) => {
     setError(value instanceof Error ? value.message : String(value));
   }, []);
@@ -50,7 +53,10 @@ export function App() {
       .catch(reportError);
     void bridge
       .request<SettingsDto>("settings.get")
-      .then(applyTheme)
+      .then((settings) => {
+        setAppearanceMode(settings.appearanceMode);
+        applyTheme(settings);
+      })
       .catch(reportError);
     const unsubscribeNavigation = bridge.subscribe(
       "app.navigate",
@@ -62,7 +68,11 @@ export function App() {
     );
     const unsubscribeSettings = bridge.subscribe(
       "settings.changed",
-      (payload) => applyTheme(payload as SettingsDto),
+      (payload) => {
+        const settings = payload as SettingsDto;
+        setAppearanceMode(settings.appearanceMode);
+        applyTheme(settings);
+      },
     );
     return () => {
       unsubscribeNavigation();
@@ -95,8 +105,19 @@ export function App() {
       <div className="app-main">
         <TopBar
           activePage={activePage}
+          appearanceMode={appearanceMode}
           onSearch={() => setSearchOpen(true)}
           onNotifications={() => setNotificationsOpen((value) => !value)}
+          onToggleAppearance={() => {
+            const next = appearanceMode === "dark" ? "light" : "dark";
+            void bridge
+              .request<SettingsDto>("settings.save", { appearanceMode: next })
+              .then((settings) => {
+                setAppearanceMode(settings.appearanceMode);
+                applyTheme(settings);
+              })
+              .catch(reportError);
+          }}
         />
         {activePage === "tasks" && (
           <TaskPage

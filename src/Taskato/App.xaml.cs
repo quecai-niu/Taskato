@@ -241,11 +241,12 @@ namespace Taskato
             var placement = WindowPlacementCalculator.Calculate(
                 config.WindowWidth,
                 config.WindowHeight,
-                config.WindowLeft,
-                config.WindowTop,
+                null,
+                null,
                 workAreas);
 
-            // 显式恢复尺寸和屏幕位置；旧实现只保存尺寸却从未重新应用。
+            // 每次启动都以主屏工作区居中，避免上次拖动位置让启动窗口贴边或出现在意外屏幕。
+            // 仍恢复用户调整后的尺寸和最大化状态；旧版坐标字段只为配置向后兼容而保留。
             window.WindowStartupLocation = WindowStartupLocation.Manual;
             window.Width = placement.Width;
             window.Height = placement.Height;

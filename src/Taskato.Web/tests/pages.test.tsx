@@ -42,9 +42,13 @@ describe("独立业务页面", () => {
       <TaskPage reportError={() => undefined} requestedTaskId={null} />,
     );
     expect(host.textContent).toContain("项目与任务");
+    expect(host.textContent).toContain("任务组");
+    expect(host.textContent).toContain("未归类任务");
     expect(host.textContent).toContain("当前专注");
     expect(host.textContent).toContain("任务笔记");
     expect(host.querySelectorAll('[role="separator"]')).toHaveLength(2);
+    expect(host.querySelector('[aria-haspopup="tree"]')).not.toBeNull();
+    expect(host.querySelector("#task-operations select")).toBeNull();
   });
 
   it("任务筛选保留祖先链，不会把子任务提升成顶级", () => {
@@ -76,9 +80,11 @@ describe("独立业务页面", () => {
     await renderAndFlush(<SettingsPage reportError={() => undefined} />);
     expect(host.textContent).toContain("应用设置");
     expect(host.textContent).toContain("主题颜色");
+    expect(host.textContent).toContain("外观模式");
     expect(host.textContent).toContain("番茄钟时长");
     expect(host.textContent).toContain("提示音");
     expect(host.textContent).toContain("飞书通知");
     expect(host.textContent).toContain("备份与恢复");
+    expect(host.textContent).toContain("立即切换到旧版界面");
   });
 });

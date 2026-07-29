@@ -7,8 +7,10 @@ import {
   ListChecks,
   MagnifyingGlass,
   Minus,
+  Moon,
   SidebarSimple,
   Sparkle,
+  Sun,
   Timer,
   X,
 } from "@phosphor-icons/react";
@@ -88,12 +90,16 @@ export function AppNav({
 
 export function TopBar({
   activePage,
+  appearanceMode,
   onSearch,
   onNotifications,
+  onToggleAppearance,
 }: {
   activePage: PageId;
+  appearanceMode: "dark" | "light";
   onSearch(): void;
   onNotifications(): void;
+  onToggleAppearance(): void;
 }) {
   const title =
     navItems.find((item) => item.id === activePage)?.label ?? "任务";
@@ -104,7 +110,7 @@ export function TopBar({
   };
   return (
     <header className="top-bar" onMouseDown={drag}>
-      <div>
+      <div className="top-bar-copy">
         <span className="eyebrow">
           {new Intl.DateTimeFormat("zh-CN", { dateStyle: "full" }).format(
             new Date(),
@@ -112,11 +118,24 @@ export function TopBar({
         </span>
         <h1>{title}</h1>
       </div>
+      <button className="search-command" onClick={onSearch}>
+        <MagnifyingGlass size={17} />
+        <span>搜索任务与记录</span>
+        <kbd>Ctrl K</kbd>
+      </button>
       <div className="top-actions">
-        <button className="search-command" onClick={onSearch}>
-          <MagnifyingGlass size={17} />
-          <span>搜索任务与记录</span>
-          <kbd>Ctrl K</kbd>
+        <button
+          className="appearance-toggle"
+          aria-label={
+            appearanceMode === "dark" ? "切换到日间模式" : "切换到夜间模式"
+          }
+          title={
+            appearanceMode === "dark" ? "切换到日间模式" : "切换到夜间模式"
+          }
+          onClick={onToggleAppearance}
+        >
+          {appearanceMode === "dark" ? <Sun size={17} /> : <Moon size={17} />}
+          <span>{appearanceMode === "dark" ? "日间" : "夜间"}</span>
         </button>
         <IconButton label="通知中心" onClick={onNotifications}>
           <Bell size={19} />

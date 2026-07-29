@@ -22,6 +22,18 @@ describe("MockBridge", () => {
     await expect(bridge.request("settings.get")).resolves.toBeTruthy();
   });
 
+  it("日夜模式通过设置桥接持久化并返回最新状态", async () => {
+    const bridge = new MockBridge();
+    const saved = await bridge.request<{ appearanceMode: string }>(
+      "settings.save",
+      { appearanceMode: "light" },
+    );
+    expect(saved.appearanceMode).toBe("light");
+    await expect(bridge.request("settings.get")).resolves.toEqual(
+      expect.objectContaining({ appearanceMode: "light" }),
+    );
+  });
+
   it("提供历史时间线与设置系统能力的浏览器降级响应", async () => {
     const bridge = new MockBridge();
     const events =

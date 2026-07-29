@@ -50,6 +50,25 @@ export function SettingsPage({ reportError }: { reportError(error: unknown): voi
     }).catch(reportError);
   }, [reportError]);
 
+  useEffect(
+    () =>
+      bridge.subscribe("settings.changed", (payload) => {
+        const incoming = payload as SettingsDto;
+        // 标题栏快捷切换只覆盖外观字段，避免冲掉设置页里尚未保存的其他编辑。
+        setSettings((current) =>
+          current
+            ? { ...current, appearanceMode: incoming.appearanceMode }
+            : incoming,
+        );
+        setSavedSettings((current) =>
+          current
+            ? { ...current, appearanceMode: incoming.appearanceMode }
+            : incoming,
+        );
+      }),
+    [],
+  );
+
   if (!settings) return <div className="full-page"><p>正在加载设置…</p></div>;
 
   const patch = <K extends keyof SettingsDto>(key: K, value: SettingsDto[K]) => {
@@ -62,6 +81,39 @@ export function SettingsPage({ reportError }: { reportError(error: unknown): voi
     setSettings(next);
     applyTheme(next);
     setSaveStatus("dirty");
+  };
+  const selectAppearance = (appearanceMode: "dark" | "light") => {
+    const hasOtherUnsavedChanges = savedSettings
+      ? Object.keys(settings).some((key) => {
+          const settingKey = key as keyof SettingsDto;
+          return (
+            settingKey !== "appearanceMode" &&
+            settings[settingKey] !== savedSettings[settingKey]
+          );
+        })
+      : false;
+    const next = { ...settings, appearanceMode };
+    setSettings(next);
+    applyTheme(next);
+    setSaveStatus(hasOtherUnsavedChanges ? "dirty" : "saving");
+    // 外观切换属于即时偏好；单独保存该字段，让标题栏与设置页始终显示同一状态。
+    void bridge
+      .request<SettingsDto>("settings.save", { appearanceMode })
+      .then((result) => {
+        setSettings(
+          (current) =>
+            current && { ...current, appearanceMode: result.appearanceMode },
+        );
+        setSavedSettings(
+          (current) =>
+            current && { ...current, appearanceMode: result.appearanceMode },
+        );
+        setSaveStatus(hasOtherUnsavedChanges ? "dirty" : "saved");
+      })
+      .catch((error) => {
+        setSaveStatus("error");
+        reportError(error);
+      });
   };
   const save = async () => {
     if (settings.workMinutes < 1 || settings.workMinutes > 240 || settings.restMinutes < 1 || settings.restMinutes > 30) {
@@ -119,6 +171,26 @@ export function SettingsPage({ reportError }: { reportError(error: unknown): voi
       setDataStatus(result.staged ? "备份已校验并暂存，请重启 Taskato 完成恢复。" : "已取消恢复");
     } catch (error) { setDataStatus("恢复校验失败，当前数据未改变"); reportError(error); }
   };
+  const switchToLegacyWorkspace = async () => {
+    if (
+      !window.confirm(
+        "将立即关闭网页工作区并打开旧 WPF 界面，任务数据不会改变。继续吗？",
+      )
+    )
+      return;
+    try {
+      setDataStatus("正在切换到旧版界面…");
+      const result = await bridge.request<SettingsDto>("settings.save", {
+        useLegacyWorkspace: true,
+      });
+      setSettings(result);
+      setSavedSettings(result);
+      await bridge.request("window.useLegacy");
+    } catch (error) {
+      setDataStatus("切换失败，请查看诊断日志");
+      reportError(error);
+    }
+  };
 
   return (
     <div className="full-page settings-page page-enter">
@@ -135,7 +207,10 @@ export function SettingsPage({ reportError }: { reportError(error: unknown): voi
           {sections.map(({ id, label, icon: Icon }) => <button key={id} className={active === id ? "active" : ""} onClick={() => navigate(id)}><Icon size={17} />{label}</button>)}
         </aside>
         <main className="settings-content">
-          <section id="settings-theme"><div><h3>主题颜色</h3><p>选择与旧版一致的六组渐变主题。</p></div><div className="theme-palette" role="radiogroup" aria-label="主题颜色">{palettes.map(([primary, secondary], index) => <button key={primary} role="radio" aria-checked={settings.selectedColorIndex === index} className={settings.selectedColorIndex === index ? "selected" : ""} style={{ background: `linear-gradient(135deg,${primary},${secondary})` }} onClick={() => selectPalette(index)}>{settings.selectedColorIndex === index ? "✓" : ""}</button>)}</div></section>
+          <section id="settings-theme"><div><h3>外观与主题颜色</h3><p>日间模式采用柔和米黄色背景；标题栏也可随时快捷切换。</p></div>
+            <div className="setting-row"><div><strong>外观模式</strong><span>两个入口共用同一项持久化设置</span></div><div className="segmented" aria-label="外观模式"><button className={settings.appearanceMode === "dark" ? "active" : ""} onClick={() => selectAppearance("dark")}>夜间</button><button className={settings.appearanceMode === "light" ? "active" : ""} onClick={() => selectAppearance("light")}>日间</button></div></div>
+            <div className="theme-palette" role="radiogroup" aria-label="主题颜色">{palettes.map(([primary, secondary], index) => <button key={primary} role="radio" aria-checked={settings.selectedColorIndex === index} className={settings.selectedColorIndex === index ? "selected" : ""} style={{ background: `linear-gradient(135deg,${primary},${secondary})` }} onClick={() => selectPalette(index)}>{settings.selectedColorIndex === index ? "✓" : ""}</button>)}</div>
+          </section>
 
           <section id="settings-pomodoro"><div><h3>番茄钟时长</h3><p>与旧版相同：工作 1–240 分钟，休息 1–30 分钟。</p></div>
             <div className="setting-row"><div><strong>工作时长</strong><span>每次调整 1 分钟</span></div><div className="stepper"><button onClick={() => patch("workMinutes", Math.max(1, settings.workMinutes - 1))}>−</button><span>{settings.workMinutes} min</span><button onClick={() => patch("workMinutes", Math.min(240, settings.workMinutes + 1))}>＋</button></div></div>
@@ -172,6 +247,7 @@ export function SettingsPage({ reportError }: { reportError(error: unknown): voi
 
           <section id="settings-data"><div><h3>数据与兼容</h3><p>保留已批准的数据保护和旧界面回退能力，不替代上述旧版设置。</p></div>
             <div className="setting-row"><div><strong>下次启动使用旧 WPF 界面</strong><span>WebView2 故障时的回退开关</span></div><Toggle label="使用旧界面" value={settings.useLegacyWorkspace} onChange={(v) => patch("useLegacyWorkspace", v)} /></div>
+            <div className="setting-row"><div><strong>立即切换到旧版界面</strong><span>保存兼容设置后立即关闭当前网页工作区</span></div><button className="secondary-button" onClick={() => void switchToLegacyWorkspace()}>立即切换</button></div>
             <div className="setting-row"><div><strong>本地数据目录</strong></div><div className="setting-actions"><button className="secondary-button" onClick={() => void bridge.request("app.openDataFolder").catch(reportError)}>打开数据位置</button><button className="secondary-button" onClick={() => void bridge.request("app.openLogsFolder").catch(reportError)}>打开诊断日志</button></div></div>
             <div className="setting-row"><div><strong>备份与恢复</strong><span>恢复前校验并自动保留回滚副本</span></div><div className="setting-actions"><button className="secondary-button" onClick={() => void createBackup()}>创建备份</button><button className="secondary-button" onClick={() => void stageRestore()}>从备份恢复</button></div></div>
             {dataStatus && <p className="data-operation-status" role="status">{dataStatus}</p>}

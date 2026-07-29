@@ -24,8 +24,12 @@ export function toLocalDateInput(date = new Date()): string {
 }
 
 export function applyTheme(
-  settings: Pick<SettingsDto, "themePrimaryColor" | "themeSecondaryColor">,
+  settings: Pick<
+    SettingsDto,
+    "appearanceMode" | "themePrimaryColor" | "themeSecondaryColor"
+  >,
 ): void {
+  document.documentElement.dataset.theme = settings.appearanceMode;
   document.documentElement.style.setProperty(
     "--primary",
     settings.themePrimaryColor,

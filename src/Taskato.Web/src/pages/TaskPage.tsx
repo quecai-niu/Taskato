@@ -100,6 +100,9 @@ function storedPaneWidth(key: string, fallback: number): number {
 function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(Math.max(value, minimum), Math.max(minimum, maximum));
 }
+
+const priorityLabels = ["无", "低", "中", "高"] as const;
+
 function TaskTreeRow({
   task,
   selectedId,
@@ -118,12 +121,11 @@ function TaskTreeRow({
   const hasChildren = task.children.length > 0;
   const isExpanded = expanded.has(task.id);
   return (
-    <>
+    <div className={`tree-branch ${hasChildren ? "has-children" : ""}`}>
       <div
-        className={`tree-row ${selectedId === task.id ? "selected" : ""}`}
-        style={
-          { "--depth-offset": `${task.depth * 17}px` } as React.CSSProperties
-        }
+        className={`tree-row ${hasChildren ? "parent-node" : "leaf-node"} ${
+          selectedId === task.id ? "selected" : ""
+        }`}
       >
         <button
           className="tree-expand"
@@ -142,39 +144,203 @@ function TaskTreeRow({
             <span />
           )}
         </button>
-        <button
-          className={`task-check ${task.isCompleted ? "checked" : ""}`}
-          aria-label={task.isCompleted ? "取消完成" : "标记完成"}
-          onClick={() => onComplete(task)}
-        >
-          {task.isCompleted && <Check size={12} weight="bold" />}
-        </button>
+        {hasChildren ? (
+          <span
+            className={`group-state ${task.isCompleted ? "completed" : ""}`}
+            title="父任务由叶子任务完成状态自动维护"
+          >
+            {task.isCompleted ? (
+              <Check size={12} weight="bold" />
+            ) : (
+              <ListChecks size={13} />
+            )}
+          </span>
+        ) : (
+          <button
+            className={`task-check ${task.isCompleted ? "checked" : ""}`}
+            aria-label={task.isCompleted ? "取消完成" : "标记完成"}
+            onClick={() => onComplete(task)}
+          >
+            {task.isCompleted && <Check size={12} weight="bold" />}
+          </button>
+        )}
         <button className="tree-title" onClick={() => onSelect(task.id)}>
           {task.title}
         </button>
-        {task.priority >= 2 && (
-          <span className="priority-mark" title="高优先级" />
+        {task.priority > 0 && (
+          <span className={`priority-badge priority-${task.priority}`}>
+            {priorityLabels[task.priority]}
+          </span>
         )}
         {hasChildren && (
-          <span className="tree-progress">
-            {task.completedLeafCount}/{task.totalLeafCount}
+          <span className="tree-parent-progress">
+            <i>
+              <b
+                style={{
+                  width: `${task.totalLeafCount ? (task.completedLeafCount / task.totalLeafCount) * 100 : 0}%`,
+                }}
+              />
+            </i>
+            <span>
+              {task.completedLeafCount}/{task.totalLeafCount}
+            </span>
           </span>
         )}
       </div>
-      {hasChildren &&
-        isExpanded &&
-        task.children.map((child) => (
-          <TaskTreeRow
-            key={child.id}
-            task={child}
-            selectedId={selectedId}
-            expanded={expanded}
-            onToggle={onToggle}
-            onSelect={onSelect}
-            onComplete={onComplete}
-          />
-        ))}
+      {hasChildren && isExpanded && (
+        <div className="tree-children">
+          {task.children.map((child) => (
+            <TaskTreeRow
+              key={child.id}
+              task={child}
+              selectedId={selectedId}
+              expanded={expanded}
+              onToggle={onToggle}
+              onSelect={onSelect}
+              onComplete={onComplete}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ParentCandidateRow({
+  task,
+  currentParentId,
+  onSelect,
+}: {
+  task: TaskNode;
+  currentParentId: number | null;
+  onSelect(id: number): void;
+}) {
+  return (
+    <>
+      <button
+        className={`parent-option ${currentParentId === task.id ? "selected" : ""}`}
+        style={
+          { "--candidate-depth": `${task.depth * 18}px` } as React.CSSProperties
+        }
+        role="treeitem"
+        aria-selected={currentParentId === task.id}
+        onClick={() => onSelect(task.id)}
+      >
+        <span className="parent-option-marker" />
+        <span>{task.title}</span>
+        {task.hasChildren && (
+          <small>
+            {task.completedLeafCount}/{task.totalLeafCount}
+          </small>
+        )}
+      </button>
+      {task.children.map((child) => (
+        <ParentCandidateRow
+          key={child.id}
+          task={child}
+          currentParentId={currentParentId}
+          onSelect={onSelect}
+        />
+      ))}
     </>
+  );
+}
+
+function ParentTaskPicker({
+  task,
+  candidates,
+  currentParentTitle,
+  onMove,
+}: {
+  task: TaskDto;
+  candidates: TaskDto[];
+  currentParentTitle: string | null;
+  onMove(parentId: number | null): void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const controlRef = useRef<HTMLDivElement>(null);
+  const candidateTree = useMemo(
+    () => buildTree(filterTasksWithAncestors(candidates, query)),
+    [candidates, query],
+  );
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (event: globalThis.MouseEvent) => {
+      if (!controlRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const closeOnEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("mousedown", close);
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      window.removeEventListener("mousedown", close);
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [open]);
+
+  const choose = (parentId: number | null) => {
+    setOpen(false);
+    setQuery("");
+    if (parentId !== task.parentId) onMove(parentId);
+  };
+
+  return (
+    <div className="parent-picker" ref={controlRef}>
+      <button
+        className="parent-picker-trigger"
+        aria-haspopup="tree"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+      >
+        <span>
+          <small>当前父任务</small>
+          <strong>{currentParentTitle ?? "未归类（顶级任务）"}</strong>
+        </span>
+        <span className="parent-picker-action">更改</span>
+      </button>
+      {open && (
+        <div
+          className="parent-picker-popover"
+          role="dialog"
+          aria-label="选择父任务"
+        >
+          <label className="parent-picker-search">
+            <MagnifyingGlass size={15} />
+            <input
+              autoFocus
+              type="search"
+              placeholder="搜索父任务"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+          </label>
+          <div className="parent-picker-tree" role="tree">
+            <button
+              className={`parent-option root-option ${task.parentId == null ? "selected" : ""}`}
+              role="treeitem"
+              aria-selected={task.parentId == null}
+              onClick={() => choose(null)}
+            >
+              <span className="parent-option-marker" />
+              <span>设为顶级任务</span>
+              <small>移入未归类任务</small>
+            </button>
+            {candidateTree.map((candidate) => (
+              <ParentCandidateRow
+                key={candidate.id}
+                task={candidate}
+                currentParentId={task.parentId}
+                onSelect={choose}
+              />
+            ))}
+            {candidateTree.length === 0 && <p>没有匹配的可用父任务。</p>}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -360,8 +526,27 @@ export function TaskPage({
     [filter, tasks],
   );
   const roots = useMemo(() => buildTree(filtered), [filtered]);
+  const groupedRoots = roots.filter((task) => task.children.length > 0);
+  const ungroupedRoots = roots.filter((task) => task.children.length === 0);
+  const toggleExpanded = (id: number) =>
+    setExpanded((value) => {
+      const next = new Set(value);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
   const selected = tasks.find((task) => task.id === selectedId) ?? null;
   const children = tasks.filter((task) => task.parentId === selectedId);
+  const selectedPath = useMemo(() => {
+    if (!selected) return [];
+    const byId = new Map(tasks.map((task) => [task.id, task]));
+    const path: TaskDto[] = [];
+    let current: TaskDto | undefined = selected;
+    while (current) {
+      path.unshift(current);
+      current = current.parentId == null ? undefined : byId.get(current.parentId);
+    }
+    return path;
+  }, [selected, tasks]);
   useEffect(
     () => {
       setTitleDraft(selected?.title ?? "");
@@ -644,22 +829,35 @@ export function TaskPage({
         </label>
         <div className="tree-filter-row">
           <button className="filter-chip active">全部</button>
-          <span>{roots.length} 个项目</span>
+          <span>{filtered.length} 个任务</span>
         </div>
         <div className="task-tree">
-          {roots.map((task) => (
+          <div className="tree-section-label">
+            <span>任务组</span>
+            <small>{groupedRoots.length}</small>
+          </div>
+          {groupedRoots.map((task) => (
             <TaskTreeRow
               key={task.id}
               task={task}
               selectedId={selectedId}
               expanded={expanded}
-              onToggle={(id) =>
-                setExpanded((value) => {
-                  const next = new Set(value);
-                  next.has(id) ? next.delete(id) : next.add(id);
-                  return next;
-                })
-              }
+              onToggle={toggleExpanded}
+              onSelect={setSelectedId}
+              onComplete={toggleComplete}
+            />
+          ))}
+          <div className="tree-section-label ungrouped">
+            <span>未归类任务</span>
+            <small>{ungroupedRoots.length}</small>
+          </div>
+          {ungroupedRoots.map((task) => (
+            <TaskTreeRow
+              key={task.id}
+              task={task}
+              selectedId={selectedId}
+              expanded={expanded}
+              onToggle={toggleExpanded}
               onSelect={setSelectedId}
               onComplete={toggleComplete}
             />
@@ -697,8 +895,12 @@ export function TaskPage({
             <div className="canvas-header">
               <div className="breadcrumbs">
                 <span>任务</span>
-                <CaretRight size={13} />
-                <span>{selected.title}</span>
+                {selectedPath.map((item) => (
+                  <span className="breadcrumb-part" key={item.id}>
+                    <CaretRight size={13} />
+                    <span>{item.title}</span>
+                  </span>
+                ))}
               </div>
               <IconButton
                 label="更多操作"
@@ -808,7 +1010,7 @@ export function TaskPage({
                   )
                 }
               >
-                优先级 {selected.priority}
+                优先级：{priorityLabels[selected.priority]}
               </button>
               <span className="meta-item">
                 <CalendarBlank size={16} />
@@ -901,23 +1103,15 @@ export function TaskPage({
                   <strong>所属父任务</strong>
                   <span>移动后由 C# 校验循环引用和五层限制</span>
                 </div>
-                <select
-                  className="select-button"
-                  value={selected.parentId ?? ""}
-                  onChange={(event) =>
-                    void moveTask(
-                      event.target.value ? Number(event.target.value) : null,
-                    )
+                <ParentTaskPicker
+                  task={selected}
+                  candidates={parentCandidates}
+                  currentParentTitle={
+                    tasks.find((task) => task.id === selected.parentId)?.title ??
+                    null
                   }
-                >
-                  <option value="">顶级任务</option>
-                  {parentCandidates.map((candidate) => (
-                    <option key={candidate.id} value={candidate.id}>
-                      {"　".repeat(candidate.depth)}
-                      {candidate.title}
-                    </option>
-                  ))}
-                </select>
+                  onMove={(parentId) => void moveTask(parentId)}
+                />
               </div>
               <div className="timer-controls">
                 <button
