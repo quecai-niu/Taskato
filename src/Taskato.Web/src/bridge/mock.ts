@@ -75,8 +75,7 @@ function reopenTaskAndAncestors(items: TaskDto[], taskId: number): TaskDto[] {
 let tasks: TaskDto[] = [
   {
     id: 1,
-    title: "发布 Taskato 3.0",
-    notes: "发布前完成关键功能验证和交付说明。",
+    title: "发布 Taskato 3.0\n发布前完成关键功能验证和交付说明。",
     parentId: null,
     depth: 0,
     isCompleted: false,
@@ -92,7 +91,6 @@ let tasks: TaskDto[] = [
   {
     id: 2,
     title: "确定新版信息架构",
-    notes: "",
     parentId: 1,
     depth: 1,
     isCompleted: true,
@@ -107,8 +105,7 @@ let tasks: TaskDto[] = [
   },
   {
     id: 3,
-    title: "重构任务工作区",
-    notes: "重点检查深层嵌套、选中状态和子任务输入焦点。",
+    title: "重构任务工作区\n重点检查深层嵌套、选中状态和子任务输入焦点。",
     parentId: 1,
     depth: 1,
     isCompleted: false,
@@ -124,7 +121,6 @@ let tasks: TaskDto[] = [
   {
     id: 4,
     title: "实现详情编辑面板",
-    notes: "",
     parentId: 3,
     depth: 2,
     isCompleted: false,
@@ -140,7 +136,6 @@ let tasks: TaskDto[] = [
   {
     id: 5,
     title: "补充键盘快捷键",
-    notes: "",
     parentId: 3,
     depth: 2,
     isCompleted: false,
@@ -166,6 +161,7 @@ const settings: SettingsDto = {
   autoStartNextPomodoro: false,
   enableToastTimer: true,
   toastActionDelaySeconds: 1.5,
+  showMainWindowOnTimerNotification: false,
   enableMultiplePomodoros: false,
   notificationSoundChoice: 3,
   customSoundPath: "",
@@ -175,6 +171,10 @@ const settings: SettingsDto = {
   feishuNotifyOnRest: true,
   feishuRepeatEnabled: true,
   feishuRestHalfwayEnabled: true,
+  feishuWorkNotificationCount: 0,
+  feishuRestHalfwayNotificationCount: 3,
+  feishuRestCompletedNotificationCount: 6,
+  feishuTestNotificationCount: 1,
   autoShowDailySummary: false,
   useLegacyWorkspace: false,
 };
@@ -215,6 +215,7 @@ export class MockBridge implements BridgeApi {
       case "tasks.list":
         result = {
           tasks,
+          detailTasks: tasks,
           selectedTaskId: tasks[0]?.id ?? null,
           maximumDepth: 5,
         } satisfies TaskListResult;
@@ -226,7 +227,6 @@ export class MockBridge implements BridgeApi {
         const created: TaskDto = {
           id: Math.max(0, ...tasks.map((task) => task.id)) + 1,
           title: String(params.title),
-          notes: "",
           parentId,
           depth: parent ? parent.depth + 1 : 0,
           isCompleted: false,
@@ -355,10 +355,8 @@ export class MockBridge implements BridgeApi {
         break;
       case "search.global": {
         const keyword = String(params.keyword ?? "").toLowerCase();
-        const matchingTasks = tasks.filter(
-          (task) =>
-            task.title.toLowerCase().includes(keyword) ||
-            task.notes.toLowerCase().includes(keyword),
+        const matchingTasks = tasks.filter((task) =>
+          task.title.toLowerCase().includes(keyword),
         );
         result = {
           tasks: matchingTasks,
@@ -389,7 +387,7 @@ export class MockBridge implements BridgeApi {
         break;
       case "settings.testFeishu":
         result = Boolean(params.webhookUrl)
-          ? { sent: true, errorCode: "", message: "测试消息已发送。" }
+          ? { sent: true, errorCode: "", message: `测试消息已发送 ${Number(params.notificationCount ?? settings.feishuTestNotificationCount)} 条。` }
           : { sent: false, errorCode: "invalid_url", message: "请先填写有效的 Webhook URL。" };
         break;
       case "settings.openFeishuGuide":

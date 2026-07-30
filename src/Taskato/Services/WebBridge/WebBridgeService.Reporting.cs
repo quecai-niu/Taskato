@@ -150,7 +150,7 @@ namespace Taskato.Services.WebBridge
             };
             if (dialog.ShowDialog() != true) return new { exported = false };
 
-            var csv = new StringBuilder("发生时间,事件,任务标题,说明\r\n");
+            var csv = new StringBuilder("发生时间,事件,任务内容,说明\r\n");
             foreach (var item in events)
                 csv.AppendLine($"\"{item.OccurredAt:yyyy-MM-dd HH:mm:ss}\",\"{item.EventLabel}\",\"{item.Title.Replace("\"", "\"\"")}\",\"{item.Detail.Replace("\"", "\"\"")}\"");
             await File.WriteAllTextAsync(dialog.FileName, csv.ToString(), new UTF8Encoding(true));

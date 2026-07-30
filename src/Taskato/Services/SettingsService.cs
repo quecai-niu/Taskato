@@ -29,6 +29,9 @@ namespace Taskato.Services
         /// <summary>提醒弹窗出现后，操作按钮延迟启用的秒数</summary>
         public double ToastActionDelaySeconds { get; set; } = 1.5;
 
+        /// <summary>专注或休息结束时，除 Toast 外是否同时恢复并激活主界面。</summary>
+        public bool ShowMainWindowOnTimerNotification { get; set; } = false;
+
         /// <summary>是否开启多组番茄钟功能</summary>
         public bool EnableMultiplePomodoros { get; set; } = false;
 
@@ -56,11 +59,23 @@ namespace Taskato.Services
         /// <summary>休息完成时发送飞书通知</summary>
         public bool FeishuNotifyOnRest { get; set; } = true;
 
-        /// <summary>结束时重复发送飞书消息 3 次（间隔 3 秒）</summary>
+        /// <summary>旧版统一重复开关；仅为兼容已有配置保留，新版使用各通知独立次数。</summary>
         public bool FeishuRepeatEnabled { get; set; } = true;
 
         /// <summary>休息过半时发送飞书提醒</summary>
         public bool FeishuRestHalfwayEnabled { get; set; } = true;
+
+        /// <summary>工作完成通知次数；0 表示不发送。</summary>
+        public int FeishuWorkNotificationCount { get; set; } = 0;
+
+        /// <summary>休息过半通知次数；0 表示不发送。</summary>
+        public int FeishuRestHalfwayNotificationCount { get; set; } = 3;
+
+        /// <summary>休息完成通知次数；0 表示不发送。</summary>
+        public int FeishuRestCompletedNotificationCount { get; set; } = 6;
+
+        /// <summary>手动测试通知次数；测试入口至少发送 1 条。</summary>
+        public int FeishuTestNotificationCount { get; set; } = 1;
 
         /// <summary>是否已处理首次启动的飞书通知引导</summary>
         public bool HasSeenFeishuGuide { get; set; } = false;
@@ -132,6 +147,7 @@ namespace Taskato.Services
                 // 若反序列化出错则降级到默认配置
                 Config = new SettingsConfig();
             }
+            NormalizeNotificationCounts();
         }
 
         /// <summary>
@@ -141,6 +157,7 @@ namespace Taskato.Services
         {
             try
             {
+                NormalizeNotificationCounts();
                 string json = JsonSerializer.Serialize(Config, new JsonSerializerOptions { WriteIndented = true });
                 File.WriteAllText(_configPath, json);
             }
@@ -148,6 +165,19 @@ namespace Taskato.Services
             {
                 // 忽略没有读写权限时的报错（例如权限问题）
             }
+        }
+
+        private void NormalizeNotificationCounts()
+        {
+            // 配置文件可能由旧版本或手工编辑产生；持久化边界统一收敛，避免异常次数进入通知循环。
+            Config.FeishuWorkNotificationCount = Math.Clamp(
+                Config.FeishuWorkNotificationCount, 0, FeishuService.MaximumNotificationCount);
+            Config.FeishuRestHalfwayNotificationCount = Math.Clamp(
+                Config.FeishuRestHalfwayNotificationCount, 0, FeishuService.MaximumNotificationCount);
+            Config.FeishuRestCompletedNotificationCount = Math.Clamp(
+                Config.FeishuRestCompletedNotificationCount, 0, FeishuService.MaximumNotificationCount);
+            Config.FeishuTestNotificationCount = Math.Clamp(
+                Config.FeishuTestNotificationCount, 1, FeishuService.MaximumNotificationCount);
         }
     }
 }

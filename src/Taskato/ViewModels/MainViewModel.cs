@@ -42,6 +42,10 @@ namespace Taskato.ViewModels
         /// <summary>提醒弹窗操作按钮延迟启用秒数（透传配置）</summary>
         public double ToastActionDelaySeconds => _settingsService.Config.ToastActionDelaySeconds;
 
+        /// <summary>计时结束提示时是否同步恢复主界面。</summary>
+        public bool ShowMainWindowOnTimerNotification =>
+            _settingsService.Config.ShowMainWindowOnTimerNotification;
+
         /// <summary>是否开启多组番茄钟模式</summary>
         public bool IsMultiMode => _settingsService.Config.EnableMultiplePomodoros;
 
@@ -60,11 +64,12 @@ namespace Taskato.ViewModels
         /// <summary>休息完成时发送飞书通知</summary>
         public bool FeishuNotifyOnRest => _settingsService.Config.FeishuNotifyOnRest;
 
-        /// <summary>结束时重复发送飞书消息 3 次</summary>
-        public bool FeishuRepeatEnabled => _settingsService.Config.FeishuRepeatEnabled;
-
         /// <summary>休息过半时发送飞书提醒</summary>
         public bool FeishuRestHalfwayEnabled => _settingsService.Config.FeishuRestHalfwayEnabled;
+
+        public int FeishuWorkNotificationCount => _settingsService.Config.FeishuWorkNotificationCount;
+        public int FeishuRestHalfwayNotificationCount => _settingsService.Config.FeishuRestHalfwayNotificationCount;
+        public int FeishuRestCompletedNotificationCount => _settingsService.Config.FeishuRestCompletedNotificationCount;
 
         // ==================== 任务相关属性 ====================
 
@@ -74,7 +79,15 @@ namespace Taskato.ViewModels
         public ObservableCollection<TaskItem> TodayTasks { get; } = new();
 
         private readonly List<TaskItem> _visibleTaskTree = new();
+        private readonly HashSet<int> _visibleTaskIds = new();
         private readonly HashSet<int> _collapsedTaskIds = new();
+
+        private string _taskTreeExpansionLabel = "全部收起";
+        public string TaskTreeExpansionLabel
+        {
+            get => _taskTreeExpansionLabel;
+            private set => SetProperty(ref _taskTreeExpansionLabel, value);
+        }
 
         private TaskItem? _selectedTask;
         /// <summary>任务工作区当前选中的任务，用于中栏详情和右侧专注上下文。</summary>
@@ -172,6 +185,9 @@ namespace Taskato.ViewModels
         /// <summary>展开或折叠一个任务分支</summary>
         public ICommand ToggleTaskExpansionCommand { get; }
 
+        /// <summary>在全部展开与全部收起之间切换当前任务树</summary>
+        public ICommand ToggleAllTaskExpansionCommand { get; }
+
         /// <summary>显示或提交直属子任务输入框</summary>
         public ICommand AddChildTaskCommand { get; }
 
@@ -263,7 +279,7 @@ namespace Taskato.ViewModels
 
             ToggleTaskExpansionCommand = new RelayCommand(param =>
             {
-                if (param is not TaskItem task || !task.HasChildren) return;
+                if (param is not TaskItem task || !task.HasVisibleChildren) return;
                 task.IsExpanded = !task.IsExpanded;
                 if (task.IsExpanded)
                     _collapsedTaskIds.Remove(task.Id);
@@ -271,6 +287,8 @@ namespace Taskato.ViewModels
                     _collapsedTaskIds.Add(task.Id);
                 RefreshFlattenedTasks();
             });
+
+            ToggleAllTaskExpansionCommand = new RelayCommand(_ => ToggleAllTaskExpansion());
 
             AddChildTaskCommand = new RelayCommand(async param =>
             {
@@ -355,7 +373,7 @@ namespace Taskato.ViewModels
             BuildVisibleTaskTree(tasks);
             RefreshFlattenedTasks();
             SelectedTask = selectedId.HasValue
-                ? TodayTasks.FirstOrDefault(task => task.Id == selectedId.Value)
+                ? TodayTasks.FirstOrDefault(task => task.Id == selectedId.Value) ?? TodayTasks.FirstOrDefault()
                 : TodayTasks.FirstOrDefault();
             UpdateCounts();
         }
@@ -438,8 +456,6 @@ namespace Taskato.ViewModels
 
             parent.NewChildTitle = string.Empty;
             parent.IsAddingChild = false;
-            parent.IsExpanded = true;
-            _collapsedTaskIds.Remove(parent.Id);
             await LoadTodayTasksAsync();
         }
 
@@ -505,14 +521,18 @@ namespace Taskato.ViewModels
                 task.NotifyTreeStateChanged();
 
             _visibleTaskTree.Clear();
-            var todayStart = DateTime.Today;
+            _visibleTaskIds.Clear();
+            _visibleTaskIds.UnionWith(CurrentTaskVisibility.GetVisibleTaskIds(tasks, DateTime.Today));
+            foreach (var task in tasks)
+                task.HasVisibleChildren = task.Children.Any(child => _visibleTaskIds.Contains(child.Id));
+
             foreach (var root in roots
                          .OrderByDescending(task => task.Priority)
                          .ThenBy(task => task.OrderIndex)
                          .ThenByDescending(task => task.CreatedAt))
             {
                 CalculateTreeState(root, 0, new HashSet<int>());
-                if (ContainsCurrentTask(root, todayStart))
+                if (_visibleTaskIds.Contains(root.Id))
                     _visibleTaskTree.Add(root);
             }
         }
@@ -522,6 +542,7 @@ namespace Taskato.ViewModels
             TodayTasks.Clear();
             foreach (var root in _visibleTaskTree)
                 AddVisibleBranch(root);
+            UpdateTaskTreeExpansionLabel();
         }
 
         private void AddVisibleBranch(TaskItem task)
@@ -529,12 +550,55 @@ namespace Taskato.ViewModels
             TodayTasks.Add(task);
             if (!task.IsExpanded) return;
             foreach (var child in task.Children
-                         .OrderByDescending(item => item.Priority)
+                         .OrderBy(item => item.IsCompleted)
+                         .ThenByDescending(item => item.Priority)
                          .ThenBy(item => item.OrderIndex)
                          .ThenByDescending(item => item.CreatedAt))
             {
-                AddVisibleBranch(child);
+                if (_visibleTaskIds.Contains(child.Id))
+                    AddVisibleBranch(child);
             }
+        }
+
+        private void ToggleAllTaskExpansion()
+        {
+            var expandableTasks = EnumerateVisibleTasks()
+                .Where(task => task.HasVisibleChildren)
+                .ToList();
+            var collapseAll = expandableTasks.Any(task => task.IsExpanded);
+
+            foreach (var task in expandableTasks)
+            {
+                task.IsExpanded = !collapseAll;
+                if (collapseAll)
+                    _collapsedTaskIds.Add(task.Id);
+                else
+                    _collapsedTaskIds.Remove(task.Id);
+            }
+
+            RefreshFlattenedTasks();
+        }
+
+        private IEnumerable<TaskItem> EnumerateVisibleTasks()
+        {
+            var pending = new Stack<TaskItem>(_visibleTaskTree.AsEnumerable().Reverse());
+            while (pending.Count > 0)
+            {
+                var task = pending.Pop();
+                yield return task;
+                foreach (var child in task.Children
+                             .Where(child => _visibleTaskIds.Contains(child.Id))
+                             .Reverse())
+                    pending.Push(child);
+            }
+        }
+
+        private void UpdateTaskTreeExpansionLabel()
+        {
+            TaskTreeExpansionLabel = EnumerateVisibleTasks()
+                .Any(task => task.HasVisibleChildren && task.IsExpanded)
+                ? "全部收起"
+                : "全部展开";
         }
 
         private static (int CompletedLeaves, int TotalLeaves) CalculateTreeState(
@@ -575,16 +639,6 @@ namespace Taskato.ViewModels
             task.NotifyTreeStateChanged();
             return (task.CompletedLeafCount, task.TotalLeafCount);
         }
-
-        private static bool ContainsCurrentTask(TaskItem task, DateTime todayStart)
-        {
-            var isCurrent = !task.IsCompleted ||
-                            task.CreatedAt >= todayStart ||
-                            task.CompletedAt >= todayStart;
-            return isCurrent || task.Children.Any(child => ContainsCurrentTask(child, todayStart));
-        }
-
-
 
         // ==================== 子窗体打开 ====================
 

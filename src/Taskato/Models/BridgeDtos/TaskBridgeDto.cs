@@ -4,7 +4,6 @@ namespace Taskato.Models.BridgeDtos
     public sealed record TaskBridgeDto(
         int Id,
         string Title,
-        string Notes,
         int? ParentId,
         int Depth,
         bool IsCompleted,

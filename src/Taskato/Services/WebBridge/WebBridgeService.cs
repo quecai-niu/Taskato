@@ -139,10 +139,18 @@ namespace Taskato.Services.WebBridge
         private async Task<object> GetTasksAsync()
         {
             var tasks = PrepareTaskTree(await _database.GetTaskTreeItemsAsync());
+            var visibleTaskIds = CurrentTaskVisibility.GetVisibleTaskIds(tasks, DateTime.Today);
+            var visibleTasks = tasks.Where(task => visibleTaskIds.Contains(task.Id)).ToList();
+            var selectedTaskId = _taskWorkspace.SelectedTask?.Id;
+            if (!selectedTaskId.HasValue || !visibleTaskIds.Contains(selectedTaskId.Value))
+                selectedTaskId = visibleTasks.FirstOrDefault()?.Id;
+
             return new
             {
-                tasks = tasks.Select(ToTaskDto).ToList(),
-                selectedTaskId = _taskWorkspace.SelectedTask?.Id,
+                tasks = visibleTasks.Select(ToTaskDto).ToList(),
+                // 左侧树只展示当前任务；详情区仍需完整直属子任务，二者不能共用过滤后的集合。
+                detailTasks = tasks.Select(ToTaskDto).ToList(),
+                selectedTaskId,
                 maximumDepth = DatabaseService.MaximumTaskDepth
             };
         }
@@ -150,7 +158,7 @@ namespace Taskato.Services.WebBridge
         private async Task<object> AddTaskAsync(JsonElement parameters)
         {
             var title = RequiredString(parameters, "title").Trim();
-            if (title.Length > 500) throw new BridgeRequestException("invalid_title", "任务标题不能超过 500 个字符。");
+            if (title.Length > 5000) throw new BridgeRequestException("invalid_title", "任务内容不能超过 5000 个字符。");
             var priority = Math.Clamp(OptionalInt(parameters, "priority") ?? 0, 0, 3);
             var parentId = OptionalInt(parameters, "parentId");
 
@@ -192,8 +200,8 @@ namespace Taskato.Services.WebBridge
                 var title = titleElement.ValueKind == JsonValueKind.String
                     ? titleElement.GetString()?.Trim()
                     : null;
-                if (string.IsNullOrWhiteSpace(title) || title.Length > 500)
-                    throw new BridgeRequestException("invalid_title", "任务标题不能为空且不能超过 500 个字符。");
+                if (string.IsNullOrWhiteSpace(title) || title.Length > 5000)
+                    throw new BridgeRequestException("invalid_title", "任务内容不能为空且不能超过 5000 个字符。");
                 task.Title = title;
             }
             if (parameters.TryGetProperty("priority", out var priorityElement))
@@ -202,15 +210,6 @@ namespace Taskato.Services.WebBridge
                     !priorityElement.TryGetInt32(out var priority))
                     throw new BridgeRequestException("invalid_params", "priority 必须是整数。");
                 task.Priority = Math.Clamp(priority, 0, 3);
-            }
-            if (parameters.TryGetProperty("notes", out var notesElement))
-            {
-                if (notesElement.ValueKind != JsonValueKind.String)
-                    throw new BridgeRequestException("invalid_params", "notes 必须是字符串。");
-                var notes = notesElement.GetString() ?? string.Empty;
-                if (notes.Length > 4000)
-                    throw new BridgeRequestException("invalid_notes", "任务笔记不能超过 4000 个字符。");
-                task.Notes = notes;
             }
             await _database.UpdateTaskAsync(task);
             return ToTaskDto(task);
@@ -225,9 +224,7 @@ namespace Taskato.Services.WebBridge
             var allTasks = PrepareTaskTree(await _database.GetTaskTreeItemsAsync());
             var existingTaskIds = allTasks.Select(task => task.Id).ToHashSet();
             var tasks = allTasks
-                .Where(task =>
-                    task.Title.Contains(keyword, StringComparison.OrdinalIgnoreCase) ||
-                    task.Notes.Contains(keyword, StringComparison.OrdinalIgnoreCase))
+                .Where(task => task.Title.Contains(keyword, StringComparison.OrdinalIgnoreCase))
                 .Take(12)
                 .Select(ToTaskDto)
                 .ToList();
@@ -354,7 +351,7 @@ namespace Taskato.Services.WebBridge
         }
 
         private TaskBridgeDto ToTaskDto(TaskItem task) => new(
-            task.Id, task.Title, task.Notes, task.ParentId, task.Depth, task.IsCompleted, task.Priority,
+            task.Id, task.Title, task.ParentId, task.Depth, task.IsCompleted, task.Priority,
             task.HasChildren, task.CanAddChild, task.CompletedLeafCount, task.TotalLeafCount,
             task.CreatedAt, task.CompletedAt, task.CompletionDurationMinutes);
 

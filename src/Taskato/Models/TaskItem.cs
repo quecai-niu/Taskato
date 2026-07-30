@@ -15,7 +15,7 @@ namespace Taskato.Models
         public int Id { get => _id; set => SetProperty(ref _id, value); }
 
         private string _title = string.Empty;
-        [MaxLength(500)]
+        [MaxLength(5000)]
         public string Title
         {
             get => _title;
@@ -52,6 +52,7 @@ namespace Taskato.Models
             }
         }
 
+        // 仅保留旧版数据库兼容。初始化时会把历史内容合并进 Title，网页端不再读写第二份任务内容。
         private string _notes = string.Empty;
         [MaxLength(4000)]
         public string Notes
@@ -142,6 +143,15 @@ namespace Taskato.Models
 
         [Ignore]
         public bool HasChildren => Children.Count > 0;
+
+        private bool _hasVisibleChildren;
+        /// <summary>当前任务列表中是否存在可见子任务；历史子任务不会制造空的展开按钮。</summary>
+        [Ignore]
+        public bool HasVisibleChildren
+        {
+            get => _hasVisibleChildren;
+            set => SetProperty(ref _hasVisibleChildren, value);
+        }
 
         [Ignore]
         public bool IsLeaf => !HasChildren;

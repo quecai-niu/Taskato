@@ -85,6 +85,17 @@ namespace Taskato.Services
                 await _db.ExecuteAsync("ALTER TABLE TaskItems ADD COLUMN Notes TEXT NOT NULL DEFAULT ''");
             }
 
+            // Notes 曾被错误设计成第二份任务内容。先无损合并再清空，使迁移可重复执行且不会二次追加。
+            await _db.ExecuteAsync(@"
+                UPDATE TaskItems
+                SET Title = CASE
+                        WHEN TRIM(Title) = '' THEN Notes
+                        WHEN Title = Notes THEN Title
+                        ELSE Title || CHAR(10) || Notes
+                    END,
+                    Notes = ''
+                WHERE Notes IS NOT NULL AND TRIM(Notes) <> ''");
+
             await _db.ExecuteAsync(
                 "CREATE INDEX IF NOT EXISTS IX_TaskItems_ParentId ON TaskItems(ParentId)");
             await MigrateLegacyCompletionRecordsAsync();
@@ -147,7 +158,7 @@ namespace Taskato.Services
                 if (storedTask.Priority != task.Priority)
                     changes.Add($"优先级由 {storedTask.Priority} 调整为 {task.Priority}");
                 if (!string.Equals(storedTask.Notes, task.Notes, StringComparison.Ordinal))
-                    changes.Add("更新任务笔记");
+                    changes.Add("迁移旧版任务内容");
 
                 task.LastModifiedAt = DateTime.Now;
                 result = connection.Update(task);

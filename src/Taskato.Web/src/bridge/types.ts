@@ -1,7 +1,6 @@
 export interface TaskDto {
   id: number;
   title: string;
-  notes: string;
   parentId: number | null;
   depth: number;
   isCompleted: boolean;
@@ -17,6 +16,7 @@ export interface TaskDto {
 
 export interface TaskListResult {
   tasks: TaskDto[];
+  detailTasks: TaskDto[];
   selectedTaskId: number | null;
   maximumDepth: number;
 }
@@ -105,6 +105,7 @@ export interface SettingsDto {
   autoStartNextPomodoro: boolean;
   enableToastTimer: boolean;
   toastActionDelaySeconds: number;
+  showMainWindowOnTimerNotification: boolean;
   enableMultiplePomodoros: boolean;
   notificationSoundChoice: number;
   customSoundPath: string;
@@ -114,6 +115,10 @@ export interface SettingsDto {
   feishuNotifyOnRest: boolean;
   feishuRepeatEnabled: boolean;
   feishuRestHalfwayEnabled: boolean;
+  feishuWorkNotificationCount: number;
+  feishuRestHalfwayNotificationCount: number;
+  feishuRestCompletedNotificationCount: number;
+  feishuTestNotificationCount: number;
   autoShowDailySummary: boolean;
   useLegacyWorkspace: boolean;
 }

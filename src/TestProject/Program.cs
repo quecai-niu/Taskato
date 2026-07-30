@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows;
 using Taskato.Models;
 using Taskato.Models.BridgeDtos;
 using Taskato.Services;
@@ -19,9 +21,11 @@ internal static class Program
     private static async Task Main()
     {
         RunWorkspaceXamlSmokeTest();
+        RunCurrentTaskVisibilityTests();
         RunPomodoroElapsedTimeTests();
         RunPomodoroPersistenceTests();
         RunWindowPlacementTests();
+        RunWindowStatePersistenceTests();
         RunFeishuResponseTests();
 
         var testDirectory = Path.Combine(Path.GetTempPath(), "TaskatoTests");
@@ -31,6 +35,7 @@ internal static class Program
 
         try
         {
+            await RunFeishuNotificationCountTestsAsync(testDirectory);
             database = new DatabaseService(databasePath);
             await database.InitializeAsync();
             await RunNotificationCoordinatorTestsAsync(database, testDirectory);
@@ -269,6 +274,11 @@ internal static class Program
 
             database = new DatabaseService(databasePath);
             await database.InitializeAsync();
+            var migratedTask = (await database.GetTaskTreeItemsAsync())
+                .Single(task => task.Id == root.Id);
+            var expectedMigratedContent = "发布新版本（已改名）\n发布前检查安装、升级和回滚路径。";
+            Assert(migratedTask.Title == expectedMigratedContent && string.IsNullOrEmpty(migratedTask.Notes),
+                "旧 Notes 必须无损合并进唯一任务内容并在迁移后清空。");
             var legacyRecords = await database.GetCompletionRecordsOnAsync(legacyCompletedAt);
             Assert(legacyRecords.Any(record =>
                     record.TaskId == legacyTask.Id &&
@@ -281,6 +291,10 @@ internal static class Program
                 "all",
                 sortDescending: true)).Count;
             await database.InitializeAsync();
+            var contentAfterRepeatedMigration = (await database.GetTaskTreeItemsAsync())
+                .Single(task => task.Id == root.Id);
+            Assert(contentAfterRepeatedMigration.Title == expectedMigratedContent,
+                "重复初始化不得再次追加已经迁移的任务内容。");
             var activityCountAfterRepeatedMigration = (await database.SearchActivityRecordsAsync(
                 new DateTime(2000, 1, 1),
                 DateTime.Today,
@@ -380,6 +394,12 @@ internal static class Program
                     Method = "tasks.list"
                 });
                 Assert(taskList.Ok && taskList.Result is not null, "任务查询桥接必须返回 DTO 快照。");
+                var taskListJson = JsonSerializer.SerializeToElement(taskList.Result);
+                Assert(taskListJson.TryGetProperty("tasks", out _) &&
+                       taskListJson.TryGetProperty("detailTasks", out _),
+                    "任务桥接必须分别返回左侧可见任务和详情完整任务。");
+                Assert(!JsonSerializer.Serialize(taskList.Result).Contains("\"Notes\"", StringComparison.Ordinal),
+                    "网页任务契约不得再暴露第二份 Notes 内容。");
 
                 var taskCountBeforeAdd = (await database.GetTaskTreeItemsAsync()).Count;
                 var validAdd = await bridge.ProcessRequestAsync(new WebBridgeRequest
@@ -410,7 +430,7 @@ internal static class Program
                     Method = "search.global",
                     Params = JsonSerializer.SerializeToElement(new { keyword = "回滚" })
                 });
-                Assert(globalSearch.Ok, "全局搜索必须能够匹配任务笔记。");
+                Assert(globalSearch.Ok, "全局搜索必须能够匹配任务内容。");
 
                 var timeline = await bridge.ProcessRequestAsync(new WebBridgeRequest
                 {
@@ -436,6 +456,30 @@ internal static class Program
                 });
                 Assert(appearance.Ok && settings.Config.AppearanceMode == "light",
                     "日间模式必须通过 C# 设置桥接持久化。");
+
+                var notificationCounts = await bridge.ProcessRequestAsync(new WebBridgeRequest
+                {
+                    Id = "settings-feishu-counts",
+                    Method = "settings.save",
+                    Params = JsonSerializer.SerializeToElement(new
+                    {
+                        showMainWindowOnTimerNotification = true,
+                        feishuWorkNotificationCount = -2,
+                        feishuRestHalfwayNotificationCount = 3,
+                        feishuRestCompletedNotificationCount = 28,
+                        feishuTestNotificationCount = 0
+                    })
+                });
+                Assert(notificationCounts.Ok &&
+                       settings.Config.ShowMainWindowOnTimerNotification &&
+                       settings.Config.FeishuWorkNotificationCount == 0 &&
+                       settings.Config.FeishuRestHalfwayNotificationCount == 3 &&
+                       settings.Config.FeishuRestCompletedNotificationCount == 20 &&
+                       settings.Config.FeishuTestNotificationCount == 1,
+                    "飞书通知次数必须由 C# 桥接约束到各自允许范围。");
+                var reloadedNotificationSettings = new SettingsService(bridgeSettingsPath);
+                Assert(reloadedNotificationSettings.Config.ShowMainWindowOnTimerNotification,
+                    "启用提示时打开主界面后，重新加载配置不得恢复为默认关闭。");
 
                 var invalidAppearance = await bridge.ProcessRequestAsync(new WebBridgeRequest
                 {
@@ -518,6 +562,75 @@ internal static class Program
         }
         Assert(completedCycles == 1440,
             "模拟连续 24 小时的计时循环时，每轮只能产生一次完成事件。");
+    }
+
+    private static void RunCurrentTaskVisibilityTests()
+    {
+        var today = new DateTime(2026, 7, 30);
+        var oldCompletedParent = new TaskItem
+        {
+            Id = 1,
+            Title = "历史父任务",
+            CreatedAt = today.AddDays(-5),
+            CompletedAt = today.AddDays(-3),
+            IsCompleted = true
+        };
+        var currentOpenChild = new TaskItem
+        {
+            Id = 2,
+            ParentId = 1,
+            Title = "遗留未完成子任务",
+            CreatedAt = today.AddDays(-4),
+            IsCompleted = false
+        };
+        var unrelatedOldCompletedChild = new TaskItem
+        {
+            Id = 3,
+            ParentId = 1,
+            Title = "无关历史完成子任务",
+            CreatedAt = today.AddDays(-4),
+            CompletedAt = today.AddDays(-2),
+            IsCompleted = true
+        };
+        var createdToday = new TaskItem
+        {
+            Id = 4,
+            Title = "今天创建并完成",
+            CreatedAt = today.AddHours(8),
+            CompletedAt = today.AddHours(9),
+            IsCompleted = true
+        };
+        var completedToday = new TaskItem
+        {
+            Id = 5,
+            Title = "历史创建今天完成",
+            CreatedAt = today.AddDays(-2),
+            CompletedAt = today.AddHours(10),
+            IsCompleted = true
+        };
+        var oldCompletedRoot = new TaskItem
+        {
+            Id = 6,
+            Title = "纯历史完成任务",
+            CreatedAt = today.AddDays(-3),
+            CompletedAt = today.AddDays(-2),
+            IsCompleted = true
+        };
+
+        var visibleIds = CurrentTaskVisibility.GetVisibleTaskIds(
+            new[]
+            {
+                oldCompletedParent,
+                currentOpenChild,
+                unrelatedOldCompletedChild,
+                createdToday,
+                completedToday,
+                oldCompletedRoot
+            },
+            today);
+
+        Assert(visibleIds.SetEquals(new[] { 1, 2, 4, 5 }),
+            "当前任务规则应保留未完成任务、今日任务及必要祖先，并隐藏无关历史完成分支。");
     }
 
     private static void RunPomodoroPersistenceTests()
@@ -629,6 +742,22 @@ internal static class Program
             "首次启动应在主屏工作区居中。");
     }
 
+    private static void RunWindowStatePersistenceTests()
+    {
+        Assert(WindowStatePersistence.CaptureIsMaximized(false, WindowState.Maximized),
+            "最大化时必须立即记录最大化状态。");
+        Assert(!WindowStatePersistence.CaptureIsMaximized(true, WindowState.Normal),
+            "还原为普通窗口时必须清除最大化状态。");
+        Assert(WindowStatePersistence.CaptureIsMaximized(true, WindowState.Minimized),
+            "最小化不得覆盖最近一次最大化状态。");
+        Assert(WindowStatePersistence.ResolveActivationState(WindowState.Minimized, true) ==
+               WindowState.Maximized,
+            "从托盘恢复时应回到最近一次最大化状态。");
+        Assert(WindowStatePersistence.ResolveActivationState(WindowState.Minimized, false) ==
+               WindowState.Normal,
+            "普通窗口最小化后应恢复为普通状态。");
+    }
+
     private static void RunFeishuResponseTests()
     {
         var modernSuccess = FeishuService.InterpretResponse(
@@ -650,6 +779,51 @@ internal static class Program
         var httpError = FeishuService.InterpretResponse(HttpStatusCode.NotFound, "{}");
         Assert(!httpError.Sent && httpError.ErrorCode == "http_error",
             "HTTP 错误应与飞书业务错误区分。");
+    }
+
+    private static async Task RunFeishuNotificationCountTestsAsync(string testDirectory)
+    {
+        var settingsPath = Path.Combine(
+            testDirectory,
+            $"feishu-count-settings-{Guid.NewGuid():N}.json");
+        try
+        {
+            File.WriteAllText(settingsPath, "{\"FeishuEnabled\":true}");
+            var settings = new SettingsService(settingsPath);
+            Assert(
+                settings.Config.FeishuEnabled &&
+                settings.Config.FeishuWorkNotificationCount == 0 &&
+                settings.Config.FeishuRestHalfwayNotificationCount == 3 &&
+                settings.Config.FeishuRestCompletedNotificationCount == 6 &&
+                settings.Config.FeishuTestNotificationCount == 1,
+                "旧配置缺少独立次数时应采用 0、3、6、1 的兼容默认值。");
+
+            settings.Config.FeishuWebhookUrl = "https://open.feishu.cn/open-apis/bot/v2/hook/test";
+            var handler = new CountingHttpMessageHandler();
+            using var httpClient = new HttpClient(handler);
+            var service = new FeishuService(settings, httpClient);
+
+            await service.NotifyAsync("关闭提醒", "不应发送", 0, 0);
+            Assert(handler.RequestCount == 0, "通知次数为 0 时不应请求飞书。");
+
+            await service.NotifyAsync("休息过半", "发送三条", 3, 0);
+            Assert(handler.RequestCount == 3, "休息过半配置为 3 时应发送三条消息。");
+
+            await service.NotifyAsync("休息完成", "发送六条", 6, 0);
+            Assert(handler.RequestCount == 9, "休息完成配置为 6 时应再发送六条消息。");
+
+            var testResult = await service.TestAsync(settings.Config.FeishuWebhookUrl, 4, 0);
+            Assert(testResult.Sent && handler.RequestCount == 13 && testResult.Message.Contains("4 条"),
+                "手动测试应按独立次数发送并返回实际发送数量。");
+
+            await service.SendRepeatedAsync("上限", "最多二十条", 99, 0);
+            Assert(handler.RequestCount == 33,
+                "飞书重复发送次数必须限制为最多二十条。");
+        }
+        finally
+        {
+            if (File.Exists(settingsPath)) File.Delete(settingsPath);
+        }
     }
 
     private static async Task RunNotificationCoordinatorTestsAsync(
@@ -675,11 +849,16 @@ internal static class Program
             var workNotifications = 0;
             var restNotifications = 0;
             var halfwayNotifications = 0;
+            var mainWindowActivations = 0;
+            Assert(!settings.Config.ShowMainWindowOnTimerNotification,
+                "提示时打开主界面必须默认关闭。");
+            settings.Config.ShowMainWindowOnTimerNotification = true;
             using var coordinator = new PomodoroNotificationCoordinator(
                 viewModel,
                 _ => workNotifications++,
                 _ => restNotifications++,
-                _ => halfwayNotifications++);
+                _ => halfwayNotifications++,
+                () => mainWindowActivations++);
             var timer = viewModel.AllTimers[0];
 
             timer.StartWork();
@@ -688,16 +867,22 @@ internal static class Program
             timer.RefreshElapsedTime();
             Assert(workNotifications == 1,
                 "同一次工作完成只能由通知协调器分发一次。");
+            Assert(mainWindowActivations == 1,
+                "启用强提示后，工作完成必须同步请求激活主界面。");
 
             timer.StartRest();
             now = now.AddMinutes(1);
             timer.RefreshElapsedTime();
             Assert(halfwayNotifications == 1,
                 "同一次休息过半只能分发一次通知。");
+            Assert(mainWindowActivations == 1,
+                "休息过半不应激活主界面。");
             now = now.AddMinutes(1);
             timer.RefreshElapsedTime();
             Assert(restNotifications == 1,
                 "同一次休息完成只能分发一次通知。");
+            Assert(mainWindowActivations == 2,
+                "启用强提示后，休息完成必须同步请求激活主界面。");
 
             coordinator.Dispose();
             timer.StartWork();
@@ -705,6 +890,8 @@ internal static class Program
             timer.RefreshElapsedTime();
             Assert(workNotifications == 1,
                 "通知协调器释放后必须解除全部计时器订阅。");
+            Assert(mainWindowActivations == 2,
+                "通知协调器释放后不得继续激活主界面。");
 
             var restoredSettings = new SettingsService(settingsPath);
             restoredSettings.Config.AdditionalTimersWorkMinutes = new List<int> { 2 };
@@ -815,5 +1002,21 @@ internal static class Program
     {
         if (!condition)
             throw new InvalidOperationException(message);
+    }
+
+    private sealed class CountingHttpMessageHandler : HttpMessageHandler
+    {
+        public int RequestCount { get; private set; }
+
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            RequestCount++;
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("{\"code\":0,\"msg\":\"success\"}")
+            });
+        }
     }
 }

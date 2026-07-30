@@ -115,10 +115,73 @@ export function SettingsPage({ reportError }: { reportError(error: unknown): voi
         reportError(error);
       });
   };
+  const saveShowMainWindowPreference = (value: boolean) => {
+    const hasOtherUnsavedChanges = savedSettings
+      ? Object.keys(settings).some((key) => {
+          const settingKey = key as keyof SettingsDto;
+          return (
+            settingKey !== "showMainWindowOnTimerNotification" &&
+            settings[settingKey] !== savedSettings[settingKey]
+          );
+        })
+      : false;
+    setSettings({ ...settings, showMainWindowOnTimerNotification: value });
+    setSaveStatus(hasOtherUnsavedChanges ? "dirty" : "saving");
+    // 强提示属于即时偏好，点击开关即写入配置，不能依赖用户再次点击页面顶部的保存按钮。
+    void bridge
+      .request<SettingsDto>("settings.save", {
+        showMainWindowOnTimerNotification: value,
+      })
+      .then((result) => {
+        setSettings(
+          (current) =>
+            current && {
+              ...current,
+              showMainWindowOnTimerNotification:
+                result.showMainWindowOnTimerNotification,
+            },
+        );
+        setSavedSettings(
+          (current) =>
+            current && {
+              ...current,
+              showMainWindowOnTimerNotification:
+                result.showMainWindowOnTimerNotification,
+            },
+        );
+        setSaveStatus(hasOtherUnsavedChanges ? "dirty" : "saved");
+      })
+      .catch((error) => {
+        setSettings((current) =>
+          current
+            ? { ...current, showMainWindowOnTimerNotification: !value }
+            : current,
+        );
+        setSaveStatus("error");
+        reportError(error);
+      });
+  };
   const save = async () => {
     if (settings.workMinutes < 1 || settings.workMinutes > 240 || settings.restMinutes < 1 || settings.restMinutes > 30) {
       setSaveStatus("error");
       reportError(new Error("工作时长应为 1–240 分钟，休息时长应为 1–30 分钟。"));
+      return;
+    }
+    const automaticNotificationCounts = [
+      settings.feishuWorkNotificationCount,
+      settings.feishuRestHalfwayNotificationCount,
+      settings.feishuRestCompletedNotificationCount,
+    ];
+    if (
+      automaticNotificationCounts.some(
+        (count) => !Number.isInteger(count) || count < 0 || count > 20,
+      ) ||
+      !Number.isInteger(settings.feishuTestNotificationCount) ||
+      settings.feishuTestNotificationCount < 1 ||
+      settings.feishuTestNotificationCount > 20
+    ) {
+      setSaveStatus("error");
+      reportError(new Error("自动通知次数应为 0–20，测试消息次数应为 1–20。"));
       return;
     }
     try {
@@ -153,7 +216,10 @@ export function SettingsPage({ reportError }: { reportError(error: unknown): voi
         sent: boolean;
         errorCode: string;
         message: string;
-      }>("settings.testFeishu", { webhookUrl: settings.feishuWebhookUrl });
+      }>("settings.testFeishu", {
+        webhookUrl: settings.feishuWebhookUrl,
+        notificationCount: settings.feishuTestNotificationCount,
+      });
       setFeishuTestStatus(result.message);
       if (!result.sent) reportError(new Error(result.message));
     } catch (error) {
@@ -226,6 +292,7 @@ export function SettingsPage({ reportError }: { reportError(error: unknown): voi
             <div className="setting-row"><div><strong>开机自动启动</strong><span>登录 Windows 后启动 Taskato</span></div><Toggle label="开机自动启动" value={settings.autoStartEnabled} onChange={(v) => patch("autoStartEnabled", v)} /></div>
             <div className="setting-row"><div><strong>自动开始下一轮</strong></div><Toggle label="自动开始下一轮" value={settings.autoStartNextPomodoro} onChange={(v) => patch("autoStartNextPomodoro", v)} /></div>
             <div className="setting-row"><div><strong>Toast 显示计时</strong></div><Toggle label="Toast 显示计时" value={settings.enableToastTimer} onChange={(v) => patch("enableToastTimer", v)} /></div>
+            <div className="setting-row"><div><strong>提示时打开软件界面</strong><span>专注结束或休息结束时恢复并激活主界面；修改后立即保存</span></div><Toggle label="提示时打开软件界面" value={settings.showMainWindowOnTimerNotification} onChange={saveShowMainWindowPreference} /></div>
             <div className="setting-row"><div><strong>Toast 操作延迟（秒）</strong><span>0–5 秒，每次调整 0.5 秒</span></div><div className="stepper"><button onClick={() => patch("toastActionDelaySeconds", Math.max(0, settings.toastActionDelaySeconds - .5))}>−</button><span>{settings.toastActionDelaySeconds.toFixed(1)}</span><button onClick={() => patch("toastActionDelaySeconds", Math.min(5, settings.toastActionDelaySeconds + .5))}>＋</button></div></div>
             <div className="setting-row"><div><strong>多组番茄钟</strong><span>允许添加附加计时器</span></div><Toggle label="多组番茄钟" value={settings.enableMultiplePomodoros} onChange={(v) => patch("enableMultiplePomodoros", v)} /></div>
           </section>
@@ -238,16 +305,16 @@ export function SettingsPage({ reportError }: { reportError(error: unknown): voi
             <button className="secondary-button" onClick={() => void bridge.request("settings.previewSound", { notificationSoundChoice: settings.notificationSoundChoice, customSoundPath: settings.customSoundPath }).catch(reportError)}>试听</button>
           </section>
 
-          <section id="settings-feishu"><div><h3>飞书通知</h3><p>Webhook、测试消息及四类提醒均完整保留。</p></div>
+          <section id="settings-feishu"><div><h3>飞书通知</h3><p>四类消息分别设置发送次数；自动通知填 0 即关闭。</p></div>
             <div className="setting-row"><div><strong>启用飞书通知</strong></div><Toggle label="启用飞书通知" value={settings.feishuEnabled} onChange={(v) => patch("feishuEnabled", v)} /></div>
             <div className="setting-row"><div><strong>Webhook URL</strong><span>飞书群机器人的 Webhook 地址</span></div><input className="text-input" value={settings.feishuWebhookUrl} onChange={(e) => patch("feishuWebhookUrl", e.target.value)} /></div>
+            <div className="setting-row nested"><div><strong>测试消息发送次数</strong><span>1–20 条，按 3 秒间隔发送</span></div><input aria-label="测试消息发送次数" className="number-input" type="number" min="1" max="20" step="1" value={settings.feishuTestNotificationCount} onChange={(e) => patch("feishuTestNotificationCount", Number(e.target.value))} /></div>
             <div className="setting-actions"><button className="secondary-button" onClick={() => setFeishuHelp(!feishuHelp)}>如何获取 Webhook？</button><button className="secondary-button" onClick={() => void bridge.request<{ shouldConfigure: boolean }>("settings.openFeishuGuide").then((r) => r.shouldConfigure && setFeishuHelp(true)).catch(reportError)}>查看首次配置引导</button><button className="secondary-button" onClick={() => void testFeishu()}>发送测试消息</button></div>
             {feishuTestStatus && <p className="data-operation-status" role="status">{feishuTestStatus}</p>}
             {feishuHelp && <div className="settings-help"><strong>飞书电脑版客户端</strong><p>群设置 → 群机器人 → 添加自定义机器人 → 复制 Webhook</p><code>https://open.feishu.cn/open-apis/bot/v2/hook/...</code></div>}
-            <div className="setting-row nested"><div><strong>工作结束通知</strong></div><Toggle label="工作结束通知" value={settings.feishuNotifyOnWork} onChange={(v) => patch("feishuNotifyOnWork", v)} /></div>
-            <div className="setting-row nested"><div><strong>重复提醒 3 次（间隔 3 秒）</strong></div><Toggle label="重复提醒" value={settings.feishuRepeatEnabled} onChange={(v) => patch("feishuRepeatEnabled", v)} /></div>
-            <div className="setting-row nested"><div><strong>休息过半提醒</strong></div><Toggle label="休息过半提醒" value={settings.feishuRestHalfwayEnabled} onChange={(v) => patch("feishuRestHalfwayEnabled", v)} /></div>
-            <div className="setting-row nested"><div><strong>休息结束通知</strong></div><Toggle label="休息结束通知" value={settings.feishuNotifyOnRest} onChange={(v) => patch("feishuNotifyOnRest", v)} /></div>
+            <div className="setting-row nested"><div><strong>工作结束通知</strong><span>0–20 条，当前开关仍可独立关闭</span></div><div className="setting-actions"><input aria-label="工作结束通知次数" className="number-input" type="number" min="0" max="20" step="1" value={settings.feishuWorkNotificationCount} onChange={(e) => patch("feishuWorkNotificationCount", Number(e.target.value))} /><Toggle label="工作结束通知" value={settings.feishuNotifyOnWork} onChange={(v) => patch("feishuNotifyOnWork", v)} /></div></div>
+            <div className="setting-row nested"><div><strong>休息过半提醒</strong><span>0–20 条，默认 3 条</span></div><div className="setting-actions"><input aria-label="休息过半通知次数" className="number-input" type="number" min="0" max="20" step="1" value={settings.feishuRestHalfwayNotificationCount} onChange={(e) => patch("feishuRestHalfwayNotificationCount", Number(e.target.value))} /><Toggle label="休息过半提醒" value={settings.feishuRestHalfwayEnabled} onChange={(v) => patch("feishuRestHalfwayEnabled", v)} /></div></div>
+            <div className="setting-row nested"><div><strong>休息结束通知</strong><span>0–20 条，默认 6 条</span></div><div className="setting-actions"><input aria-label="休息结束通知次数" className="number-input" type="number" min="0" max="20" step="1" value={settings.feishuRestCompletedNotificationCount} onChange={(e) => patch("feishuRestCompletedNotificationCount", Number(e.target.value))} /><Toggle label="休息结束通知" value={settings.feishuNotifyOnRest} onChange={(v) => patch("feishuNotifyOnRest", v)} /></div></div>
           </section>
 
           <section id="settings-data"><div><h3>数据与兼容</h3><p>保留已批准的数据保护和旧界面回退能力，不替代上述旧版设置。</p></div>

@@ -5,6 +5,8 @@ using Taskato.Views;
 using System.Threading;
 using System.Windows.Media;
 using Taskato.Services.WebBridge;
+using System.Runtime.InteropServices;
+using System.Windows.Interop;
 
 namespace Taskato
 {
@@ -20,6 +22,10 @@ namespace Taskato
     /// </summary>
     public partial class App : Application
     {
+        // Windows 可能拒绝普通 Activate() 抢占前台；计时完成属于用户明确启用的强提示场景。
+        [DllImport("user32.dll")]
+        private static extern bool SetForegroundWindow(IntPtr windowHandle);
+
         /// <summary>数据库服务（全局单例）</summary>
         private DatabaseService _dbService = null!;
 
@@ -115,7 +121,9 @@ namespace Taskato
                 pomodoroStateStore);
             _mainViewModel = mainVM;
             Microsoft.Win32.SystemEvents.PowerModeChanged += SystemEvents_PowerModeChanged;
-            _notificationCoordinator = new PomodoroNotificationCoordinator(mainVM);
+            _notificationCoordinator = new PomodoroNotificationCoordinator(
+                mainVM,
+                showMainWindowAction: ShowMainWindowForTimerNotification);
             // 必须先建立通知订阅再恢复，否则关闭期间到期的完成事件会在启动时丢失。
             mainVM.RestorePomodoroState();
             var shellVM = new ShellViewModel(mainVM, _dbService, _settingsService);
@@ -130,6 +138,17 @@ namespace Taskato
                 activeWindow = window;
                 MainWindow = window;
                 RestoreWindowPlacement(window);
+                // 最大化/还原时立即记录状态；隐藏到托盘时再保存一次尺寸，避免只依赖进程退出。
+                window.StateChanged += (_, _) =>
+                {
+                    if (window.WindowState != WindowState.Minimized)
+                        SaveWindowPlacement(window);
+                };
+                window.IsVisibleChanged += (_, _) =>
+                {
+                    if (!window.IsVisible)
+                        SaveWindowPlacement(window);
+                };
                 window.Show();
             }
 
@@ -168,17 +187,13 @@ namespace Taskato
             // 托盘菜单"显示主窗口" → 显示并激活窗口
             _trayService.ShowWindowRequested += () =>
             {
-                activeWindow.Show();
-                activeWindow.WindowState = WindowState.Normal;
-                activeWindow.Activate();
+                ShowAndActivateWindow(activeWindow);
             };
 
             // 托盘菜单"设置" → 显示主窗口并切换到内嵌设置页
             _trayService.ShowSettingsRequested += () =>
             {
-                activeWindow.Show();
-                activeWindow.WindowState = WindowState.Normal;
-                activeWindow.Activate();
+                ShowAndActivateWindow(activeWindow);
                 if (activeWindow is WebShellWindow web)
                     web.NavigateTo("settings");
                 else
@@ -188,6 +203,7 @@ namespace Taskato
             // 托盘菜单"退出" → 真正关闭应用
             _trayService.ExitRequested += () =>
             {
+                SaveWindowPlacement(activeWindow);
                 if (activeWindow is WebShellWindow web) web.IsAppShuttingDown = true;
                 if (activeWindow is MainWindow legacy) legacy.IsAppShuttingDown = true;
                 _trayService.Dispose();  // 清理托盘图标
@@ -235,6 +251,32 @@ namespace Taskato
             resources["ThemeGradientBrush"] = new LinearGradientBrush(primary, secondary, 135);
         }
 
+        private void ShowMainWindowForTimerNotification()
+        {
+            // 恢复流程可能在主窗口创建前就产生到期事件；这种情况由正常启动流程负责显示窗口。
+            Dispatcher.Invoke(() =>
+            {
+                if (MainWindow is not Window window) return;
+                ShowAndActivateWindow(window);
+            });
+        }
+
+        private void ShowAndActivateWindow(Window window)
+        {
+            window.Show();
+            // 最小化不是用户选择的恢复形态，回到最近一次普通或最大化状态。
+            window.WindowState = WindowStatePersistence.ResolveActivationState(
+                window.WindowState,
+                _settingsService.Config.IsWindowMaximized);
+            // 短暂切换 Topmost 可把隐藏在其他程序后的窗口带到前面，随后立即恢复普通层级。
+            window.Topmost = true;
+            window.Activate();
+            window.Topmost = false;
+            window.Focus();
+            var handle = new WindowInteropHelper(window).Handle;
+            if (handle != IntPtr.Zero) SetForegroundWindow(handle);
+        }
+
         /// <summary>把旧配置或屏幕外坐标约束到当前主屏可用区域。</summary>
         private void RestoreWindowPlacement(Window window)
         {
@@ -258,29 +300,35 @@ namespace Taskato
                 null,
                 workAreas);
 
-            // 每次启动都以主屏工作区居中，避免上次拖动位置让启动窗口贴边或出现在意外屏幕。
-            // 仍恢复用户调整后的尺寸和最大化状态；旧版坐标字段只为配置向后兼容而保留。
+            // 普通状态每次都按已保存尺寸在主屏居中；最大化时也先设置居中的 RestoreBounds，
+            // 这样用户退出最大化后仍回到屏幕中央，而不是恢复旧版本保存的任意坐标。
             window.WindowStartupLocation = WindowStartupLocation.Manual;
             window.Width = placement.Width;
             window.Height = placement.Height;
             window.Left = placement.Left;
             window.Top = placement.Top;
-            // “启动居中”是稳定的用户预期，因此不再恢复上次最大化状态；用户仍可在启动后主动最大化。
-            window.WindowState = WindowState.Normal;
+            window.WindowState = config.IsWindowMaximized
+                ? WindowState.Maximized
+                : WindowState.Normal;
             WindowWorkAreaService.Attach(window);
         }
 
-        private void SaveWindowPlacement()
+        private void SaveWindowPlacement(Window? sourceWindow = null)
         {
             // 单例检测失败会在服务初始化前进入 OnExit，此时不能访问设置服务。
-            if (_settingsService is null || MainWindow is not Window window) return;
+            if (_settingsService is null) return;
+            var window = sourceWindow ?? MainWindow as Window;
+            if (window is null) return;
             var bounds = window.RestoreBounds;
             var config = _settingsService.Config;
             config.WindowWidth = Math.Max(960, bounds.Width);
             config.WindowHeight = Math.Max(640, bounds.Height);
             config.WindowLeft = bounds.Left;
             config.WindowTop = bounds.Top;
-            config.IsWindowMaximized = window.WindowState == WindowState.Maximized;
+            // 最小化只是临时状态，不得覆盖最近一次普通/最大化选择。
+            config.IsWindowMaximized = WindowStatePersistence.CaptureIsMaximized(
+                config.IsWindowMaximized,
+                window.WindowState);
             _settingsService.Save();
         }
 

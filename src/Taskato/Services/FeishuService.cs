@@ -12,6 +12,7 @@ namespace Taskato.Services
     /// </summary>
     public class FeishuService
     {
+        public const int MaximumNotificationCount = 20;
         private readonly SettingsService _settings;
         private readonly HttpClient _http;
 
@@ -34,12 +35,26 @@ namespace Taskato.Services
         public async Task<bool> SendAsync(string title, string content, string? webhookUrlOverride) =>
             (await SendDetailedAsync(title, content, webhookUrlOverride)).Sent;
 
-        /// <summary>发送测试消息并返回可直接展示给用户的失败原因，不包含敏感 Webhook 内容。</summary>
-        public Task<FeishuSendResult> TestAsync(string webhookUrl) =>
-            SendDetailedAsync(
-                "Taskato 测试消息",
-                "如果你收到这条消息，说明飞书 Webhook 配置成功！",
-                webhookUrl);
+        /// <summary>按设置次数发送测试消息，并返回可直接展示给用户的结果。</summary>
+        public async Task<FeishuSendResult> TestAsync(
+            string webhookUrl,
+            int count,
+            int intervalSeconds = 3)
+        {
+            var safeCount = Math.Clamp(count, 1, MaximumNotificationCount);
+            for (var index = 0; index < safeCount; index++)
+            {
+                var result = await SendDetailedAsync(
+                    "Taskato 测试消息",
+                    "如果你收到这条消息，说明飞书 Webhook 配置成功！",
+                    webhookUrl);
+                if (!result.Sent) return result;
+                if (index < safeCount - 1 && intervalSeconds > 0)
+                    await Task.Delay(TimeSpan.FromSeconds(intervalSeconds));
+            }
+
+            return FeishuSendResult.Success($"测试消息已发送 {safeCount} 条，请在飞书群中确认。");
+        }
 
         private async Task<FeishuSendResult> SendDetailedAsync(
             string title,
@@ -146,35 +161,39 @@ namespace Taskato.Services
                 : fallback;
 
         /// <summary>
-        /// 根据配置发送飞书通知（自动判断是否重复发送）
+        /// 按当前事件自己的次数发送飞书通知；0 次用于关闭该事件。
         /// </summary>
-        public async Task NotifyAsync(string title, string content)
+        public async Task NotifyAsync(string title, string content, int count, int intervalSeconds = 3)
         {
-            if (_settings.Config.FeishuRepeatEnabled)
-                await SendRepeatedAsync(title, content);
-            else
+            var safeCount = Math.Clamp(count, 0, MaximumNotificationCount);
+            if (safeCount == 0) return;
+            if (safeCount == 1)
                 await SendAsync(title, content);
+            else
+                await SendRepeatedAsync(title, content, safeCount, intervalSeconds);
         }
 
         /// <summary>
         /// 间隔重复发送飞书消息
         /// </summary>
-        /// <param name="count">发送次数，默认 3</param>
+        /// <param name="count">发送次数，限制为 0～20。</param>
         /// <param name="intervalSeconds">间隔秒数，默认 3</param>
         public async Task SendRepeatedAsync(string title, string content, int count = 3, int intervalSeconds = 3)
         {
-            for (int i = 0; i < count; i++)
+            var safeCount = Math.Clamp(count, 0, MaximumNotificationCount);
+            for (var index = 0; index < safeCount; index++)
             {
                 await SendAsync(title, content);
-                if (i < count - 1)
-                    await Task.Delay(intervalSeconds * 1000);
+                if (index < safeCount - 1 && intervalSeconds > 0)
+                    await Task.Delay(TimeSpan.FromSeconds(intervalSeconds));
             }
         }
     }
 
     public sealed record FeishuSendResult(bool Sent, string ErrorCode, string Message)
     {
-        public static FeishuSendResult Success() => new(true, string.Empty, "测试消息已发送，请在飞书群中确认。");
+        public static FeishuSendResult Success(string message = "测试消息已发送，请在飞书群中确认。") =>
+            new(true, string.Empty, message);
         public static FeishuSendResult Failure(string errorCode, string message) => new(false, errorCode, message);
     }
 }

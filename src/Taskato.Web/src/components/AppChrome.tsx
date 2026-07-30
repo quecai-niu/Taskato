@@ -236,7 +236,7 @@ export function GlobalSearchDialog({
           <input
             autoFocus
             type="search"
-            placeholder="搜索任务标题、笔记和历史记录…"
+            placeholder="搜索任务内容和历史记录…"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
@@ -251,7 +251,7 @@ export function GlobalSearchDialog({
                   <ListChecks size={17} />
                   <span>
                     <strong>{task.title}</strong>
-                    <small>{task.notes || `第 ${task.depth + 1} 层任务`}</small>
+                    <small>第 {task.depth + 1} 层任务</small>
                   </span>
                   <CaretRight size={15} />
                 </button>

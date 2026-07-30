@@ -107,8 +107,11 @@ namespace Taskato.Views
             FeishuWebhookUrlBox.Text = _settingsService.Config.FeishuWebhookUrl;
             FeishuNotifyWorkCheckBox.IsChecked = _settingsService.Config.FeishuNotifyOnWork;
             FeishuNotifyRestCheckBox.IsChecked = _settingsService.Config.FeishuNotifyOnRest;
-            FeishuRepeatCheckBox.IsChecked = _settingsService.Config.FeishuRepeatEnabled;
             FeishuRestHalfwayCheckBox.IsChecked = _settingsService.Config.FeishuRestHalfwayEnabled;
+            FeishuWorkCountBox.Text = _settingsService.Config.FeishuWorkNotificationCount.ToString();
+            FeishuRestHalfwayCountBox.Text = _settingsService.Config.FeishuRestHalfwayNotificationCount.ToString();
+            FeishuRestCompletedCountBox.Text = _settingsService.Config.FeishuRestCompletedNotificationCount.ToString();
+            FeishuTestCountBox.Text = _settingsService.Config.FeishuTestNotificationCount.ToString();
             AutoDailySummaryCheckBox.IsChecked = _settingsService.Config.AutoShowDailySummary;
 
             // 初始化提示音选择 — 按配置值勾选对应 RadioButton
@@ -647,13 +650,6 @@ namespace Taskato.Views
             _settingsService.Save();
         }
 
-        private void FeishuRepeatCheckBox_Changed(object sender, RoutedEventArgs e)
-        {
-            if (_settingsService == null) return;
-            _settingsService.Config.FeishuRepeatEnabled = FeishuRepeatCheckBox.IsChecked == true;
-            _settingsService.Save();
-        }
-
         private void FeishuRestHalfwayCheckBox_Changed(object sender, RoutedEventArgs e)
         {
             if (_settingsService == null) return;
@@ -661,12 +657,38 @@ namespace Taskato.Views
             _settingsService.Save();
         }
 
+        private void FeishuWorkCountBox_TextChanged(object sender, TextChangedEventArgs e) =>
+            SaveFeishuNotificationCount(FeishuWorkCountBox, 0, value => _settingsService.Config.FeishuWorkNotificationCount = value);
+
+        private void FeishuRestHalfwayCountBox_TextChanged(object sender, TextChangedEventArgs e) =>
+            SaveFeishuNotificationCount(FeishuRestHalfwayCountBox, 0, value => _settingsService.Config.FeishuRestHalfwayNotificationCount = value);
+
+        private void FeishuRestCompletedCountBox_TextChanged(object sender, TextChangedEventArgs e) =>
+            SaveFeishuNotificationCount(FeishuRestCompletedCountBox, 0, value => _settingsService.Config.FeishuRestCompletedNotificationCount = value);
+
+        private void FeishuTestCountBox_TextChanged(object sender, TextChangedEventArgs e) =>
+            SaveFeishuNotificationCount(FeishuTestCountBox, 1, value => _settingsService.Config.FeishuTestNotificationCount = value);
+
+        private void SaveFeishuNotificationCount(System.Windows.Controls.TextBox textBox, int minimum, Action<int> apply)
+        {
+            if (_settingsService == null ||
+                !int.TryParse(textBox.Text, out var value) ||
+                value < minimum ||
+                value > FeishuService.MaximumNotificationCount)
+                return;
+
+            apply(value);
+            _settingsService.Save();
+        }
+
         private async void FeishuTestBtn_Click(object sender, RoutedEventArgs e)
         {
             FeishuTestBtn.IsEnabled = false;
             FeishuTestBtn.Content = "发送中...";
-            var ok = await _feishuService.SendAsync("Taskato 测试消息", "如果你收到这条消息，说明飞书 Webhook 配置成功！");
-            FeishuTestBtn.Content = ok ? "发送成功" : "发送失败";
+            var result = await _feishuService.TestAsync(
+                _settingsService.Config.FeishuWebhookUrl,
+                _settingsService.Config.FeishuTestNotificationCount);
+            FeishuTestBtn.Content = result.Sent ? "发送成功" : "发送失败";
             // 2 秒后恢复按钮文字
             await Task.Delay(2000);
             FeishuTestBtn.Content = "测试";

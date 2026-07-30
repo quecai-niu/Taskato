@@ -7,6 +7,7 @@ import {
   TopBar,
 } from "../src/components/AppChrome";
 import { bridge } from "../src/bridge";
+import { App } from "../src/App";
 
 describe("应用框架交互", () => {
   let host: HTMLDivElement;
@@ -18,6 +19,7 @@ describe("应用框架交互", () => {
         IS_REACT_ACT_ENVIRONMENT?: boolean;
       }
     ).IS_REACT_ACT_ENVIRONMENT = true;
+    window.localStorage.clear();
     host = document.createElement("div");
     document.body.append(host);
     root = createRoot(host);
@@ -89,5 +91,30 @@ describe("应用框架交互", () => {
     expect(button?.textContent).toContain("日间");
     button?.click();
     expect(toggle).toHaveBeenCalledOnce();
+  });
+
+  it("标题栏始终提供完整的原生窗口控制按钮", async () => {
+    await act(async () => {
+      root.render(<TopBar activePage="tasks" appearanceMode="dark" onSearch={() => undefined} onNotifications={() => undefined} onToggleAppearance={() => undefined} />);
+    });
+
+    expect(host.querySelector('[aria-label="最小化"]')).not.toBeNull();
+    expect(host.querySelector('[aria-label="最大化或还原"]')).not.toBeNull();
+    expect(host.querySelector('[aria-label="关闭到托盘"]')).not.toBeNull();
+  });
+
+  it("左侧导航会恢复并保存用户的折叠状态", async () => {
+    window.localStorage.setItem("taskato.navCollapsed", "true");
+    await act(async () => {
+      root.render(<App />);
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
+
+    expect(host.querySelector(".app-shell.nav-is-collapsed")).not.toBeNull();
+    const expandButton = host.querySelector<HTMLButtonElement>(
+      '[aria-label="展开导航"]',
+    )!;
+    await act(async () => expandButton.click());
+    expect(window.localStorage.getItem("taskato.navCollapsed")).toBe("false");
   });
 });

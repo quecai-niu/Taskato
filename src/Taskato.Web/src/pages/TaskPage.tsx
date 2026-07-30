@@ -60,6 +60,12 @@ export function buildTree(tasks: TaskDto[]): TaskNode[] {
     if (parent) parent.children.push(node);
     else roots.push(node);
   });
+  // 同一父级内先展示未完成任务；保持原数组的其他排序条件不变。
+  nodes.forEach((node) =>
+    node.children.sort(
+      (left, right) => Number(left.isCompleted) - Number(right.isCompleted),
+    ),
+  );
   return roots;
 }
 
@@ -138,6 +144,7 @@ function TaskTreeRow({
   expanded,
   onToggle,
   onSelect,
+  onEditContent,
   onComplete,
 }: {
   task: TaskNode;
@@ -145,35 +152,37 @@ function TaskTreeRow({
   expanded: Set<number>;
   onToggle(id: number): void;
   onSelect(id: number): void;
+  onEditContent(id: number): void;
   onComplete(task: TaskDto): void;
 }) {
-  const hasChildren = task.children.length > 0;
+  const isParent = task.hasChildren;
+  const hasVisibleChildren = task.children.length > 0;
   const isExpanded = expanded.has(task.id);
   return (
-    <div className={`tree-branch ${hasChildren ? "has-children" : ""}`}>
+    <div className={`tree-branch ${hasVisibleChildren ? "has-children" : ""}`}>
       <div
-        className={`tree-row ${hasChildren ? "parent-node" : "leaf-node"} ${
+        className={`tree-row ${isParent ? "parent-node" : "leaf-node"} ${
           selectedId === task.id ? "selected" : ""
         }`}
       >
         <button
           className="tree-expand"
           aria-label={
-            hasChildren
+            hasVisibleChildren
               ? isExpanded
                 ? "收起子任务"
                 : "展开子任务"
               : "无子任务"
           }
-          onClick={() => hasChildren && onToggle(task.id)}
+          onClick={() => hasVisibleChildren && onToggle(task.id)}
         >
-          {hasChildren ? (
+          {hasVisibleChildren ? (
             <CaretRight className={isExpanded ? "rotated" : ""} size={14} />
           ) : (
             <span />
           )}
         </button>
-        {hasChildren ? (
+        {isParent ? (
           <button
             className={`group-state ${task.isCompleted ? "completed" : ""}`}
             aria-label={task.isCompleted ? "取消完成父任务" : "完成父任务"}
@@ -195,7 +204,12 @@ function TaskTreeRow({
             {task.isCompleted && <Check size={12} weight="bold" />}
           </button>
         )}
-        <button className="tree-title" onClick={() => onSelect(task.id)}>
+        <button
+          className="tree-title"
+          title={task.parentId == null ? undefined : "双击编辑任务内容"}
+          onClick={() => onSelect(task.id)}
+          onDoubleClick={() => task.parentId != null && onEditContent(task.id)}
+        >
           {task.title}
         </button>
         {task.priority > 0 && (
@@ -203,7 +217,7 @@ function TaskTreeRow({
             {priorityLabels[task.priority]}
           </span>
         )}
-        {hasChildren && (
+        {isParent && (
           <span className="tree-parent-progress">
             <i>
               <b
@@ -218,7 +232,7 @@ function TaskTreeRow({
           </span>
         )}
       </div>
-      {hasChildren && isExpanded && (
+      {hasVisibleChildren && isExpanded && (
         <div className="tree-children">
           {task.children.map((child) => (
             <TaskTreeRow
@@ -228,6 +242,7 @@ function TaskTreeRow({
               expanded={expanded}
               onToggle={onToggle}
               onSelect={onSelect}
+              onEditContent={onEditContent}
               onComplete={onComplete}
             />
           ))}
@@ -443,16 +458,17 @@ export function TaskPage({
   requestedTaskId: number | null;
 }) {
   const [tasks, setTasks] = useState<TaskDto[]>([]);
+  const [detailTasks, setDetailTasks] = useState<TaskDto[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [expanded, setExpanded] = useState(new Set<number>());
+  const expansionInitialized = useRef(false);
   const [filter, setFilter] = useState("");
   const [rootTitle, setRootTitle] = useState("");
   const [rootPriority, setRootPriority] = useState(0);
   const [childTitle, setChildTitle] = useState("");
   const [childPriority, setChildPriority] = useState(0);
-  const [titleDraft, setTitleDraft] = useState("");
-  const [notesDraft, setNotesDraft] = useState("");
-  const [notesStatus, setNotesStatus] = useState<
+  const [contentDraft, setContentDraft] = useState("");
+  const [contentStatus, setContentStatus] = useState<
     "saved" | "unsaved" | "saving" | "error"
   >("saved");
   const [taskMenuOpen, setTaskMenuOpen] = useState(false);
@@ -460,7 +476,8 @@ export function TaskPage({
     message: string;
     run(): Promise<void>;
   } | null>(null);
-  const notesRequestVersion = useRef(0);
+  const contentRequestVersion = useRef(0);
+  const contentFocusTaskId = useRef<number | null>(null);
   const [completionTask, setCompletionTask] = useState<TaskDto | null>(null);
   const [parentCandidates, setParentCandidates] = useState<TaskDto[]>([]);
   const workspaceRef = useRef<HTMLDivElement>(null);
@@ -511,20 +528,28 @@ export function TaskPage({
     try {
       const result = await bridge.request<TaskListResult>("tasks.list");
       setTasks(result.tasks);
-      setSelectedId((current) =>
-        result.tasks.some((task) => task.id === current)
-          ? current
-          : (result.selectedTaskId ?? result.tasks[0]?.id ?? null),
+      setDetailTasks(result.detailTasks);
+      setSelectedId((current) => {
+        if (result.detailTasks.some((task) => task.id === current)) return current;
+        return result.detailTasks.some((task) => task.id === result.selectedTaskId)
+          ? result.selectedTaskId
+          : (result.tasks[0]?.id ?? null);
+      });
+      const expandableIds = new Set(
+        result.tasks
+          .map((task) => task.parentId)
+          .filter((parentId): parentId is number => parentId != null),
       );
-      setExpanded((current) =>
-        current.size
-          ? current
-          : new Set(
-              result.tasks
-                .filter((task) => task.hasChildren)
-                .map((task) => task.id),
-            ),
-      );
+      if (!expansionInitialized.current) {
+        // 首次进入保持原有的默认全展开；之后即使集合为空，也代表用户明确选择了全部收起。
+        expansionInitialized.current = true;
+        setExpanded(expandableIds);
+      } else {
+        setExpanded(
+          (current) =>
+            new Set([...current].filter((taskId) => expandableIds.has(taskId))),
+        );
+      }
     } catch (error) {
       reportError(error);
     }
@@ -547,8 +572,8 @@ export function TaskPage({
     setSelectedId(requestedTaskId);
     requestAnimationFrame(() =>
       document
-        .querySelector<HTMLElement>(".task-title-input")
-        ?.scrollIntoView({ block: "center" }),
+        .querySelector<HTMLElement>(".task-title-display")
+        ?.scrollIntoView?.({ block: "center" }),
     );
   }, [requestedTaskId]);
   useEffect(() => {
@@ -567,19 +592,37 @@ export function TaskPage({
     [filter, tasks],
   );
   const roots = useMemo(() => buildTree(filtered), [filtered]);
-  const groupedRoots = roots.filter((task) => task.children.length > 0);
-  const ungroupedRoots = roots.filter((task) => task.children.length === 0);
+  const groupedRoots = roots.filter((task) => task.hasChildren);
+  const ungroupedRoots = roots.filter((task) => !task.hasChildren);
+  const expandableTaskIds = useMemo(
+    () =>
+      new Set(
+        tasks
+          .map((task) => task.parentId)
+          .filter((parentId): parentId is number => parentId != null),
+      ),
+    [tasks],
+  );
+  const hasExpandedTasks = [...expandableTaskIds].some((taskId) =>
+    expanded.has(taskId),
+  );
+  const toggleAllExpanded = () =>
+    setExpanded(hasExpandedTasks ? new Set() : new Set(expandableTaskIds));
   const toggleExpanded = (id: number) =>
     setExpanded((value) => {
       const next = new Set(value);
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
-  const selected = tasks.find((task) => task.id === selectedId) ?? null;
-  const children = tasks.filter((task) => task.parentId === selectedId);
+  const selected = detailTasks.find((task) => task.id === selectedId) ?? null;
+  const children = detailTasks
+    .filter((task) => task.parentId === selectedId)
+    .sort(
+      (left, right) => Number(left.isCompleted) - Number(right.isCompleted),
+    );
   const selectedPath = useMemo(() => {
     if (!selected) return [];
-    const byId = new Map(tasks.map((task) => [task.id, task]));
+    const byId = new Map(detailTasks.map((task) => [task.id, task]));
     const path: TaskDto[] = [];
     let current: TaskDto | undefined = selected;
     while (current) {
@@ -587,14 +630,67 @@ export function TaskPage({
       current = current.parentId == null ? undefined : byId.get(current.parentId);
     }
     return path;
-  }, [selected, tasks]);
+  }, [detailTasks, selected]);
   useEffect(
     () => {
-      setTitleDraft(selected?.title ?? "");
-      setNotesDraft(selected?.notes ?? "");
-      setNotesStatus("saved");
+      setContentDraft(selected?.title ?? "");
+      setContentStatus("saved");
     },
-    [selected?.id, selected?.notes, selected?.title],
+    [selected?.id, selected?.title],
+  );
+
+  const focusTaskContentEditor = useCallback(() => {
+    const editor = document.querySelector<HTMLTextAreaElement>(
+      ".task-content-input",
+    );
+    editor?.scrollIntoView?.({ behavior: "smooth", block: "center" });
+    editor?.focus();
+  }, []);
+
+  useEffect(() => {
+    if (selectedId == null || contentFocusTaskId.current !== selectedId) return;
+    contentFocusTaskId.current = null;
+    focusTaskContentEditor();
+  }, [focusTaskContentEditor, selectedId]);
+
+  const editTaskContent = (taskId: number) => {
+    if (selectedId === taskId) {
+      focusTaskContentEditor();
+      return;
+    }
+    contentFocusTaskId.current = taskId;
+    setSelectedId(taskId);
+  };
+
+  const saveTaskContent = useCallback(
+    async (task: TaskDto, draft: string) => {
+      const content = draft.trim();
+      if (!content) {
+        setContentStatus("error");
+        return;
+      }
+      if (content === task.title) {
+        setContentStatus("saved");
+        return;
+      }
+
+      const version = ++contentRequestVersion.current;
+      setContentStatus("saving");
+      try {
+        await bridge.request("tasks.update", {
+          taskId: task.id,
+          title: content,
+        });
+        if (contentRequestVersion.current !== version) return;
+        setContentStatus("saved");
+        await load();
+      } catch (error) {
+        if (contentRequestVersion.current !== version) return;
+        setContentStatus("error");
+        reportError(error);
+      }
+    },
+    [load, reportError],
   );
   const activeTimer =
     timerState.timers.find((timer) => timer.id === timerState.activeId) ??
@@ -693,8 +789,8 @@ export function TaskPage({
     }
   };
   const updateTask = async (
-    changes: { title?: string; priority?: number; notes?: string },
-    undoChanges?: { title?: string; priority?: number; notes?: string },
+    changes: { title?: string; priority?: number },
+    undoChanges?: { title?: string; priority?: number },
     successMessage?: string,
   ) => {
     if (!selected) return;
@@ -823,32 +919,16 @@ export function TaskPage({
     };
 
   useEffect(() => {
-    if (!selected || notesDraft === selected.notes) {
-      setNotesStatus("saved");
+    if (!selected || contentDraft === selected.title) {
+      setContentStatus("saved");
       return;
     }
-    setNotesStatus("unsaved");
-    const version = ++notesRequestVersion.current;
+    setContentStatus("unsaved");
     const timer = window.setTimeout(() => {
-      setNotesStatus("saving");
-      void bridge
-        .request("tasks.update", {
-          taskId: selected.id,
-          notes: notesDraft,
-        })
-        .then(async () => {
-          if (notesRequestVersion.current !== version) return;
-          setNotesStatus("saved");
-          await load();
-        })
-        .catch((error) => {
-          if (notesRequestVersion.current !== version) return;
-          setNotesStatus("error");
-          reportError(error);
-        });
+      void saveTaskContent(selected, contentDraft);
     }, 700);
     return () => window.clearTimeout(timer);
-  }, [load, notesDraft, reportError, selected?.id, selected?.notes]);
+  }, [contentDraft, saveTaskContent, selected]);
 
   return (
     <div
@@ -882,7 +962,7 @@ export function TaskPage({
                 event.preventDefault();
                 event.currentTarget.form?.requestSubmit();
               }}
-              placeholder="输入任务标题，按 Enter 新增"
+              placeholder="输入任务内容，按 Enter 新增"
             />
             <button
               type="submit"
@@ -911,7 +991,17 @@ export function TaskPage({
         </label>
         <div className="tree-filter-row">
           <button className="filter-chip active">全部</button>
-          <span>{filtered.length} 个任务</span>
+          <div className="tree-filter-actions">
+            <span>{filtered.length} 个任务</span>
+            <button
+              type="button"
+              className="tree-expand-all"
+              aria-label={hasExpandedTasks ? "全部收起" : "全部展开"}
+              onClick={toggleAllExpanded}
+            >
+              {hasExpandedTasks ? "全部收起" : "全部展开"}
+            </button>
+          </div>
         </div>
         <div className="task-tree">
           <div className="tree-section-label">
@@ -926,6 +1016,7 @@ export function TaskPage({
               expanded={expanded}
               onToggle={toggleExpanded}
               onSelect={setSelectedId}
+              onEditContent={editTaskContent}
               onComplete={toggleComplete}
             />
           ))}
@@ -941,6 +1032,7 @@ export function TaskPage({
               expanded={expanded}
               onToggle={toggleExpanded}
               onSelect={setSelectedId}
+              onEditContent={editTaskContent}
               onComplete={toggleComplete}
             />
           ))}
@@ -964,12 +1056,25 @@ export function TaskPage({
             <div className="canvas-header">
               <div className="breadcrumbs">
                 <span>任务</span>
-                {selectedPath.map((item) => (
-                  <span className="breadcrumb-part" key={item.id}>
-                    <CaretRight size={13} />
-                    <span>{item.title}</span>
-                  </span>
-                ))}
+                {selectedPath.map((item, index) => {
+                  const isCurrentTask = index === selectedPath.length - 1;
+                  return (
+                    <span className="breadcrumb-part" key={item.id}>
+                      <CaretRight size={13} />
+                      {isCurrentTask ? (
+                        <span aria-current="page">{item.title}</span>
+                      ) : (
+                        <button
+                          className="breadcrumb-link"
+                          aria-label={`返回父任务：${item.title}`}
+                          onClick={() => setSelectedId(item.id)}
+                        >
+                          {item.title}
+                        </button>
+                      )}
+                    </span>
+                  );
+                })}
               </div>
               <IconButton
                 label="更多操作"
@@ -983,25 +1088,11 @@ export function TaskPage({
                     role="menuitem"
                     onClick={() => {
                       setTaskMenuOpen(false);
-                      document
-                        .querySelector<HTMLInputElement>(".task-title-input")
-                        ?.focus();
+                      focusTaskContentEditor();
                     }}
                   >
                     <NotePencil size={16} />
-                    编辑标题
-                  </button>
-                  <button
-                    role="menuitem"
-                    onClick={() => {
-                      setTaskMenuOpen(false);
-                      document
-                        .getElementById("task-notes")
-                        ?.scrollIntoView({ behavior: "smooth", block: "center" });
-                    }}
-                  >
-                    <NotePencil size={16} />
-                    编辑任务笔记
+                    编辑任务
                   </button>
                   <button
                     role="menuitem"
@@ -1037,30 +1128,7 @@ export function TaskPage({
                 {selected.isCompleted && <Check size={15} />}
               </button>
               <div>
-                <input
-                  className="task-title-input"
-                  aria-label="任务标题"
-                  maxLength={500}
-                  value={titleDraft}
-                  onChange={(event) => setTitleDraft(event.target.value)}
-                  onBlur={() => {
-                    const title = titleDraft.trim();
-                    if (title && title !== selected.title)
-                      void updateTask(
-                        { title },
-                        { title: selected.title },
-                        `已重命名为“${title}”`,
-                      );
-                    else setTitleDraft(selected.title);
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") event.currentTarget.blur();
-                    if (event.key === "Escape") {
-                      setTitleDraft(selected.title);
-                      event.currentTarget.blur();
-                    }
-                  }}
-                />
+                <h2 className="task-title-display">{selected.title}</h2>
                 <p>
                   {selected.hasChildren
                     ? "所有叶子任务完成后，由你手动确认父任务完成。"
@@ -1112,7 +1180,11 @@ export function TaskPage({
                     >
                       {item.isCompleted && <Check size={12} />}
                     </button>
-                    <span className={item.isCompleted ? "done" : ""}>
+                    <span
+                      className={item.isCompleted ? "done" : ""}
+                      title="双击编辑任务内容"
+                      onDoubleClick={() => editTaskContent(item.id)}
+                    >
                       {item.title}
                     </span>
                     <small>
@@ -1147,28 +1219,32 @@ export function TaskPage({
                 </form>
               )}
             </section>
-            <section id="task-notes" className="content-section notes-section">
+            <section id="task-content" className="content-section task-content-section">
               <div className="section-title-row">
-                <h3>任务笔记</h3>
+                <h3>任务内容</h3>
                 <span
-                  className={`save-status ${notesStatus}`}
-                  role={notesStatus === "error" ? "alert" : "status"}
+                  className={`save-status ${contentStatus}`}
+                  role={contentStatus === "error" ? "alert" : "status"}
                 >
-                  {notesStatus === "saving"
+                  {contentStatus === "saving"
                     ? "正在保存…"
-                    : notesStatus === "unsaved"
+                    : contentStatus === "unsaved"
                       ? "等待自动保存"
-                      : notesStatus === "error"
+                      : contentStatus === "error"
                         ? "保存失败，继续输入可重试"
                         : "已保存"}
                 </span>
               </div>
               <textarea
-                aria-label="任务笔记"
-                maxLength={4000}
-                placeholder="记录上下文、验收要点或下一步；停止输入后自动保存。"
-                value={notesDraft}
-                onChange={(event) => setNotesDraft(event.target.value)}
+                className="task-content-input"
+                aria-label="任务内容"
+                maxLength={5000}
+                placeholder="输入任务内容；停止输入后自动保存。"
+                value={contentDraft}
+                onChange={(event) => setContentDraft(event.target.value)}
+                onBlur={() => {
+                  if (selected) void saveTaskContent(selected, contentDraft);
+                }}
               />
             </section>
             <section id="task-operations" className="content-section">
@@ -1349,12 +1425,8 @@ export function TaskPage({
           <div className="section-title-row">
             <h3>任务详情</h3>
             <IconButton
-              label="编辑任务标题"
-              onClick={() =>
-                document
-                  .querySelector<HTMLInputElement>(".task-title-input")
-                  ?.focus()
-              }
+              label="编辑任务"
+              onClick={focusTaskContentEditor}
             >
               <NotePencil size={16} />
             </IconButton>

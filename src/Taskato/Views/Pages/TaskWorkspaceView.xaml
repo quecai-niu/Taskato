@@ -37,7 +37,13 @@
                     <Grid>
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                         <StackPanel><TextBlock Text="任务树" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="17" FontWeight="SemiBold"/><TextBlock Text="{Binding DateLabelText}" Foreground="{DynamicResource TextMutedBrush}" Margin="0,4,0,0"/></StackPanel>
-                        <TextBlock Grid.Column="1" Text="{Binding CompletedCount, StringFormat={}{0} 已完成}" Foreground="{DynamicResource ThemePrimaryBrush}" VerticalAlignment="Center"/>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding CompletedCount, StringFormat={}{0} 已完成}" Foreground="{DynamicResource ThemePrimaryBrush}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <Button Content="{Binding TaskTreeExpansionLabel}"
+                                    Command="{Binding ToggleAllTaskExpansionCommand}"
+                                    Style="{StaticResource SecondaryButton}"
+                                    Padding="9,4"/>
+                        </StackPanel>
                     </Grid>
                     <ListBox Grid.Row="1" ItemsSource="{Binding TodayTasks}" SelectedItem="{Binding SelectedTask, Mode=TwoWay}"
                              Background="Transparent" BorderThickness="0" Margin="-8,14,-8,-8"
@@ -56,7 +62,7 @@
                                         <Grid>
                                             <Grid.ColumnDefinitions><ColumnDefinition Width="22"/><ColumnDefinition Width="24"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                             <Button Content="›" Command="{Binding DataContext.ToggleTaskExpansionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}"
-                                                    Visibility="{Binding HasChildren, Converter={StaticResource BoolToVisibilityConverter}}" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextMutedBrush}" Padding="0"/>
+                                                    Visibility="{Binding HasVisibleChildren, Converter={StaticResource BoolToVisibilityConverter}}" Background="Transparent" BorderThickness="0" Foreground="{DynamicResource TextMutedBrush}" Padding="0"/>
                                             <Border Grid.Column="1" Width="16" Height="16" CornerRadius="8" BorderThickness="1.5" BorderBrush="{DynamicResource ThemePrimaryBrush}"
                                                     Background="Transparent" MouseLeftButtonDown="Checkbox_Click" Tag="{Binding}">
                                                 <TextBlock Text="✓" FontSize="11" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"

@@ -17,9 +17,12 @@ namespace Taskato.Services.WebBridge
                 c.WorkMinutes, c.RestMinutes, c.AppearanceMode,
                 c.ThemePrimaryColor, c.ThemeSecondaryColor, c.SelectedColorIndex,
                 c.AutoStartNextPomodoro, c.EnableToastTimer, c.ToastActionDelaySeconds,
+                c.ShowMainWindowOnTimerNotification,
                 c.EnableMultiplePomodoros, c.NotificationSoundChoice, c.CustomSoundPath,
                 c.FeishuEnabled, c.FeishuWebhookUrl, c.FeishuNotifyOnWork, c.FeishuNotifyOnRest,
                 c.FeishuRepeatEnabled, c.FeishuRestHalfwayEnabled, c.AutoShowDailySummary,
+                c.FeishuWorkNotificationCount, c.FeishuRestHalfwayNotificationCount,
+                c.FeishuRestCompletedNotificationCount, c.FeishuTestNotificationCount,
                 c.UseLegacyWorkspace,
                 autoStartEnabled = AutoStartService.IsAutoStartEnabled()
             };
@@ -38,6 +41,9 @@ namespace Taskato.Services.WebBridge
             }
             c.AutoStartNextPomodoro = OptionalBool(parameters, "autoStartNextPomodoro") ?? c.AutoStartNextPomodoro;
             c.EnableToastTimer = OptionalBool(parameters, "enableToastTimer") ?? c.EnableToastTimer;
+            c.ShowMainWindowOnTimerNotification = OptionalBool(
+                parameters,
+                "showMainWindowOnTimerNotification") ?? c.ShowMainWindowOnTimerNotification;
             var toastDelay = OptionalDouble(parameters, "toastActionDelaySeconds") ?? c.ToastActionDelaySeconds;
             c.ToastActionDelaySeconds = Math.Round(Math.Clamp(toastDelay, 0, 5) * 2) / 2;
             c.EnableMultiplePomodoros = OptionalBool(parameters, "enableMultiplePomodoros") ?? c.EnableMultiplePomodoros;
@@ -49,6 +55,10 @@ namespace Taskato.Services.WebBridge
             c.FeishuNotifyOnRest = OptionalBool(parameters, "feishuNotifyOnRest") ?? c.FeishuNotifyOnRest;
             c.FeishuRepeatEnabled = OptionalBool(parameters, "feishuRepeatEnabled") ?? c.FeishuRepeatEnabled;
             c.FeishuRestHalfwayEnabled = OptionalBool(parameters, "feishuRestHalfwayEnabled") ?? c.FeishuRestHalfwayEnabled;
+            c.FeishuWorkNotificationCount = ClampedOptionalInt(parameters, "feishuWorkNotificationCount", c.FeishuWorkNotificationCount, 0, FeishuService.MaximumNotificationCount);
+            c.FeishuRestHalfwayNotificationCount = ClampedOptionalInt(parameters, "feishuRestHalfwayNotificationCount", c.FeishuRestHalfwayNotificationCount, 0, FeishuService.MaximumNotificationCount);
+            c.FeishuRestCompletedNotificationCount = ClampedOptionalInt(parameters, "feishuRestCompletedNotificationCount", c.FeishuRestCompletedNotificationCount, 0, FeishuService.MaximumNotificationCount);
+            c.FeishuTestNotificationCount = ClampedOptionalInt(parameters, "feishuTestNotificationCount", c.FeishuTestNotificationCount, 1, FeishuService.MaximumNotificationCount);
             c.AutoShowDailySummary = OptionalBool(parameters, "autoShowDailySummary") ?? c.AutoShowDailySummary;
             c.UseLegacyWorkspace = OptionalBool(parameters, "useLegacyWorkspace") ?? c.UseLegacyWorkspace;
             c.ThemePrimaryColor = ValidatedColor(parameters, "themePrimaryColor", c.ThemePrimaryColor);
@@ -123,7 +133,13 @@ namespace Taskato.Services.WebBridge
         private async Task<object> TestFeishuAsync(JsonElement parameters)
         {
             var webhookUrl = OptionalString(parameters, "webhookUrl") ?? string.Empty;
-            var result = await _taskWorkspace.FeishuService.TestAsync(webhookUrl);
+            var notificationCount = ClampedOptionalInt(
+                parameters,
+                "notificationCount",
+                _settings.Config.FeishuTestNotificationCount,
+                1,
+                FeishuService.MaximumNotificationCount);
+            var result = await _taskWorkspace.FeishuService.TestAsync(webhookUrl, notificationCount);
             return new { result.Sent, result.ErrorCode, result.Message };
         }
 
