@@ -50,6 +50,37 @@ import {
 
 type TaskNode = TaskDto & { children: TaskNode[] };
 
+const TASK_EXPANSION_STORAGE_KEY = "taskato.expandedTaskIds";
+
+function loadStoredTaskExpansion(): {
+  hasStoredValue: boolean;
+  taskIds: Set<number>;
+} {
+  const rawValue = window.localStorage.getItem(TASK_EXPANSION_STORAGE_KEY);
+  if (rawValue == null) return { hasStoredValue: false, taskIds: new Set() };
+  try {
+    const parsed = JSON.parse(rawValue) as unknown;
+    if (!Array.isArray(parsed))
+      return { hasStoredValue: false, taskIds: new Set() };
+    return {
+      hasStoredValue: true,
+      taskIds: new Set(
+        parsed.filter(
+          (taskId): taskId is number =>
+            Number.isInteger(taskId) && taskId > 0,
+        ),
+      ),
+    };
+  } catch {
+    return { hasStoredValue: false, taskIds: new Set() };
+  }
+}
+
+function compareSubtaskDisplayOrder(left: TaskDto, right: TaskDto): number {
+  // 仅按完成状态分组，同组内沿用后端顺序，避免前端擅自改变既有任务排序规则。
+  return Number(left.isCompleted) - Number(right.isCompleted);
+}
+
 export function buildTree(tasks: TaskDto[]): TaskNode[] {
   const nodes = new Map(
     tasks.map((task) => [task.id, { ...task, children: [] } as TaskNode]),
@@ -60,12 +91,7 @@ export function buildTree(tasks: TaskDto[]): TaskNode[] {
     if (parent) parent.children.push(node);
     else roots.push(node);
   });
-  // 同一父级内先展示未完成任务；保持原数组的其他排序条件不变。
-  nodes.forEach((node) =>
-    node.children.sort(
-      (left, right) => Number(left.isCompleted) - Number(right.isCompleted),
-    ),
-  );
+  nodes.forEach((node) => node.children.sort(compareSubtaskDisplayOrder));
   return roots;
 }
 
@@ -460,7 +486,10 @@ export function TaskPage({
   const [tasks, setTasks] = useState<TaskDto[]>([]);
   const [detailTasks, setDetailTasks] = useState<TaskDto[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [expanded, setExpanded] = useState(new Set<number>());
+  const [storedTaskExpansion] = useState(loadStoredTaskExpansion);
+  const [expanded, setExpanded] = useState(
+    () => new Set(storedTaskExpansion.taskIds),
+  );
   const expansionInitialized = useRef(false);
   const [filter, setFilter] = useState("");
   const [rootTitle, setRootTitle] = useState("");
@@ -503,6 +532,13 @@ export function TaskPage({
     );
   }, [inspectorPaneWidth]);
   useEffect(() => {
+    if (!expansionInitialized.current) return;
+    window.localStorage.setItem(
+      TASK_EXPANSION_STORAGE_KEY,
+      JSON.stringify([...expanded]),
+    );
+  }, [expanded]);
+  useEffect(() => {
     const fitPanesToWindow = () => {
       const total = workspaceRef.current?.getBoundingClientRect().width ?? 0;
       if (!total) return;
@@ -541,9 +577,17 @@ export function TaskPage({
           .filter((parentId): parentId is number => parentId != null),
       );
       if (!expansionInitialized.current) {
-        // 首次进入保持原有的默认全展开；之后即使集合为空，也代表用户明确选择了全部收起。
+        // 第一次使用仍默认全展开；已有记录（包括空集合）必须原样恢复，避免切换菜单后复位。
         expansionInitialized.current = true;
-        setExpanded(expandableIds);
+        setExpanded(
+          storedTaskExpansion.hasStoredValue
+            ? new Set(
+                [...storedTaskExpansion.taskIds].filter((taskId) =>
+                  expandableIds.has(taskId),
+                ),
+              )
+            : expandableIds,
+        );
       } else {
         setExpanded(
           (current) =>
@@ -553,7 +597,7 @@ export function TaskPage({
     } catch (error) {
       reportError(error);
     }
-  }, [reportError]);
+  }, [reportError, storedTaskExpansion]);
   const loadTimers = useCallback(async () => {
     try {
       setTimerState(await bridge.request<TimerListResult>("pomodoro.list"));
@@ -617,9 +661,7 @@ export function TaskPage({
   const selected = detailTasks.find((task) => task.id === selectedId) ?? null;
   const children = detailTasks
     .filter((task) => task.parentId === selectedId)
-    .sort(
-      (left, right) => Number(left.isCompleted) - Number(right.isCompleted),
-    );
+    .sort(compareSubtaskDisplayOrder);
   const selectedPath = useMemo(() => {
     if (!selected) return [];
     const byId = new Map(detailTasks.map((task) => [task.id, task]));
@@ -1171,6 +1213,29 @@ export function TaskPage({
                   }}
                 />
               </div>
+              {selected.canAddChild && (
+                <form
+                  className="inline-add subtask-composer"
+                  onSubmit={(event) => void add(event, selected.id)}
+                >
+                  <div className="subtask-input-row">
+                    <button type="submit" aria-label="添加子任务">
+                      <Plus size={16} />
+                    </button>
+                    <input
+                      aria-label="新建子任务"
+                      value={childTitle}
+                      onChange={(event) => setChildTitle(event.target.value)}
+                      placeholder="添加子任务，按 Enter 保存"
+                    />
+                  </div>
+                  <PrioritySelector
+                    label="子任务优先级"
+                    value={childPriority}
+                    onChange={setChildPriority}
+                  />
+                </form>
+              )}
               <div className="subtask-list">
                 {children.map((item) => (
                   <div className="subtask-row" key={item.id}>
@@ -1195,29 +1260,6 @@ export function TaskPage({
                   </div>
                 ))}
               </div>
-              {selected.canAddChild && (
-                <form
-                  className="inline-add subtask-composer"
-                  onSubmit={(event) => void add(event, selected.id)}
-                >
-                  <div className="subtask-input-row">
-                    <button type="submit" aria-label="添加子任务">
-                      <Plus size={16} />
-                    </button>
-                    <input
-                      aria-label="新建子任务"
-                      value={childTitle}
-                      onChange={(event) => setChildTitle(event.target.value)}
-                      placeholder="添加子任务，按 Enter 保存"
-                    />
-                  </div>
-                  <PrioritySelector
-                    label="子任务优先级"
-                    value={childPriority}
-                    onChange={setChildPriority}
-                  />
-                </form>
-              )}
             </section>
             <section id="task-content" className="content-section task-content-section">
               <div className="section-title-row">

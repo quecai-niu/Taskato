@@ -101,6 +101,21 @@ describe("独立业务页面", () => {
     expect(roots[0].children.map((task) => task.id)).toEqual([9102, 9101]);
   });
 
+  it("添加子任务输入栏显示在子任务列表顶部", async () => {
+    await renderAndFlush(
+      <TaskPage reportError={() => undefined} requestedTaskId={null} />,
+    );
+
+    const composer = host.querySelector(".subtask-composer")!;
+    const list = host.querySelector(".subtask-list")!;
+
+    expect(composer).not.toBeNull();
+    expect(list).not.toBeNull();
+    expect(composer.compareDocumentPosition(list)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  });
+
   it("左侧隐藏的历史子任务仍会显示在父任务详情中", async () => {
     const visibleRoot: TaskDto = {
       id: 9001,
@@ -265,6 +280,28 @@ describe("独立业务页面", () => {
     expect(host.querySelector('[aria-label="全部收起"]')).not.toBeNull();
     expect(host.querySelector(".tree-children")).not.toBeNull();
     expect(host.textContent).toContain("收起时新增的子任务");
+  });
+
+  it("切换菜单后保留任务树的收起状态", async () => {
+    await renderAndFlush(
+      <TaskPage reportError={() => undefined} requestedTaskId={null} />,
+    );
+    await act(async () =>
+      host
+        .querySelector<HTMLButtonElement>('[aria-label="全部收起"]')!
+        .click(),
+    );
+    expect(host.querySelector(".tree-children")).toBeNull();
+
+    await renderAndFlush(
+      <HistoryPage reportError={() => undefined} onOpenTask={() => undefined} />,
+    );
+    await renderAndFlush(
+      <TaskPage reportError={() => undefined} requestedTaskId={null} />,
+    );
+
+    expect(host.querySelector('[aria-label="全部展开"]')).not.toBeNull();
+    expect(host.querySelector(".tree-children")).toBeNull();
   });
 
   it("双击任务组子任务会选中任务并聚焦任务内容", async () => {

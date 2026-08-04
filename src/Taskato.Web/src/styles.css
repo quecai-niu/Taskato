@@ -176,6 +176,7 @@ body{font-size:var(--font-control)}
 .priority-option.priority-2.selected{border-color:color-mix(in srgb,#d5a44e 42%,var(--border));background:color-mix(in srgb,#d5a44e 12%,transparent);color:#d5a44e}
 .priority-option.priority-3.selected{border-color:color-mix(in srgb,var(--red) 42%,var(--border));background:color-mix(in srgb,var(--red) 12%,transparent);color:var(--red)}
 .subtask-composer{display:flex;flex-direction:column;align-items:stretch;gap:0;padding:8px 0}
+.subtask-composer+.subtask-list{border-top:0}
 .subtask-input-row{display:flex;align-items:center;gap:9px;min-height:38px}
 .subtask-input-row input{min-width:0;font-size:var(--font-body)}
 .subtask-input-row>button{width:28px;height:28px;display:grid;place-items:center;border-radius:7px;background:transparent;color:var(--text-3);cursor:pointer}
