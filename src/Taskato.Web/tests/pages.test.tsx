@@ -76,7 +76,7 @@ describe("独立业务页面", () => {
     expect(roots[0].children[0].id).toBe(2);
   });
 
-  it("同级子任务按未完成在前、已完成在后排列", () => {
+  it("同级子任务先显示未完成任务，已完成任务按完成时间倒序排列", () => {
     const rootTask = {
       id: 9100,
       title: "父任务",
@@ -85,9 +85,10 @@ describe("独立业务页面", () => {
     } as TaskDto;
     const completedChild = {
       id: 9101,
-      title: "已完成子任务",
+      title: "较早完成的子任务",
       parentId: rootTask.id,
       isCompleted: true,
+      completedAt: "2026-08-05T10:00:00+08:00",
     } as TaskDto;
     const openChild = {
       id: 9102,
@@ -95,10 +96,35 @@ describe("独立业务页面", () => {
       parentId: rootTask.id,
       isCompleted: false,
     } as TaskDto;
+    const newlyCompletedChild = {
+      id: 9103,
+      title: "刚完成的子任务",
+      parentId: rootTask.id,
+      isCompleted: true,
+      completedAt: "2026-08-05T11:00:00+08:00",
+    } as TaskDto;
+    const legacyCompletedChild = {
+      id: 9104,
+      title: "缺少完成时间的旧子任务",
+      parentId: rootTask.id,
+      isCompleted: true,
+      completedAt: null,
+    } as TaskDto;
 
-    const roots = buildTree([rootTask, completedChild, openChild]);
+    const roots = buildTree([
+      rootTask,
+      completedChild,
+      legacyCompletedChild,
+      openChild,
+      newlyCompletedChild,
+    ]);
 
-    expect(roots[0].children.map((task) => task.id)).toEqual([9102, 9101]);
+    expect(roots[0].children.map((task) => task.id)).toEqual([
+      9102,
+      9103,
+      9101,
+      9104,
+    ]);
   });
 
   it("添加子任务输入栏显示在子任务列表顶部", async () => {

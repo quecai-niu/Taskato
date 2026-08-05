@@ -76,9 +76,18 @@ function loadStoredTaskExpansion(): {
   }
 }
 
+function taskCompletionTimestamp(task: TaskDto): number {
+  const timestamp = task.completedAt ? Date.parse(task.completedAt) : NaN;
+  // 旧数据可能缺少完成时间；放到已完成分组末尾，不能挡住用户刚完成的任务。
+  return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
 function compareSubtaskDisplayOrder(left: TaskDto, right: TaskDto): number {
-  // 仅按完成状态分组，同组内沿用后端顺序，避免前端擅自改变既有任务排序规则。
-  return Number(left.isCompleted) - Number(right.isCompleted);
+  const completionGroupOrder =
+    Number(left.isCompleted) - Number(right.isCompleted);
+  if (completionGroupOrder !== 0) return completionGroupOrder;
+  if (!left.isCompleted) return 0;
+  return taskCompletionTimestamp(right) - taskCompletionTimestamp(left);
 }
 
 export function buildTree(tasks: TaskDto[]): TaskNode[] {
