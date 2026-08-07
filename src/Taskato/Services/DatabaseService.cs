@@ -100,6 +100,7 @@ namespace Taskato.Services
                 "CREATE INDEX IF NOT EXISTS IX_TaskItems_ParentId ON TaskItems(ParentId)");
             await MigrateLegacyCompletionRecordsAsync();
             await InitializeActivityRecordsAsync();
+            await InitializeFocusAnalyticsAsync();
         }
 
         /// <summary>

@@ -30,8 +30,6 @@ namespace Taskato.Views
         private static extern IntPtr SendMessage(IntPtr windowHandle, int message, IntPtr wParam, IntPtr lParam);
 
         public bool IsAppShuttingDown { get; set; }
-        public event Action? LegacyWorkspaceRequested;
-
         public WebShellWindow(WebBridgeService bridge)
         {
             _bridge = bridge;
@@ -118,10 +116,6 @@ namespace Taskato.Views
                 case "drag":
                     BeginNativeWindowDrag();
                     break;
-                case "useLegacy":
-                    // 先让桥接返回 accepted，再关闭 WebView2；否则网页侧的请求会在窗口切换中永久等待。
-                    _ = Dispatcher.BeginInvoke(() => LegacyWorkspaceRequested?.Invoke());
-                    break;
             }
         }
 
@@ -141,7 +135,7 @@ namespace Taskato.Views
             LoadingPanel.Visibility = Visibility.Collapsed;
             ErrorPanel.Visibility = Visibility.Visible;
             ErrorMessage.Text = exception is WebView2RuntimeNotFoundException
-                ? "当前系统未安装 Microsoft Edge WebView2 Runtime。安装后可重试，或先使用旧版 WPF 界面。"
+                ? "当前系统未安装 Microsoft Edge WebView2 Runtime。安装运行时后点击重试。"
                 : exception.Message;
             if (IsSmokeMode()) _ = CompleteSmokeAsync(null, exception.Message);
         }
@@ -221,8 +215,6 @@ namespace Taskato.Views
         }
 
         private async void RetryButton_Click(object sender, RoutedEventArgs e) => await InitializeWebViewAsync();
-        private void LegacyButton_Click(object sender, RoutedEventArgs e) => LegacyWorkspaceRequested?.Invoke();
-
         protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
         {
             if (!IsAppShuttingDown)

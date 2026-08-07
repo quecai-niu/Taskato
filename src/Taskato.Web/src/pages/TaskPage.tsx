@@ -488,13 +488,21 @@ function CompletionDialog({
 export function TaskPage({
   reportError,
   requestedTaskId,
+  sessionSelectedTaskId = null,
+  onSelectedTaskIdChange,
+  onRequestedTaskHandled,
 }: {
   reportError(error: unknown): void;
   requestedTaskId: number | null;
+  sessionSelectedTaskId?: number | null;
+  onSelectedTaskIdChange?(taskId: number | null): void;
+  onRequestedTaskHandled?(): void;
 }) {
   const [tasks, setTasks] = useState<TaskDto[]>([]);
   const [detailTasks, setDetailTasks] = useState<TaskDto[]>([]);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selectedId, setSelectedId] = useState<number | null>(
+    sessionSelectedTaskId,
+  );
   const [storedTaskExpansion] = useState(loadStoredTaskExpansion);
   const [expanded, setExpanded] = useState(
     () => new Set(storedTaskExpansion.taskIds),
@@ -621,14 +629,19 @@ export function TaskPage({
   useBridgeRefresh("tasks.changed", () => void load());
   useBridgeRefresh("pomodoro.changed", () => void loadTimers());
   useEffect(() => {
+    // 选中项只提升到应用会话，不写入本地存储；关闭应用后仍按原规则选择默认任务。
+    onSelectedTaskIdChange?.(selectedId);
+  }, [onSelectedTaskIdChange, selectedId]);
+  useEffect(() => {
     if (requestedTaskId == null) return;
     setSelectedId(requestedTaskId);
+    onRequestedTaskHandled?.();
     requestAnimationFrame(() =>
       document
         .querySelector<HTMLElement>(".task-title-display")
         ?.scrollIntoView?.({ block: "center" }),
     );
-  }, [requestedTaskId]);
+  }, [onRequestedTaskHandled, requestedTaskId]);
   useEffect(() => {
     if (selectedId == null) {
       setParentCandidates([]);

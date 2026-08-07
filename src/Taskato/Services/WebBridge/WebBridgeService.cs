@@ -40,6 +40,7 @@ namespace Taskato.Services.WebBridge
             _dataBackup = new DataBackupService(database, settings);
 
             _database.OnDataChanged += HandleDataChanged;
+            _taskWorkspace.FocusTrackingChanged += HandleFocusTrackingChanged;
             _taskWorkspace.AllTimers.CollectionChanged += Timers_CollectionChanged;
             foreach (var timer in _taskWorkspace.AllTimers) RegisterTimer(timer);
         }
@@ -119,6 +120,7 @@ namespace Taskato.Services.WebBridge
                 "history.search" => await SearchHistoryAsync(request.Params),
                 "history.events" => await GetHistoryEventsAsync(request.Params),
                 "history.export" => await ExportHistoryAsync(request.Params),
+                "focus.analytics" => await GetFocusAnalyticsAsync(request.Params),
                 "settings.get" => GetSettings(),
                 "settings.save" => SaveSettings(request.Params),
                 "settings.chooseSound" => ChooseCustomSound(),
@@ -131,7 +133,7 @@ namespace Taskato.Services.WebBridge
                 "app.restoreData" => await StageDataRestoreAsync(),
                 "pomodoro.list" => GetTimers(),
                 "pomodoro.command" => ExecuteTimerCommand(request.Params),
-                "window.minimize" or "window.maximize" or "window.close" or "window.drag" or "window.useLegacy" => ExecuteWindowCommand(request.Method),
+                "window.minimize" or "window.maximize" or "window.close" or "window.drag" => ExecuteWindowCommand(request.Method),
                 _ => throw new BridgeRequestException("method_not_found", $"不支持的方法：{request.Method}")
             };
         }
@@ -441,6 +443,7 @@ namespace Taskato.Services.WebBridge
         }
 
         private void HandleDataChanged() => PostEvent("tasks.changed", new { });
+        private void HandleFocusTrackingChanged() => PostEvent("focus.changed", new { });
 
         private void Timers_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
         {
@@ -524,6 +527,7 @@ namespace Taskato.Services.WebBridge
             if (_disposed) return;
             _disposed = true;
             _database.OnDataChanged -= HandleDataChanged;
+            _taskWorkspace.FocusTrackingChanged -= HandleFocusTrackingChanged;
             if (_webView is not null) _webView.WebMessageReceived -= WebView_WebMessageReceived;
             _taskWorkspace.AllTimers.CollectionChanged -= Timers_CollectionChanged;
             foreach (var timer in _taskWorkspace.AllTimers) timer.PropertyChanged -= Timer_PropertyChanged;

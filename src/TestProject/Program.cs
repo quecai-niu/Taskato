@@ -13,14 +13,17 @@ using Taskato.Models.BridgeDtos;
 using Taskato.Services;
 using Taskato.Services.WebBridge;
 using Taskato.ViewModels;
-using Taskato.Views;
 
 internal static class Program
 {
     [STAThread]
     private static async Task Main()
     {
-        RunWorkspaceXamlSmokeTest();
+        // Bridge test（桥接测试）仍会验证 WPF 原生主题资源；创建最小 Application 容器，
+        // 但不启动旧版工作区窗口，保持测试与当前 WebView2 宿主边界一致。
+        if (Application.Current is null)
+            _ = new Application();
+
         RunCurrentTaskVisibilityTests();
         RunPomodoroElapsedTimeTests();
         RunPomodoroPersistenceTests();
@@ -38,6 +41,8 @@ internal static class Program
             await RunFeishuNotificationCountTestsAsync(testDirectory);
             database = new DatabaseService(databasePath);
             await database.InitializeAsync();
+            await RunFocusAnalyticsTestsAsync(database);
+            await RunFocusTimerSlotStabilityTestsAsync(database);
             await RunNotificationCoordinatorTestsAsync(database, testDirectory);
 
             var root = await AddTaskAsync(database, "发布新版本");
@@ -448,6 +453,21 @@ internal static class Program
                        timelineRows.Any(item => item.EventType == "reopened"),
                     "取消完成必须能在历史时间线中查询到。");
 
+                var focusAnalytics = await bridge.ProcessRequestAsync(new WebBridgeRequest
+                {
+                    Id = "focus-analytics-day",
+                    Method = "focus.analytics",
+                    Params = JsonSerializer.SerializeToElement(new
+                    {
+                        period = "day",
+                        anchorDate = DateTime.Today.ToString("yyyy-MM-dd")
+                    })
+                });
+                Assert(focusAnalytics.Ok &&
+                       focusAnalytics.Result is FocusAnalyticsBridgeDto focusResult &&
+                       focusResult.Cells.Count == 48,
+                    "专注统计 Bridge 必须返回 48 个日半小时格子。");
+
                 var appearance = await bridge.ProcessRequestAsync(new WebBridgeRequest
                 {
                     Id = "settings-appearance",
@@ -490,22 +510,13 @@ internal static class Program
                 Assert(!invalidAppearance.Ok && invalidAppearance.Error?.Code == "invalid_appearance",
                     "未知外观模式必须返回结构化校验错误。");
 
-                string? requestedWindowCommand = null;
-                bridge.WindowCommandRequested += command => requestedWindowCommand = command;
-                var legacySwitch = await bridge.ProcessRequestAsync(new WebBridgeRequest
-                {
-                    Id = "window-legacy",
-                    Method = "window.useLegacy"
-                });
-                Assert(legacySwitch.Ok && requestedWindowCommand == "useLegacy",
-                    "设置页的立即切换操作必须到达原生窗口宿主。");
             }
             finally
             {
                 if (File.Exists(bridgeSettingsPath)) File.Delete(bridgeSettingsPath);
             }
 
-            Console.WriteLine("PASS: 整窗 XAML、任务树、父任务手动完成、只追加活动日志、桥接契约、层级限制和删除提升测试全部通过。");
+            Console.WriteLine("PASS: WebView2 宿主、任务树、父任务手动完成、只追加活动日志、桥接契约、层级限制和删除提升测试全部通过。");
         }
         finally
         {
@@ -944,6 +955,10 @@ internal static class Program
                 "恢复到期后网页和旧版界面都应显示等待状态及正向超时时间。");
             Assert(restoredWorkNotifications == 1 && restoredRestNotifications == 1,
                 "恢复时每个到期计时器必须各分发一次对应提醒。");
+
+            // 统计写入使用异步串行队列；测试结束前等待队列清空，避免数据库关闭时仍有后台写入锁。
+            await viewModel.FlushFocusTrackingAsync();
+            await restoredViewModel.FlushFocusTrackingAsync();
         }
         finally
         {
@@ -952,38 +967,6 @@ internal static class Program
         }
 
         await Task.CompletedTask;
-    }
-
-    private static void RunWorkspaceXamlSmokeTest()
-    {
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            try
-            {
-                var app = new Taskato.App();
-                app.InitializeComponent();
-                var window = new MainWindow
-                {
-                    IsAppShuttingDown = true,
-                    ShowActivated = false,
-                    ShowInTaskbar = false,
-                    Opacity = 0
-                };
-                window.Show();
-                window.UpdateLayout();
-                window.Close();
-            }
-            catch (Exception exception)
-            {
-                failure = exception;
-            }
-        });
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-        thread.Join();
-        if (failure is not null)
-            throw new InvalidOperationException("整窗 XAML 实例化失败。", failure);
     }
 
     private static async Task<TaskItem> AddTaskAsync(DatabaseService database, string title)
@@ -996,6 +979,151 @@ internal static class Program
         };
         await database.AddTaskAsync(task);
         return task;
+    }
+
+    private static async Task RunFocusAnalyticsTestsAsync(DatabaseService database)
+    {
+        var day = DateTime.Today.AddDays(-2);
+        var slotId = $"analytics-{Guid.NewGuid():N}";
+        var workStart = AtLocal(day.AddHours(9));
+
+        await database.StartPomodoroPhaseAsync(
+            slotId,
+            "统计测试计时器",
+            1001,
+            "统计测试任务",
+            PomodoroFocusPhase.Work,
+            workStart,
+            hasStartMarker: true);
+        await database.PausePomodoroPhaseAsync(slotId, PomodoroFocusPhase.Work, workStart.AddMinutes(10));
+        await database.ResumePomodoroPhaseAsync(
+            slotId,
+            "统计测试计时器",
+            1001,
+            "统计测试任务",
+            PomodoroFocusPhase.Work,
+            workStart.AddMinutes(20));
+        await database.EndPomodoroPhaseAsync(
+            slotId,
+            PomodoroFocusPhase.Work,
+            workStart.AddMinutes(35),
+            "stopped");
+        await database.StartPomodoroPhaseAsync(
+            slotId,
+            "统计测试计时器",
+            1001,
+            "统计测试任务",
+            PomodoroFocusPhase.Rest,
+            workStart.AddMinutes(35),
+            hasStartMarker: false);
+        await database.EndPomodoroPhaseAsync(
+            slotId,
+            PomodoroFocusPhase.Rest,
+            workStart.AddMinutes(40),
+            "completed");
+
+        var pendingSlotId = $"analytics-pending-{Guid.NewGuid():N}";
+        var pendingStart = AtLocal(day.AddHours(11));
+        await database.StartPomodoroPhaseAsync(
+            pendingSlotId,
+            "统计测试计时器",
+            null,
+            string.Empty,
+            PomodoroFocusPhase.Work,
+            pendingStart,
+            hasStartMarker: true);
+        await database.ReconcilePomodoroPhaseAsync(
+            pendingSlotId,
+            "统计测试计时器",
+            null,
+            string.Empty,
+            new PomodoroRuntimeSnapshot
+            {
+                State = PomodoroService.PomodoroState.CompletionPending,
+                CompletedPhase = PomodoroService.PomodoroState.Working,
+                CompletedAtUtc = pendingStart.AddMinutes(10)
+            },
+            AtLocal(day.AddHours(12)));
+
+        var result = await database.GetPomodoroAnalyticsAsync("day", day, AtLocal(day.AddDays(1)));
+        Assert(result.Cells.Count == 48, "日统计必须拆成 48 个半小时格子。");
+        Assert(result.WorkSeconds == 2_100 && result.RestSeconds == 300 && result.TotalSeconds == 2_400,
+            "统计必须包含有效工作与休息时长，但不包含暂停和完成等待。");
+        Assert(result.WorkStartCount == 2, "启动标记只能统计工作阶段的真实启动。");
+        Assert(result.ActiveDays == 1 && result.LongestSessionSeconds == 1_500,
+            "统计摘要应按有效运行区间计算活跃天数和最长单次。");
+        var workCells = result.Cells.Where(cell => cell.Label is "09:00" or "09:30").ToList();
+        Assert(workCells.Sum(cell => cell.WorkSeconds) == 1_500 &&
+               workCells.Sum(cell => cell.RestSeconds) == 300 &&
+               workCells.Sum(cell => cell.WorkStarts.Count) == 1,
+            "暂停后的恢复必须按半小时格切分有效工作时长，并保留一次启动标记。");
+
+        var weekResult = await database.GetPomodoroAnalyticsAsync("week", day, AtLocal(day.AddDays(7)));
+        Assert(weekResult.Cells.Count == 7 * 48 && weekResult.TotalSeconds == result.TotalSeconds,
+            "周统计必须提供 7 天、每天 48 格，并汇总日统计时长。");
+        var monthResult = await database.GetPomodoroAnalyticsAsync("month", day, AtLocal(day.AddDays(31)));
+        Assert(monthResult.Cells.Count == DateTime.DaysInMonth(day.Year, day.Month),
+            "月统计必须按当月实际天数生成日格子。");
+
+        var boundaryDay = day.AddDays(-5);
+        var boundarySlotId = $"analytics-boundary-{Guid.NewGuid():N}";
+        var boundaryStart = AtLocal(boundaryDay.AddDays(1).AddMinutes(-10));
+        await database.StartPomodoroPhaseAsync(
+            boundarySlotId,
+            "跨天测试计时器",
+            null,
+            string.Empty,
+            PomodoroFocusPhase.Work,
+            boundaryStart,
+            hasStartMarker: true);
+        await database.EndPomodoroPhaseAsync(
+            boundarySlotId,
+            PomodoroFocusPhase.Work,
+            boundaryStart.AddMinutes(20),
+            "completed");
+        var beforeMidnight = await database.GetPomodoroAnalyticsAsync("day", boundaryDay, AtLocal(boundaryDay.AddDays(2)));
+        var afterMidnight = await database.GetPomodoroAnalyticsAsync("day", boundaryDay.AddDays(1), AtLocal(boundaryDay.AddDays(2)));
+        Assert(beforeMidnight.WorkSeconds == 600 && afterMidnight.WorkSeconds == 600,
+            "跨午夜运行区间必须准确切分到前后两个日期。");
+    }
+
+    private static DateTimeOffset AtLocal(DateTime value)
+    {
+        var unspecified = DateTime.SpecifyKind(value, DateTimeKind.Unspecified);
+        return new DateTimeOffset(unspecified, TimeZoneInfo.Local.GetUtcOffset(unspecified));
+    }
+
+    private static async Task RunFocusTimerSlotStabilityTestsAsync(DatabaseService database)
+    {
+        var settingsPath = Path.Combine(Path.GetTempPath(), "TaskatoTests", $"slot-settings-{Guid.NewGuid():N}.json");
+        try
+        {
+            var settings = new SettingsService(settingsPath);
+            settings.Config.AdditionalTimersWorkMinutes = new List<int> { 1, 1 };
+            var viewModel = new MainViewModel(
+                database,
+                new PomodoroService(1, 1),
+                settings,
+                new FeishuService(settings));
+            var removedTimer = viewModel.AllTimers[1];
+            var activeTimer = viewModel.AllTimers[2];
+
+            activeTimer.StartWork();
+            viewModel.RemoveAdditionalTimerCommand.Execute(removedTimer);
+            activeTimer.StopCommand.Execute(null);
+            await viewModel.FlushFocusTrackingAsync();
+
+            var result = await database.GetPomodoroAnalyticsAsync(
+                "day",
+                DateTime.Today,
+                DateTimeOffset.Now.AddMinutes(1));
+            Assert(result.TotalSeconds == 0,
+                "删除附加计时器后，剩余计时器的稳定槽位必须仍能关闭原统计会话。");
+        }
+        finally
+        {
+            if (File.Exists(settingsPath)) File.Delete(settingsPath);
+        }
     }
 
     private static void Assert(bool condition, string message)

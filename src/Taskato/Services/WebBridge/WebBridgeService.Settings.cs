@@ -23,7 +23,6 @@ namespace Taskato.Services.WebBridge
                 c.FeishuRepeatEnabled, c.FeishuRestHalfwayEnabled, c.AutoShowDailySummary,
                 c.FeishuWorkNotificationCount, c.FeishuRestHalfwayNotificationCount,
                 c.FeishuRestCompletedNotificationCount, c.FeishuTestNotificationCount,
-                c.UseLegacyWorkspace,
                 autoStartEnabled = AutoStartService.IsAutoStartEnabled()
             };
         }
@@ -60,7 +59,6 @@ namespace Taskato.Services.WebBridge
             c.FeishuRestCompletedNotificationCount = ClampedOptionalInt(parameters, "feishuRestCompletedNotificationCount", c.FeishuRestCompletedNotificationCount, 0, FeishuService.MaximumNotificationCount);
             c.FeishuTestNotificationCount = ClampedOptionalInt(parameters, "feishuTestNotificationCount", c.FeishuTestNotificationCount, 1, FeishuService.MaximumNotificationCount);
             c.AutoShowDailySummary = OptionalBool(parameters, "autoShowDailySummary") ?? c.AutoShowDailySummary;
-            c.UseLegacyWorkspace = OptionalBool(parameters, "useLegacyWorkspace") ?? c.UseLegacyWorkspace;
             c.ThemePrimaryColor = ValidatedColor(parameters, "themePrimaryColor", c.ThemePrimaryColor);
             c.ThemeSecondaryColor = ValidatedColor(parameters, "themeSecondaryColor", c.ThemeSecondaryColor);
             c.SelectedColorIndex = ClampedOptionalInt(parameters, "selectedColorIndex", c.SelectedColorIndex, 0, 5);

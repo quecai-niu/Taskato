@@ -103,6 +103,12 @@ namespace Taskato.Services
         /// <summary>开始、暂停、恢复、停止或到期时触发，供宿主持久化稳定状态边界。</summary>
         public event Action? PersistenceRequested;
 
+        /// <summary>
+        /// 只在工作或休息阶段的真实边界触发。统计层据此记录有效区间，不能使用每秒 Tick，
+        /// 否则 UI 卡顿、系统休眠或程序关闭都会改变统计结果。
+        /// </summary>
+        public event Action<PomodoroPhaseTransition>? PhaseTransitioned;
+
         public int CompletionElapsedSeconds
         {
             get
@@ -142,15 +148,21 @@ namespace Taskato.Services
         /// </summary>
         public void StartWork()
         {
+            var startedAt = _clock();
+            EndCurrentPhase(startedAt, "replaced");
             _totalSeconds = WorkMinutes * 60;       // 总秒数
             _remainingSeconds = _totalSeconds;       // 剩余 = 总
-            _deadline = _clock().AddSeconds(_remainingSeconds);
+            _deadline = startedAt.AddSeconds(_remainingSeconds);
             _completedAt = null;
             _completedPhase = null;
             IsRecoveredCompletion = false;
             _restHalfwayRaised = false;
             CurrentState = PomodoroState.Working;
             StateChanged?.Invoke(CurrentState);
+            PhaseTransitioned?.Invoke(new PomodoroPhaseTransition(
+                PomodoroPhaseTransitionKind.Started,
+                Models.PomodoroFocusPhase.Work,
+                startedAt));
             PublishTick();
             _timer.Start();
             PersistenceRequested?.Invoke();
@@ -161,15 +173,21 @@ namespace Taskato.Services
         /// </summary>
         public void StartRest()
         {
+            var startedAt = _clock();
+            EndCurrentPhase(startedAt, "replaced");
             _totalSeconds = RestMinutes * 60;
             _remainingSeconds = _totalSeconds;
-            _deadline = _clock().AddSeconds(_remainingSeconds);
+            _deadline = startedAt.AddSeconds(_remainingSeconds);
             _completedAt = null;
             _completedPhase = null;
             IsRecoveredCompletion = false;
             _restHalfwayRaised = false;
             CurrentState = PomodoroState.Resting;
             StateChanged?.Invoke(CurrentState);
+            PhaseTransitioned?.Invoke(new PomodoroPhaseTransition(
+                PomodoroPhaseTransitionKind.Started,
+                Models.PomodoroFocusPhase.Rest,
+                startedAt));
             PublishTick();
             _timer.Start();
             PersistenceRequested?.Invoke();
@@ -182,9 +200,17 @@ namespace Taskato.Services
         {
             if (CurrentState == PomodoroState.Paused)
             {
+                var resumedAt = _clock();
                 CurrentState = _pausedState;
-                _deadline = _clock().AddSeconds(_remainingSeconds);
+                _deadline = resumedAt.AddSeconds(_remainingSeconds);
                 _timer.Start();
+                StateChanged?.Invoke(CurrentState);
+                PhaseTransitioned?.Invoke(new PomodoroPhaseTransition(
+                    PomodoroPhaseTransitionKind.Resumed,
+                    PhaseForState(CurrentState)!.Value,
+                    resumedAt));
+                PersistenceRequested?.Invoke();
+                return;
             }
             else if (CurrentState == PomodoroState.Working || CurrentState == PomodoroState.Resting)
             {
@@ -192,12 +218,19 @@ namespace Taskato.Services
                 RefreshElapsedTime();
                 if (CurrentState is not (PomodoroState.Working or PomodoroState.Resting)) return;
                 _pausedState = CurrentState;
+                var pausedAt = _clock();
+                var phase = PhaseForState(CurrentState)!.Value;
                 CurrentState = PomodoroState.Paused;
                 _deadline = null;
                 _timer.Stop();
+                StateChanged?.Invoke(CurrentState);
+                PhaseTransitioned?.Invoke(new PomodoroPhaseTransition(
+                    PomodoroPhaseTransitionKind.Paused,
+                    phase,
+                    pausedAt));
+                PersistenceRequested?.Invoke();
+                return;
             }
-            StateChanged?.Invoke(CurrentState);
-            PersistenceRequested?.Invoke();
         }
 
         /// <summary>
@@ -205,6 +238,8 @@ namespace Taskato.Services
         /// </summary>
         public void Stop()
         {
+            var stoppedAt = _clock();
+            var phase = CurrentPhase();
             _timer.Stop();
             _remainingSeconds = 0;
             _totalSeconds = 0;
@@ -215,6 +250,14 @@ namespace Taskato.Services
             _restHalfwayRaised = false;
             CurrentState = PomodoroState.Idle;
             StateChanged?.Invoke(CurrentState);
+            if (phase.HasValue)
+            {
+                PhaseTransitioned?.Invoke(new PomodoroPhaseTransition(
+                    PomodoroPhaseTransitionKind.Ended,
+                    phase.Value,
+                    stoppedAt,
+                    "stopped"));
+            }
 
             // 触发最后一次 Tick 更新 UI，恢复到随时准备工作的倒计时长
             Tick?.Invoke(WorkMinutes, 0, 1.0);
@@ -268,6 +311,11 @@ namespace Taskato.Services
             _completedPhase = previousState;
             CurrentState = PomodoroState.CompletionPending;
             StateChanged?.Invoke(CurrentState);
+            PhaseTransitioned?.Invoke(new PomodoroPhaseTransition(
+                PomodoroPhaseTransitionKind.Ended,
+                PhaseForState(previousState)!.Value,
+                completedAt,
+                "completed"));
             PublishCompletionElapsed();
             // 到期后继续每秒刷新“已过去”时间，直到用户明确选择下一步。
             _timer.Start();
@@ -367,6 +415,31 @@ namespace Taskato.Services
         {
             var elapsed = CompletionElapsedSeconds;
             Tick?.Invoke(elapsed / 60, elapsed % 60, 0);
+        }
+
+        private Models.PomodoroFocusPhase? CurrentPhase()
+        {
+            if (CurrentState == PomodoroState.Paused)
+                return PhaseForState(_pausedState);
+            return PhaseForState(CurrentState);
+        }
+
+        private static Models.PomodoroFocusPhase? PhaseForState(PomodoroState state) => state switch
+        {
+            PomodoroState.Working => Models.PomodoroFocusPhase.Work,
+            PomodoroState.Resting => Models.PomodoroFocusPhase.Rest,
+            _ => null
+        };
+
+        private void EndCurrentPhase(DateTimeOffset endedAt, string reason)
+        {
+            var phase = CurrentPhase();
+            if (!phase.HasValue || CurrentState == PomodoroState.CompletionPending) return;
+            PhaseTransitioned?.Invoke(new PomodoroPhaseTransition(
+                PomodoroPhaseTransitionKind.Ended,
+                phase.Value,
+                endedAt,
+                reason));
         }
 
         /// <summary>

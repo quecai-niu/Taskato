@@ -33,6 +33,11 @@ namespace Taskato.ViewModels
         /// <summary>飞书通知服务</summary>
         private readonly FeishuService _feishuService;
         private readonly PomodoroStateStore? _pomodoroStateStore;
+        private readonly PomodoroFocusTracker _focusTracker;
+        // UI 列表 index 会因删除附加计时器而变化；统计和恢复必须使用稳定槽位，避免关闭错会话。
+        private readonly Dictionary<PomodoroTimerViewModel, string> _focusTimerSlotIds = new();
+        private readonly List<string> _restoredTimerSlotIds = new();
+        private bool _isInitializingTimers = true;
         private bool _isRestoringPomodoroState;
         public FeishuService FeishuService => _feishuService;
 
@@ -160,6 +165,7 @@ namespace Taskato.ViewModels
 
         /// <summary>跨天自动总结请求，由主壳层接管导航。</summary>
         public event Action<DateTime>? DailySummaryRequested;
+        public event Action? FocusTrackingChanged;
 
         private PomodoroTimerViewModel? _currentActiveTimer;
         /// <summary>
@@ -191,20 +197,11 @@ namespace Taskato.ViewModels
         /// <summary>显示或提交直属子任务输入框</summary>
         public ICommand AddChildTaskCommand { get; }
 
-        /// <summary>打开历史查询窗体的命令</summary>
-        public ICommand OpenHistoryCommand { get; }
-
-        /// <summary>显示设置窗体命令</summary>
-        public ICommand OpenSettingsCommand { get; }
-
         /// <summary>添加附加番茄钟命令</summary>
         public ICommand AddAdditionalTimerCommand { get; }
 
         /// <summary>移除附加番茄钟命令</summary>
         public ICommand RemoveAdditionalTimerCommand { get; }
-
-        /// <summary>打开每日总结窗体命令</summary>
-        public ICommand OpenDailySummaryCommand { get; }
 
         // ==================== 构造函数 ====================
 
@@ -226,6 +223,16 @@ namespace Taskato.ViewModels
             _settingsService = settingsService;
             _feishuService = feishuService;
             _pomodoroStateStore = pomodoroStateStore;
+            if (_pomodoroStateStore is not null)
+            {
+                _restoredTimerSlotIds.AddRange(
+                    _pomodoroStateStore.Load()
+                        .Select(snapshot => snapshot.SlotId)
+                        .Where(slotId => !string.IsNullOrWhiteSpace(slotId)));
+            }
+            _focusTracker = new PomodoroFocusTracker(
+                dbService,
+                () => FocusTrackingChanged?.Invoke());
 
             // 初始化主番茄钟并添加到列表
             var mainTimer = new PomodoroTimerViewModel(_pomodoroService, "主番茄钟", newWorkMinutes => 
@@ -234,7 +241,7 @@ namespace Taskato.ViewModels
                 _settingsService.Save();
                 SavePomodoroState();
             }, SavePomodoroState);
-            AllTimers.Add(mainTimer);
+            AddTrackedTimer(mainTimer);
             CurrentActiveTimer = mainTimer;
 
             // 根据配置加载历史保存的附加组
@@ -252,8 +259,10 @@ namespace Taskato.ViewModels
                         SavePomodoroState();
                     }
                 }, SavePomodoroState);
-                AllTimers.Add(timerVM);
+                AddTrackedTimer(timerVM);
             }
+
+            _isInitializingTimers = false;
 
             // ---------- 初始化命令 ----------
 
@@ -311,7 +320,12 @@ namespace Taskato.ViewModels
                 {
                     int index = AllTimers.IndexOf(timer) - 1;
 
+                    // 活跃计时器移除前必须先结束统计区间，否则数据库会留下永久运行的开放会话。
+                    if (timer.StopCommand.CanExecute(null))
+                        timer.StopCommand.Execute(null);
+
                     AllTimers.Remove(timer);
+                    _focusTimerSlotIds.Remove(timer);
                     if (CurrentActiveTimer == timer)
                     {
                         CurrentActiveTimer = AllTimers.FirstOrDefault();
@@ -327,16 +341,13 @@ namespace Taskato.ViewModels
                 }
             });
 
-            // 打开子窗体命令（具体的窗体创建逻辑在 View 层处理）
-            OpenHistoryCommand = new RelayCommand(_ => OpenHistoryWindow());
-            OpenSettingsCommand = new RelayCommand(_ => OpenSettingsWindow());
-            OpenDailySummaryCommand = new RelayCommand(_ => OpenDailySummaryWindow());
-
             // ---------- 订阅数据库全局变更事件 ----------
             // 当任何地方（如历史界面）删除了任务或修改了内容，主界面自动同步刷新
             _dbService.OnDataChanged += () =>
             {
-                Application.Current.Dispatcher.InvokeAsync(async () =>
+                // Headless test（无界面测试）或宿主尚未创建 Application 时只跳过 UI 刷新，
+                // 不让数据库写入因为缺少 Dispatcher（调度器）而失败。
+                Application.Current?.Dispatcher.InvokeAsync(async () =>
                 {
                     await LoadTodayTasksAsync();
                 });
@@ -640,51 +651,6 @@ namespace Taskato.ViewModels
             return (task.CompletedLeafCount, task.TotalLeafCount);
         }
 
-        // ==================== 子窗体打开 ====================
-
-        /// <summary>
-        /// 打开历史查询窗体
-        /// </summary>
-        private void OpenHistoryWindow()
-        {
-            var historyVM = new HistoryViewModel(_dbService);
-            var historyWindow = new Views.HistoryWindow
-            {
-                DataContext = historyVM,
-                Owner = Application.Current.MainWindow
-            };
-            historyWindow.ShowDialog();
-        }
-
-        /// <summary>
-        /// 打开设置窗体
-        /// </summary>
-        private void OpenSettingsWindow(Views.SettingsSection? initialSection = null)
-        {
-            var settingsWindow = new Views.SettingsWindow(_pomodoroService, _settingsService, _feishuService, initialSection)
-            {
-                Owner = Application.Current.MainWindow
-            };
-            settingsWindow.ShowDialog();
-
-            if (_pomodoroService.CurrentState == PomodoroService.PomodoroState.Idle &&
-                CurrentActiveTimer is not null &&
-                CurrentActiveTimer == AllTimers.FirstOrDefault())
-            {
-                CurrentActiveTimer.WorkMinutes = _pomodoroService.WorkMinutes;
-            }
-
-            // 同步所有的子番茄钟的休息时间
-            foreach (var timer in AllTimers)
-            {
-                timer.RestMinutes = _settingsService.Config.RestMinutes;
-            }
-
-            // 同步多组模式的状态
-            OnPropertyChanged(nameof(IsMultiMode));
-            SavePomodoroState();
-        }
-
         /// <summary>设置页保存后，把可即时生效的配置同步到正在运行的计时器和绑定属性。</summary>
         public void ApplySettingsFromConfig()
         {
@@ -700,29 +666,6 @@ namespace Taskato.ViewModels
             OnPropertyChanged(nameof(NotificationSoundChoice));
             OnPropertyChanged(nameof(FeishuEnabled));
             SavePomodoroState();
-        }
-
-        /// <summary>
-        /// 打开设置并定位到飞书通知配置。
-        /// </summary>
-        public void OpenFeishuSettings()
-        {
-            OpenSettingsWindow(Views.SettingsSection.Feishu);
-        }
-
-        /// <summary>
-        /// 打开每日总结窗体
-        /// </summary>
-        private void OpenDailySummaryWindow()
-        {
-            var summaryVM = new DailySummaryViewModel(_dbService);
-            var summaryWindow = new Views.DailySummaryWindow
-            {
-                DataContext = summaryVM,
-                Owner = Application.Current.MainWindow
-            };
-            summaryWindow.Loaded += async (_, _) => await summaryVM.LoadSummaryAsync();
-            summaryWindow.ShowDialog();
         }
 
         private void AddAdditionalTimer()
@@ -741,7 +684,7 @@ namespace Taskato.ViewModels
                     SavePomodoroState();
                 }
             }, SavePomodoroState);
-            AllTimers.Add(timerVM);
+            AddTrackedTimer(timerVM);
             
             // 更新配置并保存
             _settingsService.Config.AdditionalTimersWorkMinutes.Add(_settingsService.Config.WorkMinutes);
@@ -768,7 +711,7 @@ namespace Taskato.ViewModels
                     .ToDictionary(group => group.Key, group => group.Last(), StringComparer.Ordinal);
                 for (var index = 0; index < AllTimers.Count; index++)
                 {
-                    if (snapshots.TryGetValue($"timer-{index}", out var snapshot))
+                    if (snapshots.TryGetValue(GetFocusTimerSlotId(AllTimers[index]), out var snapshot))
                         AllTimers[index].Restore(snapshot);
                 }
             }
@@ -779,13 +722,46 @@ namespace Taskato.ViewModels
 
             // 跨越截止时间后会变成“等待处理”，恢复结束立即覆盖旧的运行中快照。
             SavePomodoroState();
+            var observedAt = DateTimeOffset.Now;
+            for (var index = 0; index < AllTimers.Count; index++)
+            {
+                var slotId = GetFocusTimerSlotId(AllTimers[index]);
+                _focusTracker.Reconcile(
+                    slotId,
+                    AllTimers[index],
+                    SelectedTask,
+                    AllTimers[index].CreateSnapshot(slotId),
+                    observedAt);
+            }
         }
 
         public void SavePomodoroState()
         {
             if (_pomodoroStateStore is null || _isRestoringPomodoroState) return;
             _pomodoroStateStore.Save(AllTimers.Select((timer, index) =>
-                timer.CreateSnapshot($"timer-{index}")));
+                timer.CreateSnapshot(GetFocusTimerSlotId(timer))));
         }
+
+        public Task FlushFocusTrackingAsync() => _focusTracker.FlushAsync();
+
+        private void AddTrackedTimer(PomodoroTimerViewModel timer)
+        {
+            var index = AllTimers.Count;
+            var slotId = _isInitializingTimers && index < _restoredTimerSlotIds.Count
+                ? _restoredTimerSlotIds[index]
+                : $"timer-{Guid.NewGuid():N}";
+            AllTimers.Add(timer);
+            _focusTimerSlotIds[timer] = slotId;
+            timer.PhaseTransitioned += transition =>
+            {
+                if (!_focusTimerSlotIds.TryGetValue(timer, out var currentSlotId)) return;
+                _focusTracker.Track(currentSlotId, timer, SelectedTask, transition);
+            };
+        }
+
+        private string GetFocusTimerSlotId(PomodoroTimerViewModel timer) =>
+            _focusTimerSlotIds.TryGetValue(timer, out var slotId)
+                ? slotId
+                : $"timer-{Guid.NewGuid():N}";
     }
 }

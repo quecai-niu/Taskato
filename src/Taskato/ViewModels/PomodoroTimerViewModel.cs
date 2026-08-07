@@ -84,6 +84,7 @@ namespace Taskato.ViewModels
         public event Action? WorkCompleted;
         public event Action? RestCompleted;
         public event Action? RestHalfway;
+        public event Action<PomodoroPhaseTransition>? PhaseTransitioned;
 
         public ICommand StartWorkCommand { get; }
         public ICommand PauseCommand { get; }
@@ -134,6 +135,7 @@ namespace Taskato.ViewModels
             _pomodoroService.WorkCompleted += () => WorkCompleted?.Invoke();
             _pomodoroService.RestCompleted += () => RestCompleted?.Invoke();
             _pomodoroService.RestHalfway += () => RestHalfway?.Invoke();
+            _pomodoroService.PhaseTransitioned += transition => PhaseTransitioned?.Invoke(transition);
             if (onRuntimeStateChanged is not null)
                 _pomodoroService.PersistenceRequested += onRuntimeStateChanged;
 

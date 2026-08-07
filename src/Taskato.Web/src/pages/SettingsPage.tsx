@@ -242,31 +242,10 @@ export function SettingsPage({ reportError }: { reportError(error: unknown): voi
       setDataStatus(result.staged ? "备份已校验并暂存，请重启 Taskato 完成恢复。" : "已取消恢复");
     } catch (error) { setDataStatus("恢复校验失败，当前数据未改变"); reportError(error); }
   };
-  const switchToLegacyWorkspace = async () => {
-    if (
-      !window.confirm(
-        "将立即关闭网页工作区并打开旧 WPF 界面，任务数据不会改变。继续吗？",
-      )
-    )
-      return;
-    try {
-      setDataStatus("正在切换到旧版界面…");
-      const result = await bridge.request<SettingsDto>("settings.save", {
-        useLegacyWorkspace: true,
-      });
-      setSettings(result);
-      setSavedSettings(result);
-      await bridge.request("window.useLegacy");
-    } catch (error) {
-      setDataStatus("切换失败，请查看诊断日志");
-      reportError(error);
-    }
-  };
-
   return (
     <div className="full-page settings-page page-enter">
       <div className="page-heading-row">
-        <div><span className="section-kicker">完整应用设置</span><h2>设置</h2><p>完整保留旧版设置能力，设置仍由 C# 校验并保存。</p></div>
+        <div><span className="section-kicker">完整应用设置</span><h2>设置</h2><p>完整保留应用设置能力，设置仍由 C# 校验并保存。</p></div>
         <div className="heading-actions">
           <span className={`save-status ${saveStatus}`} role="status">{saveStatus === "saving" ? "正在保存…" : saveStatus === "dirty" ? "有未保存更改" : saveStatus === "error" ? "保存失败" : saveStatus === "saved" ? "已保存" : "设置已同步"}</span>
           <button className="secondary-button" onClick={() => { if (savedSettings) { setSettings(savedSettings); applyTheme(savedSettings); setSaveStatus("clean"); } }}>恢复已保存值</button>
@@ -283,7 +262,7 @@ export function SettingsPage({ reportError }: { reportError(error: unknown): voi
             <div className="theme-palette" role="radiogroup" aria-label="主题颜色">{palettes.map(([primary, secondary], index) => <button key={primary} role="radio" aria-checked={settings.selectedColorIndex === index} className={settings.selectedColorIndex === index ? "selected" : ""} style={{ background: `linear-gradient(135deg,${primary},${secondary})` }} onClick={() => selectPalette(index)}>{settings.selectedColorIndex === index ? "✓" : ""}</button>)}</div>
           </section>
 
-          <section id="settings-pomodoro"><div><h3>番茄钟时长</h3><p>与旧版相同：工作 1–240 分钟，休息 1–30 分钟。</p></div>
+          <section id="settings-pomodoro"><div><h3>番茄钟时长</h3><p>工作 1–240 分钟，休息 1–30 分钟。</p></div>
             <div className="setting-row"><div><strong>工作时长</strong><span>每次调整 1 分钟</span></div><div className="stepper"><button onClick={() => patch("workMinutes", Math.max(1, settings.workMinutes - 1))}>−</button><span>{settings.workMinutes} min</span><button onClick={() => patch("workMinutes", Math.min(240, settings.workMinutes + 1))}>＋</button></div></div>
             <div className="setting-row"><div><strong>休息时长</strong><span>每次调整 1 分钟</span></div><div className="stepper"><button onClick={() => patch("restMinutes", Math.max(1, settings.restMinutes - 1))}>−</button><span>{settings.restMinutes} min</span><button onClick={() => patch("restMinutes", Math.min(30, settings.restMinutes + 1))}>＋</button></div></div>
           </section>
@@ -299,7 +278,7 @@ export function SettingsPage({ reportError }: { reportError(error: unknown): voi
 
           <section id="settings-summary"><div><h3>每日总结</h3><p>跨天后自动展示昨日完成成果。</p></div><div className="setting-row"><div><strong>自动显示昨日总结</strong></div><Toggle label="自动显示昨日总结" value={settings.autoShowDailySummary} onChange={(v) => patch("autoShowDailySummary", v)} /></div></section>
 
-          <section id="settings-sound"><div><h3>提示音</h3><p>与旧版相同的六种选择，可试听当前选项。</p></div>
+          <section id="settings-sound"><div><h3>提示音</h3><p>提供六种提示音选择，可试听当前选项。</p></div>
             <div className="sound-options">{["静音", "系统通知", "系统提示", "系统背景", "系统风铃", "自定义"].map((label, index) => <label key={label}><input type="radio" name="sound" checked={settings.notificationSoundChoice === index} onChange={() => patch("notificationSoundChoice", index)} />{label}</label>)}</div>
             {settings.notificationSoundChoice === 5 && <div className="setting-row nested"><div><strong>自定义声音</strong><span className="setting-path">{settings.customSoundPath || "尚未选择文件"}</span></div><button className="secondary-button" onClick={() => void chooseSound()}>选择文件</button></div>}
             <button className="secondary-button" onClick={() => void bridge.request("settings.previewSound", { notificationSoundChoice: settings.notificationSoundChoice, customSoundPath: settings.customSoundPath }).catch(reportError)}>试听</button>
@@ -317,9 +296,7 @@ export function SettingsPage({ reportError }: { reportError(error: unknown): voi
             <div className="setting-row nested"><div><strong>休息结束通知</strong><span>0–20 条，默认 6 条</span></div><div className="setting-actions"><input aria-label="休息结束通知次数" className="number-input" type="number" min="0" max="20" step="1" value={settings.feishuRestCompletedNotificationCount} onChange={(e) => patch("feishuRestCompletedNotificationCount", Number(e.target.value))} /><Toggle label="休息结束通知" value={settings.feishuNotifyOnRest} onChange={(v) => patch("feishuNotifyOnRest", v)} /></div></div>
           </section>
 
-          <section id="settings-data"><div><h3>数据与兼容</h3><p>保留已批准的数据保护和旧界面回退能力，不替代上述旧版设置。</p></div>
-            <div className="setting-row"><div><strong>下次启动使用旧 WPF 界面</strong><span>WebView2 故障时的回退开关</span></div><Toggle label="使用旧界面" value={settings.useLegacyWorkspace} onChange={(v) => patch("useLegacyWorkspace", v)} /></div>
-            <div className="setting-row"><div><strong>立即切换到旧版界面</strong><span>保存兼容设置后立即关闭当前网页工作区</span></div><button className="secondary-button" onClick={() => void switchToLegacyWorkspace()}>立即切换</button></div>
+          <section id="settings-data"><div><h3>数据与维护</h3><p>管理本地数据、诊断日志以及可校验的备份恢复。</p></div>
             <div className="setting-row"><div><strong>本地数据目录</strong></div><div className="setting-actions"><button className="secondary-button" onClick={() => void bridge.request("app.openDataFolder").catch(reportError)}>打开数据位置</button><button className="secondary-button" onClick={() => void bridge.request("app.openLogsFolder").catch(reportError)}>打开诊断日志</button></div></div>
             <div className="setting-row"><div><strong>备份与恢复</strong><span>恢复前校验并自动保留回滚副本</span></div><div className="setting-actions"><button className="secondary-button" onClick={() => void createBackup()}>创建备份</button><button className="secondary-button" onClick={() => void stageRestore()}>从备份恢复</button></div></div>
             {dataStatus && <p className="data-operation-status" role="status">{dataStatus}</p>}

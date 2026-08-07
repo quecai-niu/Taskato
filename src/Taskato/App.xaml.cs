@@ -17,7 +17,7 @@ namespace Taskato
     /// 1. 初始化 DatabaseService（创建/连接 SQLite 数据库）
     /// 2. 初始化 PomodoroService（番茄钟计时器）
     /// 3. 初始化 TrayService（系统托盘图标）
-    /// 4. 创建 MainViewModel 并绑定到 MainWindow
+    /// 4. 创建 MainViewModel 与 WebView2 桌面宿主
     /// 5. 显示主窗口
     /// </summary>
     public partial class App : Application
@@ -126,12 +126,10 @@ namespace Taskato
                 showMainWindowAction: ShowMainWindowForTimerNotification);
             // 必须先建立通知订阅再恢复，否则关闭期间到期的完成事件会在启动时丢失。
             mainVM.RestorePomodoroState();
-            var shellVM = new ShellViewModel(mainVM, _dbService, _settingsService);
             _webBridgeService = new WebBridgeService(_dbService, mainVM, _settingsService);
 
-            Window activeWindow = null!;
-            MainWindow? legacyWindow = null;
-            WebShellWindow? webWindow = null;
+            var webWindow = new WebShellWindow(_webBridgeService);
+            Window activeWindow = webWindow;
 
             void ActivateWindow(Window window)
             {
@@ -151,36 +149,7 @@ namespace Taskato
                 };
                 window.Show();
             }
-
-            void ShowLegacyWorkspace(bool persistPreference)
-            {
-                if (persistPreference)
-                {
-                    _settingsService.Config.UseLegacyWorkspace = true;
-                    _settingsService.Save();
-                }
-
-                if (webWindow is not null)
-                {
-                    webWindow.IsAppShuttingDown = true;
-                    webWindow.Close();
-                    webWindow = null;
-                }
-
-                legacyWindow ??= new MainWindow { DataContext = shellVM };
-                ActivateWindow(legacyWindow);
-            }
-
-            if (_settingsService.Config.UseLegacyWorkspace)
-            {
-                ShowLegacyWorkspace(false);
-            }
-            else
-            {
-                webWindow = new WebShellWindow(_webBridgeService);
-                webWindow.LegacyWorkspaceRequested += () => ShowLegacyWorkspace(true);
-                ActivateWindow(webWindow);
-            }
+            ActivateWindow(webWindow);
 
             // ---- 5. 设置托盘事件回调 ----
 
@@ -194,25 +163,20 @@ namespace Taskato
             _trayService.ShowSettingsRequested += () =>
             {
                 ShowAndActivateWindow(activeWindow);
-                if (activeWindow is WebShellWindow web)
-                    web.NavigateTo("settings");
-                else
-                    shellVM.ShowSettingsCommand.Execute(null);
+                webWindow.NavigateTo("settings");
             };
 
             // 托盘菜单"退出" → 真正关闭应用
             _trayService.ExitRequested += () =>
             {
                 SaveWindowPlacement(activeWindow);
-                if (activeWindow is WebShellWindow web) web.IsAppShuttingDown = true;
-                if (activeWindow is MainWindow legacy) legacy.IsAppShuttingDown = true;
+                webWindow.IsAppShuttingDown = true;
                 _trayService.Dispose();  // 清理托盘图标
                 Shutdown();              // 退出应用
             };
 
             // ---- 6. 加载今日任务并显示窗口 ----
             await mainVM.LoadTodayTasksAsync();
-            await shellVM.NavigateAsync(shellVM.ActiveSection);
             var skipFirstRunGuide = Environment.GetEnvironmentVariable("TASKATO_SKIP_FIRST_RUN_GUIDE") == "1";
             if (!_settingsService.Config.HasSeenFeishuGuide && !skipFirstRunGuide)
             {
@@ -226,12 +190,7 @@ namespace Taskato
                 _settingsService.Save();
 
                 if (guideWindow.ShouldConfigure)
-                {
-                    if (activeWindow is WebShellWindow web)
-                        web.NavigateTo("settings");
-                    else
-                        await shellVM.NavigateAsync(Models.AppSection.Settings);
-                }
+                    webWindow.NavigateTo("settings");
             }
         }
 
@@ -339,6 +298,8 @@ namespace Taskato
         {
             SaveWindowPlacement();
             _mainViewModel?.SavePomodoroState();
+            // 阶段边界写入采用串行队列；进程退出前必须冲刷，避免最后一次暂停或停止丢失。
+            _mainViewModel?.FlushFocusTrackingAsync().GetAwaiter().GetResult();
             Microsoft.Win32.SystemEvents.PowerModeChanged -= SystemEvents_PowerModeChanged;
             _trayService?.Dispose();
             _notificationCoordinator?.Dispose();

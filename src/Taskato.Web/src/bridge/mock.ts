@@ -1,5 +1,6 @@
 import type {
   BridgeApi,
+  FocusAnalyticsResult,
   SettingsDto,
   SummaryResult,
   TaskActivityDto,
@@ -176,7 +177,6 @@ const settings: SettingsDto = {
   feishuRestCompletedNotificationCount: 6,
   feishuTestNotificationCount: 1,
   autoShowDailySummary: false,
-  useLegacyWorkspace: false,
 };
 
 export class MockBridge implements BridgeApi {
@@ -337,6 +337,12 @@ export class MockBridge implements BridgeApi {
         break;
       case "summary.get":
         result = this.summary(String(params.date ?? now.slice(0, 10)));
+        break;
+      case "focus.analytics":
+        result = buildMockFocusAnalytics(
+          String(params.period ?? "day") as "day" | "week" | "month",
+          String(params.anchorDate ?? toMockDate(new Date())),
+        );
         break;
       case "summary.candidates":
         result = tasks.filter(
@@ -566,4 +572,92 @@ export class MockBridge implements BridgeApi {
           left.occurredAt.localeCompare(right.occurredAt),
       );
   }
+}
+
+function buildMockFocusAnalytics(
+  period: "day" | "week" | "month",
+  anchorText: string,
+): FocusAnalyticsResult {
+  const anchor = new Date(`${anchorText}T12:00:00`);
+  const start = new Date(anchor);
+  if (period === "week") {
+    start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+  } else if (period === "month") {
+    start.setDate(1);
+  }
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(start);
+  if (period === "day") end.setDate(end.getDate() + 1);
+  else if (period === "week") end.setDate(end.getDate() + 7);
+  else end.setMonth(end.getMonth() + 1);
+
+  const stepMinutes = period === "month" ? 24 * 60 : 30;
+  const cells = [];
+  for (let cursor = new Date(start), index = 0; cursor < end; index += 1) {
+    const cellStart = new Date(cursor);
+    cursor = new Date(cursor.getTime() + stepMinutes * 60_000);
+    const active = period === "month"
+      ? [1, 2, 4, 7, 8, 11, 14, 15, 19, 22, 23, 27].includes(index)
+      : index % 17 === 0 || index % 29 === 0 || (index > 17 && index < 24);
+    const workSeconds = active
+      ? period === "month" ? ((index % 4) + 1) * 38 * 60 : 18 * 60
+      : 0;
+    const restSeconds = active && index % 3 === 0
+      ? period === "month" ? 18 * 60 : 5 * 60
+      : 0;
+    cells.push({
+      key: period === "month"
+        ? toMockDate(cellStart)
+        : `${toMockDate(cellStart)}T${toMockTime(cellStart)}`,
+      date: toMockDate(cellStart),
+      label: period === "month"
+        ? `${cellStart.getMonth() + 1}月${cellStart.getDate()}日`
+        : toMockTime(cellStart),
+      startsAt: cellStart.toISOString(),
+      endsAt: cursor.toISOString(),
+      workSeconds,
+      restSeconds,
+      workStarts: active && index % 2 === 0
+        ? [{
+            time: toMockTime(cellStart),
+            timerName: "主番茄钟",
+            taskId: 1,
+            taskTitle: "发布 Taskato 3.0",
+          }]
+        : [],
+    });
+  }
+  const workSeconds = cells.reduce((sum, cell) => sum + cell.workSeconds, 0);
+  const restSeconds = cells.reduce((sum, cell) => sum + cell.restSeconds, 0);
+  const activeDays = new Set(
+    cells
+      .filter((cell) => cell.workSeconds + cell.restSeconds > 0)
+      .map((cell) => cell.date),
+  ).size;
+  return {
+    period,
+    anchorDate: anchorText,
+    rangeLabel: period === "month"
+      ? `${start.getFullYear()}年${start.getMonth() + 1}月`
+      : period === "week"
+        ? `${start.getMonth() + 1}月${start.getDate()}日 – ${new Date(end.getTime() - 86_400_000).getMonth() + 1}月${new Date(end.getTime() - 86_400_000).getDate()}日`
+        : `${start.getFullYear()}年${start.getMonth() + 1}月${start.getDate()}日`,
+    rangeStart: toMockDate(start),
+    rangeEndExclusive: toMockDate(end),
+    workSeconds,
+    restSeconds,
+    totalSeconds: workSeconds + restSeconds,
+    workStartCount: cells.reduce((sum, cell) => sum + cell.workStarts.length, 0),
+    longestSessionSeconds: 48 * 60,
+    activeDays,
+    cells,
+  };
+}
+
+function toMockDate(value: Date): string {
+  return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`;
+}
+
+function toMockTime(value: Date): string {
+  return `${String(value.getHours()).padStart(2, "0")}:${String(value.getMinutes()).padStart(2, "0")}`;
 }

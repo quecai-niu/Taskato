@@ -67,6 +67,39 @@ export interface TimerListResult {
   timers: TimerDto[];
 }
 
+export interface FocusStartDto {
+  time: string;
+  timerName: string;
+  taskId: number | null;
+  taskTitle: string;
+}
+
+export interface FocusAnalyticsCellDto {
+  key: string;
+  date: string;
+  label: string;
+  startsAt: string;
+  endsAt: string;
+  workSeconds: number;
+  restSeconds: number;
+  workStarts: FocusStartDto[];
+}
+
+export interface FocusAnalyticsResult {
+  period: "day" | "week" | "month";
+  anchorDate: string;
+  rangeLabel: string;
+  rangeStart: string;
+  rangeEndExclusive: string;
+  workSeconds: number;
+  restSeconds: number;
+  totalSeconds: number;
+  workStartCount: number;
+  longestSessionSeconds: number;
+  activeDays: number;
+  cells: FocusAnalyticsCellDto[];
+}
+
 export interface SummaryRecord {
   taskId: number;
   titleSnapshot: string;
@@ -120,7 +153,6 @@ export interface SettingsDto {
   feishuRestCompletedNotificationCount: number;
   feishuTestNotificationCount: number;
   autoShowDailySummary: boolean;
-  useLegacyWorkspace: boolean;
 }
 
 export interface BridgeEvent<T = unknown> {

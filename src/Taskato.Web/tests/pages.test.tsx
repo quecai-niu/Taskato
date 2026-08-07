@@ -2,6 +2,7 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  FocusAnalyticsPage,
   HistoryPage,
   SettingsPage,
   SummaryPage,
@@ -59,6 +60,30 @@ describe("独立业务页面", () => {
     expect(host.querySelectorAll('[role="separator"]')).toHaveLength(2);
     expect(host.querySelector('[aria-haspopup="tree"]')).not.toBeNull();
     expect(host.querySelector("#task-operations select")).toBeNull();
+  });
+
+  it("专注统计页支持天、周、月热力图切换", async () => {
+    await renderAndFlush(<FocusAnalyticsPage reportError={() => undefined} />);
+    expect(host.textContent).toContain("专注统计");
+    expect(host.querySelectorAll(".focus-day-chart .focus-heat-cell")).toHaveLength(48);
+
+    const weekTab = host.querySelector<HTMLButtonElement>('[role="tab"]:not([aria-selected="true"])');
+    expect(weekTab).not.toBeNull();
+    await act(async () => {
+      weekTab?.click();
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
+    expect(host.querySelectorAll(".focus-week-row")).toHaveLength(7);
+    expect(host.querySelectorAll(".focus-week-chart .focus-heat-cell")).toHaveLength(7 * 48);
+
+    const monthTab = [...host.querySelectorAll<HTMLButtonElement>('[role="tab"]')]
+      .find((button) => button.textContent === "月");
+    expect(monthTab).not.toBeNull();
+    await act(async () => {
+      monthTab?.click();
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
+    expect(host.querySelectorAll(".focus-month-chart .month-cell").length).toBeGreaterThanOrEqual(28);
   });
 
   it("任务筛选保留祖先链，不会把子任务提升成顶级", () => {
@@ -514,6 +539,7 @@ describe("独立业务页面", () => {
         ?.value,
     ).toBe("1");
     expect(host.textContent).toContain("备份与恢复");
-    expect(host.textContent).toContain("立即切换到旧版界面");
+    expect(host.textContent).toContain("数据与维护");
+    expect(host.textContent).not.toContain("立即切换到旧版界面");
   });
 });

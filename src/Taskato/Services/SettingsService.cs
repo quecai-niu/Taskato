@@ -91,11 +91,6 @@ namespace Taskato.Services
         public double? WindowTop { get; set; }
         public bool IsWindowMaximized { get; set; }
 
-        /// <summary>最近一次访问的一级工作区。</summary>
-        public string LastAppSection { get; set; } = "Tasks";
-
-        /// <summary>WebView2 初始化失败时允许用户持久切回旧 WPF 工作区。</summary>
-        public bool UseLegacyWorkspace { get; set; } = false;
     }
 
     /// <summary>

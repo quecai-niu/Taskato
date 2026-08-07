@@ -117,4 +117,42 @@ describe("应用框架交互", () => {
     await act(async () => expandButton.click());
     expect(window.localStorage.getItem("taskato.navCollapsed")).toBe("false");
   });
+
+  it("切换菜单后恢复当前会话中选中的任务", async () => {
+    await act(async () => {
+      root.render(<App />);
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
+
+    const selectedTask = [...host.querySelectorAll<HTMLButtonElement>(".tree-title")]
+      .find((button) => button.textContent?.includes("确定新版信息架构"))!;
+    expect(selectedTask).not.toBeNull();
+    await act(async () => {
+      selectedTask.click();
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
+    expect(
+      host.querySelector<HTMLTextAreaElement>('[aria-label="任务内容"]')?.value,
+    ).toBe("确定新版信息架构");
+
+    const navigate = (label: string) =>
+      [...host.querySelectorAll<HTMLButtonElement>(".nav-item")].find(
+        (button) => button.textContent?.includes(label),
+      )!;
+    await act(async () => {
+      navigate("历史记录").click();
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
+    await act(async () => {
+      navigate("任务").click();
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
+
+    expect(
+      host.querySelector<HTMLTextAreaElement>('[aria-label="任务内容"]')?.value,
+    ).toBe("确定新版信息架构");
+    expect(host.querySelector(".tree-row.selected")?.textContent).toContain(
+      "确定新版信息架构",
+    );
+  });
 });

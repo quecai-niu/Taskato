@@ -9,6 +9,7 @@ import {
 } from "./components/AppChrome";
 import {
   HistoryPage,
+  FocusAnalyticsPage,
   SettingsPage,
   SummaryPage,
   TaskPage,
@@ -33,6 +34,9 @@ export function App() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [requestedTaskId, setRequestedTaskId] = useState<number | null>(null);
+  const [sessionSelectedTaskId, setSessionSelectedTaskId] = useState<
+    number | null
+  >(null);
   const [appearanceMode, setAppearanceMode] = useState<"dark" | "light">(
     "dark",
   );
@@ -43,9 +47,14 @@ export function App() {
     setActivePage("tasks");
     setSearchOpen(false);
     setNotificationsOpen(false);
+    setSessionSelectedTaskId(taskId);
     setRequestedTaskId(null);
     requestAnimationFrame(() => setRequestedTaskId(taskId));
   }, []);
+  const handleRequestedTaskHandled = useCallback(
+    () => setRequestedTaskId(null),
+    [],
+  );
 
   useEffect(() => {
     window.localStorage.setItem(
@@ -135,6 +144,9 @@ export function App() {
             key={`tasks-${pageRefreshVersion}`}
             reportError={reportError}
             requestedTaskId={requestedTaskId}
+            sessionSelectedTaskId={sessionSelectedTaskId}
+            onSelectedTaskIdChange={setSessionSelectedTaskId}
+            onRequestedTaskHandled={handleRequestedTaskHandled}
           />
         )}
         {activePage === "summary" && (
@@ -142,6 +154,12 @@ export function App() {
             key={`summary-${pageRefreshVersion}`}
             reportError={reportError}
             onOpenTask={openTask}
+          />
+        )}
+        {activePage === "focus" && (
+          <FocusAnalyticsPage
+            key={`focus-${pageRefreshVersion}`}
+            reportError={reportError}
           />
         )}
         {activePage === "history" && (
