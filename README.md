@@ -4,76 +4,101 @@
   <img src="src/Taskato/Assets/icon.png" alt="Taskato" width="96" />
 </p>
 
-<h3 align="center">把番茄钟、今日任务、历史复盘放在一个安静好看的 Windows 桌面应用里</h3>
+<h3 align="center">把层级任务、番茄专注、时间统计和每日复盘放进一个安静的 Windows 工作台</h3>
 
 <p align="center">
-  <a href="#快速开始">快速开始</a>
+  <a href="#下载安装">下载安装</a>
   ·
   <a href="#功能亮点">功能亮点</a>
   ·
   <a href="#界面预览">界面预览</a>
   ·
-  <a href="#项目结构">项目结构</a>
+  <a href="#源码运行">源码运行</a>
 </p>
 
 <p align="center">
+  <a href="https://github.com/quecai-niu/Taskato/releases/latest"><img src="https://img.shields.io/github/v/release/quecai-niu/Taskato?logo=github&label=release" alt="Latest release" /></a>
   <a href="https://github.com/quecai-niu/Taskato/commits/master"><img src="https://img.shields.io/github/last-commit/quecai-niu/Taskato?logo=github&label=last%20commit" alt="Last commit" /></a>
   <a href="https://github.com/quecai-niu/Taskato/stargazers"><img src="https://img.shields.io/github/stars/quecai-niu/Taskato?logo=github&label=stars" alt="GitHub stars" /></a>
   <a href="https://github.com/quecai-niu/Taskato/issues"><img src="https://img.shields.io/github/issues/quecai-niu/Taskato?logo=github&label=issues" alt="GitHub issues" /></a>
-  <a href="https://github.com/quecai-niu/Taskato"><img src="https://img.shields.io/github/repo-size/quecai-niu/Taskato?logo=github&label=repo%20size" alt="Repository size" /></a>
 </p>
 
 ---
 
 ## 这是什么
 
-Taskato 是一个基于 **.NET 8 + WPF + WebView2 + React** 的番茄钟与任务管理桌面应用。WPF 负责窗口、托盘、通知和本地服务，React 负责完整工作区界面。
+Taskato 是一个基于 **.NET 8 + WPF + WebView2 + React** 的 Windows 本地任务与番茄钟应用。
 
-主界面采用可缩放、可最大化的整窗工作区，通过左侧导航在任务、每日总结、历史记录和设置之间切换；任务页按任务树、当前任务和番茄钟分栏展示。
+- React 提供任务、专注统计、每日总结、历史记录和设置五个完整业务页面。
+- C# 负责 SQLite 数据、任务规则、番茄钟、托盘、通知、备份恢复和系统生命周期。
+- WPF 只保留 WebView2 桌面宿主、完成确认、提醒弹窗和必要的原生文件对话框，不再维护旧版 WPF 工作区。
 
-- 专注前，把今天要做的事放进任务列表。
-- 专注中，用番茄钟保持节奏，支持多组并行计时。
-- 专注后，通过提醒弹窗、提示音、飞书通知把状态拉回来。
-- 一天结束，用每日总结和历史查询回看完成情况。
+主界面是可最大化、可缩放分栏的整窗工作台。日间模式采用低刺激米黄色，夜间模式采用高对比深色主题；导航折叠状态、分栏宽度和最大化状态会在下次启动时恢复。
 
 ## 界面预览
 
 <p align="center">
-  <img src="docs/previews/screenshots/taskato-main-20260624.png" alt="Taskato 主界面预览" width="760" />
+  <img src="docs/audits/review_TaskatoUiOption1_20260729_1336/implementation-light.png" alt="Taskato React 整窗工作区日间模式" width="900" />
 </p>
 
-更多交互预览：
+<p align="center"><sub>React 整窗工作区：层级任务树、任务详情与多组番茄钟</sub></p>
+
+更多设计与验证资料：
 
 - [React 整窗工作区设计基准](docs/previews/preview_TaskatoWorkspace_20260728_1421/index.html)
-- [番茄钟附加组删除按钮预览](docs/previews/preview_PomodoroTabDelete_20260618_1407.html)
-- [番茄钟完成弹窗鎏金边框预览](docs/previews/preview_ToastGoldBorder_20260618_1406.html)
-- [番茄钟完成弹窗熔金闪卡预览](docs/previews/preview_ToastGoldHybrid_20260618_1411.html)
+- [日间与夜间主题实现对比](docs/audits/review_TaskatoUiOption1_20260729_1336/comparison.png)
+- [专注统计与旧版界面清理记录](docs/20260807_2144_plan_FocusAnalytics_专注统计与旧版界面清理.md)
 
 ## 功能亮点
 
 | 模块 | 能力 |
 | --- | --- |
-| 番茄钟 | 工作/休息循环、暂停、跳过、提前休息、实时进度条、状态动画 |
-| 多组计时 | 主番茄钟 + 附加番茄钟，选项卡切换，附加组支持删除 |
-| 任务管理 | 最多 5 层子任务、树形展开、父级进度、级联完成、4 级优先级、任务笔记、全局搜索与完成耗时 |
-| 提醒弹窗 | 四角轮换出现、鎏金边框、按钮延迟启用、显示已出现时长 |
-| 提示音 | 无声、Windows Notify、Ding、Background、Chimes、自定义音效 |
-| 飞书通知 | 工作完成、休息完成、休息过半、重复提醒均可配置 |
-| 每日总结 | 按顶级任务分组、叶子/父级成果统计、有效完成过滤、复制/导出、补充任务 |
-| 历史查询 | 只追加的创建/编辑/移动/完成/取消完成/删除日志、日期与关键词筛选、CSV 导出 |
-| 数据安全 | 数据与设置备份、恢复前完整性校验、恢复回滚副本、本地崩溃诊断日志 |
-| 系统集成 | 托盘常驻、休眠恢复计时、最小化后台运行、开机自启、单例运行 |
+| 今日任务 | 只展示未完成、今天发布或今天完成的任务，并保留必要的父级路径；支持筛选、一键展开/收起和页面切换后恢复选中项 |
+| 层级任务 | 最多 5 层嵌套、任务组与未归类分区、直属子任务编辑、父任务迁移、删除分支或提升直属子任务 |
+| 完成规则 | 子任务全部完成后父任务仍保持未完成，由用户手动确认大任务或阶段任务完成；新增未完成子任务会重新打开相关父级 |
+| 任务内容 | 标题与内容使用同一个业务字段，可在详情区直接编辑；新增任务和子任务时可选择四级优先级 |
+| 番茄钟 | 主番茄钟与多个附加计时器、工作/休息循环、暂停、停止、提前休息和时长调整 |
+| 跨进程计时 | 使用绝对截止时间持久化；关闭软件不影响倒计时，重新打开时自动恢复，已超时则显示过去多久并弹出提醒 |
+| 专注统计 | 按天、周、月查看半小时或自然日热力格子、工作启动标记、专注/休息/总时长、启动次数、最长单次和活跃天数 |
+| 统计口径 | 只统计番茄钟真实 Working/Resting 区间；暂停和完成弹窗等待时间不计入，任务仅作为会话说明信息 |
+| 提醒与飞书 | 工作完成、休息完成、休息过半和手动测试分别配置发送次数；可选择提示时是否直接打开软件界面 |
+| 每日总结 | 只展示当前仍有效的完成记录，按顶级任务分组，并区分叶子任务与手动确认的父级成果；支持补充任务和导出 |
+| 历史记录 | 只追加保存创建、编辑、移动、完成、取消完成和删除事件；支持日期、关键词筛选及 CSV 导出 |
+| 数据安全 | 本地 SQLite、设置与运行状态备份，恢复前完整性校验、恢复回滚副本和本地诊断日志 |
+| 系统集成 | 托盘常驻、休眠恢复、最小化后台运行、开机自启、单例运行及窗口状态持久化 |
 
-## 快速开始
+## 下载安装
+
+最新稳定版是 **v2.28**：
+
+- [下载 Windows 安装包](https://github.com/quecai-niu/Taskato/releases/download/v2.28/Taskato-2.28.0-win-x64-setup.exe)
+- [下载便携版 ZIP](https://github.com/quecai-niu/Taskato/releases/download/v2.28/Taskato-2.28.0-win-x64-portable.zip)
+- [查看 v2.28 Release、SHA-256 与发布清单](https://github.com/quecai-niu/Taskato/releases/tag/v2.28)
+
+安装包是 `.NET 8 win-x64` 自包含版本，目标电脑不需要预装 .NET Desktop Runtime；若系统缺少 WebView2 Evergreen Runtime，安装器会从微软官方入口下载。
+
+发布包不包含任何个人任务、数据库或设置。程序首次运行后才会创建自己的 `Data` 目录；覆盖升级同一安装目录时不会覆盖已有数据，但升级前仍建议在“设置 → 数据与维护”中创建备份。
+
+## 使用方式
+
+1. 在左栏新增任务并选择优先级；需要拆分时，在任务详情顶部继续添加直属子任务。
+2. 用任务树的一键展开/收起和筛选快速定位当前分支，双击子任务进入详情编辑。
+3. 完成叶子任务后，由你决定何时手动确认父任务或整个任务组完成。
+4. 选择当前任务并启动番茄钟；软件关闭、系统休眠或界面卡顿不会让计时变慢。
+5. 在“专注统计”中切换天、周、月，查看哪些时间启动过专注以及实际工作、休息时长。
+6. 在“每日总结”回看仍然有效的成果，在“历史记录”查询完整活动时间线。
+7. 如需远程提醒，在设置中配置飞书 Webhook 和四类通知次数。
+
+## 源码运行
 
 ### 环境要求
 
 - Windows 10/11
 - [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
-- Node.js 20 或更高版本（仅源码构建前端时需要）
+- Node.js 20 或更高版本
 - Microsoft Edge WebView2 Runtime（Windows 11 通常已包含）
 
-### 克隆与运行
+### 克隆、构建与运行
 
 ```powershell
 git clone https://github.com/quecai-niu/Taskato.git
@@ -85,46 +110,45 @@ cd ../..
 dotnet run --project src/Taskato/Taskato.csproj
 ```
 
-### 构建
+### 测试
 
 ```powershell
 cd src/Taskato.Web
 npm ci
+npm run check
 npm test
 npm run build
 cd ../..
 dotnet build Taskato.sln -c Release
+dotnet run --project src/TestProject/TestProject.csproj -c Release
 ```
 
-Release 构建会检查 `src/Taskato.Web/dist/index.html`；缺失时会给出明确错误，避免生成只能显示空白页的安装包。前端开发时可启动 Vite，并把 `TASKATO_WEB_DEV_URL` 设置为开发服务器地址。
+### 生成发布包
 
-生成经过完整检查的便携发布包：
+生成经过前端测试、C# 回归和真实 WebView2 烟测的便携包：
 
 ```powershell
-.\scripts\build-release.ps1 -Version 2.23.0
+.\scripts\build-release.ps1 -Version 2.28.0
 ```
 
-运行时、安装包、升级和回滚策略见 [发布与恢复说明](docs/release_Taskato_20260729.md)。
+已安装 Inno Setup 时，同时生成安装包：
 
-## 使用方式
+```powershell
+.\scripts\build-release.ps1 -Version 2.28.0 -BuildInstaller
+```
 
-1. 在主界面添加今日任务，可用 `#标签` 做轻量分类，也可在任务卡片中快速添加直属子任务。
-2. 展开任务树逐项完成叶子任务；全部子任务完成后，父任务会自动完成并记录为阶段成果。
-3. 双击任务进入详情，可更换父任务、管理直属子任务或调整层级。
-4. 设置工作/休息时长，启动番茄钟。
-5. 使用左侧导航进入历史记录或每日总结，按大任务分组回看仍然有效的叶子任务和父级成果。
-6. 如需远程提醒，在设置中配置飞书 Webhook。
+完整运行时、升级、签名和回滚策略见 [发布与恢复说明](docs/release_Taskato_20260729.md)。
 
 ## 技术栈
 
 | 层级 | 技术 |
 | --- | --- |
-| UI | React 19、TypeScript、Vite、WebView2；WPF 保留原生宿主与短流程弹窗 |
-| 架构 | C# Service / ViewModel 为唯一业务事实来源，JSON WebBridge 白名单通信 |
-| 运行时 | .NET 8, C# |
-| 存储 | SQLite, sqlite-net-pcl |
-| 系统集成 | Windows Forms NotifyIcon, HKCU Run |
-| 通知 | ToastWindow, MediaPlayer/SoundPlayer, Feishu Webhook |
+| 桌面宿主 | WPF、WebView2、Windows Forms NotifyIcon |
+| Web UI | React 19、TypeScript、Vite、Phosphor Icons |
+| 业务与桥接 | .NET 8、C#、Service/ViewModel、JSON WebBridge 白名单协议 |
+| 数据 | SQLite、sqlite-net-pcl、事务化任务活动日志和番茄钟会话区间 |
+| 通知 | 原生提醒窗口、MediaPlayer/SoundPlayer、飞书 Webhook |
+| 验证 | Vitest、TestProject、Release WebView2 自动烟测 |
 
 ## 项目结构
 
@@ -132,35 +156,36 @@ Release 构建会检查 `src/Taskato.Web/dist/index.html`；缺失时会给出�
 Taskato/
 ├─ src/
 │  ├─ Taskato/
-│  │  ├─ Assets/          # 图标与图片资源
-│  │  ├─ Converters/      # XAML 值转换器
-│  │  ├─ Models/          # 任务等数据模型
-│  │  ├─ Services/        # 数据库、计时器、设置、托盘、飞书通知
-│  │  ├─ Utils/           # RelayCommand、视觉效果等工具
-│  │  ├─ ViewModels/      # Main、Pomodoro、History、DailySummary
-│  │  └─ Views/           # WebView2 主壳层、旧 WPF 回退页与原生短流程弹窗
-│  ├─ Taskato.Web/        # React + TypeScript 工作区、桥接客户端与浏览器 mock
-│  └─ TestProject/
-├─ docs/
-│  └─ previews/           # UI 预览与截图
+│  │  ├─ Assets/          # 图标与原生资源
+│  │  ├─ Models/          # 任务、活动、专注统计与 Bridge DTO
+│  │  ├─ Services/        # SQLite、计时器、设置、桥接、托盘、通知与备份
+│  │  ├─ ViewModels/      # 任务工作区、番茄钟和每日总结状态
+│  │  └─ Views/           # WebView2 主壳层与原生短流程窗口
+│  ├─ Taskato.Web/        # React 工作区、Bridge client、browser mock 与测试
+│  └─ TestProject/        # C# 回归与集成测试
+├─ installer/             # Inno Setup 安装定义
+├─ scripts/               # 发布、WebView2 与窗口烟测脚本
+├─ docs/                  # 设计、发布、审查与项目导航文档
 ├─ Taskato.sln
 └─ README.md
 ```
 
 ## 配置与数据
 
-应用会在运行目录下维护本地数据与设置：
+应用默认在程序目录下的 `Data` 中维护本地数据：
 
-- `Data/settings.json`：主题、番茄钟、提示音、通知等偏好设置。
-- SQLite 数据库：保存任务树及独立完成记录；取消完成不会删除历史，但每日总结只展示当前仍有效的最后一次完成；已删除任务仍可保留完成快照。
+- `Data/taskato.db`：任务树、完成记录、只追加活动日志和番茄钟专注区间。
+- `Data/settings.json`：主题、窗口、番茄钟、提示音、通知和系统偏好。
+- `Data/pomodoro-state.json`：跨进程恢复所需的计时状态。
 
-这些数据默认留在本机，不需要云端账号。
+WebView2 浏览器缓存默认放在 `%LOCALAPPDATA%/Taskato/WebView2`，不会进入程序目录、备份文件或发布包。Taskato 不需要云端账号，除非你主动配置飞书 Webhook，否则业务数据不会发送到外部服务。
 
 ## 当前版本
 
-`v2.18`
+`v2.28`
 
-- 主工作区迁移为 React + TypeScript，并由 WPF WebView2 承载。
-- 新增最多五层的任务树、独立子任务输入、父级级联成果与有效每日总结。
-- 新增创建、完成和取消完成事件时间线，同时保留旧 WPF 工作区回退入口。
-- 完整桥接番茄钟、托盘窗口操作、设置、系统文件选择和原生完成弹窗。
+- 新增天、周、月专注统计，分别展示工作与休息有效时长，并排除暂停和完成等待。
+- 任务树支持最多五层、手动确认父级成果、当前任务筛选、折叠状态和会话选中项保持。
+- 番茄钟支持跨进程恢复、超时提醒、多组计时和四类可配置飞书通知次数。
+- WebView2 成为唯一工作区 UI，旧版 WPF 业务页面和回退入口已经移除。
+- 提供经过前端、C# 和真实 WebView2 烟测的安装包、便携包、SHA-256 与发布清单。
