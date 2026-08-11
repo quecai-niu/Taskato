@@ -14,6 +14,8 @@
   <a href="#界面预览">界面预览</a>
   ·
   <a href="#源码运行">源码运行</a>
+  ·
+  <a href="#许可证">许可证</a>
 </p>
 
 <p align="center">
@@ -138,6 +140,16 @@ dotnet run --project src/TestProject/TestProject.csproj -c Release
 ```
 
 完整运行时、升级、签名和回滚策略见 [发布与恢复说明](docs/release_Taskato_20260729.md)。
+
+## 许可证
+
+Taskato 采用 [PolyForm Noncommercial License 1.0.0](LICENSE)，以源码可用方式发布，不属于 OSI 定义的开源软件。
+
+- 允许将本软件用于个人学习、研究、实验、测试、业余项目及许可证列明的其他非商业用途。
+- 允许在非商业用途范围内修改和分发本软件；分发时必须同时提供许可证条款及规定的通知。
+- 不允许将本软件用于商业目的。商业使用或商业授权请事先联系著作权人并取得书面许可。
+
+本节仅作通俗说明，不替代 `LICENSE` 中的完整条款；两者不一致时，以 `LICENSE` 为准。
 
 ## 技术栈
 
