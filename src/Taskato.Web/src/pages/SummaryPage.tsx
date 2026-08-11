@@ -231,6 +231,32 @@ export function SummaryPage({
   );
 }
 
+export type BackfillSortMode = "newest" | "oldest" | "priority";
+
+export function sortBackfillTasks(
+  tasks: TaskDto[],
+  sortMode: BackfillSortMode,
+): TaskDto[] {
+  const compareCreatedAt = (left: TaskDto, right: TaskDto) =>
+    new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime();
+
+  return [...tasks].sort((left, right) => {
+    if (sortMode === "oldest") {
+      return compareCreatedAt(left, right) || left.id - right.id;
+    }
+
+    if (sortMode === "priority") {
+      return (
+        right.priority - left.priority ||
+        compareCreatedAt(right, left) ||
+        right.id - left.id
+      );
+    }
+
+    return compareCreatedAt(right, left) || right.id - left.id;
+  });
+}
+
 function BackfillDialog({
   date,
   reportError,
@@ -244,14 +270,19 @@ function BackfillDialog({
 }) {
   const [tasks, setTasks] = useState<TaskDto[]>([]);
   const [taskId, setTaskId] = useState<number | null>(null);
+  const [sortMode, setSortMode] = useState<BackfillSortMode>("newest");
   const [duration, setDuration] = useState("");
   const [time, setTime] = useState(new Date().toTimeString().slice(0, 5));
+  const sortedTasks = useMemo(
+    () => sortBackfillTasks(tasks, sortMode),
+    [sortMode, tasks],
+  );
   useEffect(() => {
     void bridge
       .request<TaskDto[]>("summary.candidates")
       .then((items) => {
         setTasks(items);
-        setTaskId(items[0]?.id ?? null);
+        setTaskId(sortBackfillTasks(items, "newest")[0]?.id ?? null);
       })
       .catch(reportError);
   }, [reportError]);
@@ -275,7 +306,7 @@ function BackfillDialog({
       className="modal-backdrop"
       onMouseDown={(event) => event.target === event.currentTarget && onClose()}
     >
-      <section className="modal" role="dialog" aria-modal="true">
+      <section className="modal backfill-modal" role="dialog" aria-modal="true">
         <header>
           <div>
             <span className="section-kicker">{date}</span>
@@ -286,8 +317,23 @@ function BackfillDialog({
           </IconButton>
         </header>
         <p>选择未完成叶子任务；补充完成后，父任务仍需手动确认。</p>
+        <div className="task-choice-heading">
+          <span className="field-label">选择任务</span>
+          <select
+            className="backfill-sort-select"
+            aria-label="补充任务排序方式"
+            value={sortMode}
+            onChange={(event) =>
+              setSortMode(event.target.value as BackfillSortMode)
+            }
+          >
+            <option value="newest">最新发布</option>
+            <option value="oldest">最早发布</option>
+            <option value="priority">优先级从高到低</option>
+          </select>
+        </div>
         <div className="task-choice-list">
-          {tasks.map((task) => (
+          {sortedTasks.map((task) => (
             <button
               key={task.id}
               className={taskId === task.id ? "selected" : ""}
@@ -302,7 +348,7 @@ function BackfillDialog({
               </div>
             </button>
           ))}
-          {tasks.length === 0 && (
+          {sortedTasks.length === 0 && (
             <p className="dialog-empty">没有可补充的未完成叶子任务。</p>
           )}
         </div>

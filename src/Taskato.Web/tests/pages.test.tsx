@@ -9,6 +9,7 @@ import {
   TaskPage,
 } from "../src/pages/WorkspacePages";
 import { buildTree, filterTasksWithAncestors } from "../src/pages/TaskPage";
+import { sortBackfillTasks } from "../src/pages/SummaryPage";
 import { bridge, type TaskDto, type TaskListResult } from "../src/bridge";
 
 describe("独立业务页面", () => {
@@ -541,5 +542,57 @@ describe("独立业务页面", () => {
     expect(host.textContent).toContain("备份与恢复");
     expect(host.textContent).toContain("数据与维护");
     expect(host.textContent).not.toContain("立即切换到旧版界面");
+  });
+
+  it("补充任务支持按发布时间和优先级排序", () => {
+    const makeTask = (
+      id: number,
+      priority: number,
+      createdAt: string,
+    ) => ({ id, priority, createdAt } as TaskDto);
+    const tasks = [
+      makeTask(1, 1, "2026-08-09T09:00:00"),
+      makeTask(2, 2, "2026-08-08T09:00:00"),
+      makeTask(3, 2, "2026-08-10T09:00:00"),
+    ];
+
+    expect(sortBackfillTasks(tasks, "newest").map((task) => task.id)).toEqual([
+      3, 1, 2,
+    ]);
+    expect(sortBackfillTasks(tasks, "oldest").map((task) => task.id)).toEqual([
+      2, 1, 3,
+    ]);
+    expect(sortBackfillTasks(tasks, "priority").map((task) => task.id)).toEqual([
+      3, 2, 1,
+    ]);
+    expect(tasks.map((task) => task.id)).toEqual([1, 2, 3]);
+  });
+
+  it("补充任务弹窗默认使用最新发布排序", async () => {
+    await renderAndFlush(
+      <SummaryPage reportError={() => undefined} onOpenTask={() => undefined} />,
+    );
+    const openBackfill = [...host.querySelectorAll<HTMLButtonElement>("button")]
+      .find((button) => button.textContent?.includes("补充任务"));
+
+    await act(async () => {
+      openBackfill?.click();
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
+
+    const sortSelect = host.querySelector<HTMLSelectElement>(
+      '[aria-label="补充任务排序方式"]',
+    );
+    expect(sortSelect?.value).toBe("newest");
+    expect(sortSelect?.options).toHaveLength(3);
+    expect(host.querySelector(".backfill-modal .task-choice-list")).not.toBeNull();
+
+    await act(async () => {
+      if (sortSelect) {
+        sortSelect.value = "priority";
+        sortSelect.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+    });
+    expect(sortSelect?.value).toBe("priority");
   });
 });
