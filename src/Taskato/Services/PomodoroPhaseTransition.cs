@@ -18,4 +18,12 @@ namespace Taskato.Services
         PomodoroFocusPhase Phase,
         DateTimeOffset OccurredAt,
         string EndReason = "");
+
+    /// <summary>
+    /// 一轮工作计时结束时冻结的业务事实。填写记录期间经过的时间不应改变专注耗时。
+    /// </summary>
+    public sealed record PomodoroWorkCompletion(
+        DateTimeOffset CompletedAt,
+        int FocusedSeconds,
+        string EndReason);
 }

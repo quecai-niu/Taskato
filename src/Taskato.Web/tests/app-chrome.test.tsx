@@ -155,4 +155,34 @@ describe("应用框架交互", () => {
       "确定新版信息架构",
     );
   });
+
+  it("新增任务视图和应用导航会实时同步完成记录上下文", async () => {
+    const request = vi.spyOn(bridge, "request");
+    await act(async () => {
+      root.render(<App />);
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
+
+    await act(async () => {
+      host.querySelector<HTMLButtonElement>(".open-task-create")!.click();
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
+    expect(request).toHaveBeenCalledWith("workspace.context.set", {
+      activePage: "tasks",
+      taskViewMode: "create",
+      selectedTaskId: expect.any(Number),
+    });
+
+    const settingsButton = [...host.querySelectorAll<HTMLButtonElement>(".nav-item")]
+      .find((button) => button.textContent?.includes("设置"))!;
+    await act(async () => {
+      settingsButton.click();
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
+    expect(request).toHaveBeenCalledWith("workspace.context.set", {
+      activePage: "settings",
+      taskViewMode: "create",
+      selectedTaskId: expect.any(Number),
+    });
+  });
 });

@@ -82,6 +82,7 @@ namespace Taskato.ViewModels
 
         // 事件转发
         public event Action? WorkCompleted;
+        public event Action<PomodoroWorkCompletion>? WorkCompletionRequested;
         public event Action? RestCompleted;
         public event Action? RestHalfway;
         public event Action<PomodoroPhaseTransition>? PhaseTransitioned;
@@ -133,6 +134,8 @@ namespace Taskato.ViewModels
             };
 
             _pomodoroService.WorkCompleted += () => WorkCompleted?.Invoke();
+            _pomodoroService.WorkCompletionRequested += completion =>
+                WorkCompletionRequested?.Invoke(completion);
             _pomodoroService.RestCompleted += () => RestCompleted?.Invoke();
             _pomodoroService.RestHalfway += () => RestHalfway?.Invoke();
             _pomodoroService.PhaseTransitioned += transition => PhaseTransitioned?.Invoke(transition);
@@ -146,7 +149,7 @@ namespace Taskato.ViewModels
                     PomodoroService.PomodoroState.Resting or
                     PomodoroService.PomodoroState.Paused);
             StopCommand = new RelayCommand(_ => _pomodoroService.Stop(), _ => IsStarted);
-            EarlyRestCommand = new RelayCommand(_ => _pomodoroService.StartRest(), _ => IsWorkingState);
+            EarlyRestCommand = new RelayCommand(_ => _pomodoroService.CompleteWorkEarly(), _ => IsWorkingState);
 
             IncreaseTimeCommand = new RelayCommand(_ =>
             {

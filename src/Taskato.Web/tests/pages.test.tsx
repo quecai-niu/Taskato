@@ -10,7 +10,29 @@ import {
 } from "../src/pages/WorkspacePages";
 import { buildTree, filterTasksWithAncestors } from "../src/pages/TaskPage";
 import { sortBackfillTasks } from "../src/pages/SummaryPage";
+import {
+  calculateTaskPickerPlacement,
+  filterAndSortTaskOptions,
+} from "../src/components/TaskPicker";
 import { bridge, type TaskDto, type TaskListResult } from "../src/bridge";
+
+function createTask(overrides: Partial<TaskDto> & Pick<TaskDto, "id" | "title">): TaskDto {
+  return {
+    parentId: null,
+    depth: 0,
+    isCompleted: false,
+    status: "notStarted",
+    priority: 0,
+    hasChildren: false,
+    canAddChild: true,
+    completedLeafCount: 0,
+    totalLeafCount: 1,
+    createdAt: new Date().toISOString(),
+    completedAt: null,
+    completionDurationMinutes: null,
+    ...overrides,
+  };
+}
 
 describe("独立业务页面", () => {
   let host: HTMLDivElement;
@@ -50,16 +72,15 @@ describe("独立业务页面", () => {
     expect(host.textContent).toContain("未归类任务");
     expect(host.textContent).toContain("当前专注");
     expect(host.textContent).toContain("任务内容");
-    expect(host.querySelector('[aria-label="新建顶级任务"]')).not.toBeNull();
-    expect(host.querySelector('[aria-label="添加顶级任务"]')).not.toBeNull();
+    expect(host.querySelector(".open-task-create")).not.toBeNull();
+    expect(host.querySelector('[aria-label="新建顶级任务"]')).toBeNull();
     expect(host.querySelector('[aria-label="完成父任务"]')).not.toBeNull();
-    expect(host.querySelector('[aria-label="新任务优先级"]')).not.toBeNull();
     expect(host.querySelector('[aria-label="子任务优先级"]')).not.toBeNull();
     expect(host.querySelector('[aria-label="减少五分钟"]')).not.toBeNull();
     expect(host.querySelector('[aria-label="增加五分钟"]')).not.toBeNull();
     expect(host.querySelector(".timer-display-stage")).not.toBeNull();
     expect(host.querySelectorAll('[role="separator"]')).toHaveLength(2);
-    expect(host.querySelector('[aria-haspopup="tree"]')).not.toBeNull();
+    expect(host.querySelector('[aria-label="所属父任务"]')).not.toBeNull();
     expect(host.querySelector("#task-operations select")).toBeNull();
   });
 
@@ -85,6 +106,44 @@ describe("独立业务页面", () => {
       await new Promise((resolve) => window.setTimeout(resolve, 0));
     });
     expect(host.querySelectorAll(".focus-month-chart .month-cell").length).toBeGreaterThanOrEqual(28);
+  });
+
+  it("任务详情显示精确任务的推进记录并支持手动补录", async () => {
+    await renderAndFlush(
+      <TaskPage reportError={() => undefined} requestedTaskId={4} />,
+    );
+    expect(host.textContent).toContain("推进记录");
+    expect(host.textContent).toContain("完成推进记录区域的信息结构");
+    const createProgress = [...host.querySelectorAll<HTMLButtonElement>("button")]
+      .find((button) => button.textContent?.includes("记录推进"));
+    await act(async () => createProgress?.click());
+    expect(host.querySelector(".progress-editor-modal")).not.toBeNull();
+    expect(host.querySelector('[aria-label="搜索任务"]')).not.toBeNull();
+  });
+
+  it("统一任务选择器默认隐藏已完成任务并支持按完整路径搜索", () => {
+    const source: TaskDto[] = [
+      createTask({ id: 1, title: "项目", parentId: null, depth: 0 }),
+      createTask({ id: 2, title: "加载窗口", parentId: 1, depth: 1 }),
+      createTask({ id: 3, title: "已完成项", isCompleted: true }),
+    ];
+    expect(filterAndSortTaskOptions(source, "项目 > 加载", false, "newest")
+      .map((task) => task.id)).toEqual([2]);
+    expect(filterAndSortTaskOptions(source, "", false, "newest")
+      .map((task) => task.id)).not.toContain(3);
+    expect(filterAndSortTaskOptions(source, "", true, "newest")
+      .map((task) => task.id)).toContain(3);
+  });
+
+  it("任务选择器靠近视口底部时改为向上展开", () => {
+    const placement = calculateTaskPickerPlacement(
+      { top: 680, right: 1180, bottom: 730 },
+      1200,
+      760,
+    );
+    expect(placement.opensAbove).toBe(true);
+    expect(placement.style.bottom).toBe(87);
+    expect(placement.style.maxHeight).toBe(410);
   });
 
   it("任务筛选保留祖先链，不会把子任务提升成顶级", () => {
@@ -222,13 +281,17 @@ describe("独立业务页面", () => {
     );
   });
 
-  it("常驻输入框可新增顶级任务，番茄钟可在空闲时调整时长", async () => {
+  it("中央新增页面可创建任务，番茄钟可在空闲时调整时长", async () => {
     await renderAndFlush(
       <TaskPage reportError={() => undefined} requestedTaskId={null} />,
     );
 
-    const input = host.querySelector<HTMLInputElement>(
-      '[aria-label="新建顶级任务"]',
+    await act(async () =>
+      host.querySelector<HTMLButtonElement>(".open-task-create")!.click(),
+    );
+    expect(host.textContent).toContain("番茄钟推进记录默认设为“无所属”");
+    const input = host.querySelector<HTMLTextAreaElement>(
+      '[aria-label="新任务内容"]',
     )!;
     const highPriority = host.querySelector<HTMLButtonElement>(
       '[aria-label="新任务优先级：高"]',
@@ -237,26 +300,21 @@ describe("独立业务页面", () => {
     expect(highPriority.getAttribute("aria-checked")).toBe("true");
     await act(async () => {
       const valueSetter = Object.getOwnPropertyDescriptor(
-        HTMLInputElement.prototype,
+        HTMLTextAreaElement.prototype,
         "value",
       )!.set!;
-      valueSetter.call(input, "从常驻入口新增的任务");
+      valueSetter.call(input, "从中央新增页面创建的任务");
       input.dispatchEvent(new Event("input", { bubbles: true }));
     });
-    const addButton = host.querySelector<HTMLButtonElement>(
-      '[aria-label="添加顶级任务"]',
-    )!;
+    const addButton = Array.from(host.querySelectorAll<HTMLButtonElement>("button"))
+      .find((button) => button.textContent?.includes("创建任务"))!;
     expect(addButton.disabled).toBe(false);
     await act(async () => {
       addButton.click();
       await new Promise((resolve) => window.setTimeout(resolve, 0));
     });
-    expect(host.textContent).toContain("从常驻入口新增的任务");
-    expect(
-      host
-        .querySelector('[aria-label="新任务优先级：无"]')
-        ?.getAttribute("aria-checked"),
-    ).toBe("true");
+    expect(host.textContent).toContain("从中央新增页面创建的任务");
+    expect(host.querySelector('[aria-label="新任务内容"]')).toBeNull();
 
     const increaseButton = host.querySelector<HTMLButtonElement>(
       '[aria-label="增加五分钟"]',
@@ -283,12 +341,15 @@ describe("独立业务页面", () => {
     expect(host.querySelector('[aria-label="全部展开"]')).not.toBeNull();
     expect(host.querySelector(".tree-children")).toBeNull();
 
-    const rootInput = host.querySelector<HTMLInputElement>(
-      '[aria-label="新建顶级任务"]',
+    await act(async () =>
+      host.querySelector<HTMLButtonElement>(".open-task-create")!.click(),
+    );
+    const rootInput = host.querySelector<HTMLTextAreaElement>(
+      '[aria-label="新任务内容"]',
     )!;
     await act(async () => {
       const valueSetter = Object.getOwnPropertyDescriptor(
-        HTMLInputElement.prototype,
+        HTMLTextAreaElement.prototype,
         "value",
       )!.set!;
       valueSetter.call(rootInput, "收起时新增的顶级任务");
@@ -296,7 +357,7 @@ describe("独立业务页面", () => {
     });
     await act(async () => {
       host
-        .querySelector<HTMLButtonElement>('[aria-label="添加顶级任务"]')!
+        .querySelector<HTMLButtonElement>(".task-create-actions .primary-button")!
         .click();
       await new Promise((resolve) => window.setTimeout(resolve, 0));
     });
@@ -505,6 +566,9 @@ describe("独立业务页面", () => {
       <SummaryPage reportError={() => undefined} onOpenTask={() => undefined} />,
     );
     expect(host.textContent).toContain("每日总结");
+    expect(host.textContent).toContain("总投入时长");
+    expect(host.textContent).toContain("任务 28分钟 · 推进 25分钟");
+    expect(host.textContent).toContain("53分钟");
 
     await renderAndFlush(
       <HistoryPage reportError={() => undefined} onOpenTask={() => undefined} />,
@@ -581,7 +645,7 @@ describe("独立业务页面", () => {
     });
 
     const sortSelect = host.querySelector<HTMLSelectElement>(
-      '[aria-label="补充任务排序方式"]',
+      '[aria-label="任务排序方式"]',
     );
     expect(sortSelect?.value).toBe("newest");
     expect(sortSelect?.options).toHaveLength(3);

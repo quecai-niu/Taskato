@@ -4,6 +4,7 @@ export interface TaskDto {
   parentId: number | null;
   depth: number;
   isCompleted: boolean;
+  status?: "notStarted" | "inProgress" | "completed";
   priority: number;
   hasChildren: boolean;
   canAddChild: boolean;
@@ -12,6 +13,33 @@ export interface TaskDto {
   createdAt: string;
   completedAt: string | null;
   completionDurationMinutes: number | null;
+}
+
+export interface ProgressRecordDto {
+  id: number;
+  taskId: number | null;
+  taskTitle: string;
+  taskPath: string;
+  note: string;
+  startedAt: string;
+  completedAt: string;
+  createdAt: string;
+  originalDurationMinutes: number;
+  durationMinutes: number;
+  isDurationAdjusted: boolean;
+  endReason: string;
+  endReasonDisplay: string;
+  source: "pomodoro" | "manual" | "legacypomodorotask";
+  canOpenTask: boolean;
+}
+
+export interface TaskProgressResult {
+  records: ProgressRecordDto[];
+  ownCount: number;
+  allCount: number;
+  ownDurationMinutes: number;
+  allDurationMinutes: number;
+  lastProgressAt: string | null;
 }
 
 export interface TaskListResult {
@@ -118,8 +146,14 @@ export interface SummaryResult {
   leafCompletedCount: number;
   parentAchievementCount: number;
   highPriorityCompleted: number;
+  taskDurationMinutes: number;
+  taskDurationDisplay: string;
   totalDurationMinutes: number;
   totalDurationDisplay: string;
+  progressCount?: number;
+  progressDurationMinutes?: number;
+  progressDurationDisplay?: string;
+  progressRecords?: ProgressRecordDto[];
   groups: Array<{
     topLevelTaskId: number;
     title: string;

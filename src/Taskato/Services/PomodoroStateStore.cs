@@ -15,6 +15,7 @@ namespace Taskato.Services
         public int TotalSeconds { get; set; }
         public DateTimeOffset? DeadlineUtc { get; set; }
         public DateTimeOffset? CompletedAtUtc { get; set; }
+        public int CompletedFocusSeconds { get; set; }
         public bool RestHalfwayRaised { get; set; }
         public int WorkMinutes { get; set; }
         public int RestMinutes { get; set; }

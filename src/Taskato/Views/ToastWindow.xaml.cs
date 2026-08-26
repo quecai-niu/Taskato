@@ -38,6 +38,8 @@ namespace Taskato.Views
 
         /// <summary>"继续工作"按钮的回调委托</summary>
         private readonly Action? _onContinue;
+        private readonly Func<string, bool, Task>? _onCompletionSubmit;
+        private bool _isSubmitting;
 
         /// <summary>弹窗计时器</summary>
         private System.Windows.Threading.DispatcherTimer? _elapsedTimer;
@@ -78,7 +80,8 @@ namespace Taskato.Views
         public ToastWindow(string title, string subtitle,
             Action? onRest, Action? onContinue, bool showTimer = false, bool isRestComplete = false,
             double actionDelaySeconds = 1.5, int soundChoice = 3, string customSoundPath = "",
-            int initialElapsedSeconds = 0)
+            int initialElapsedSeconds = 0,
+            Func<string, bool, Task>? onCompletionSubmit = null)
         {
             InitializeComponent();
 
@@ -88,6 +91,7 @@ namespace Taskato.Views
 
             _onRest = onRest;
             _onContinue = onContinue;
+            _onCompletionSubmit = onCompletionSubmit;
             _soundChoice = soundChoice; // 记录音效方案，供 PlayNotificationSound 使用
             _customSoundPath = customSoundPath;
             _actionDelaySeconds = Math.Clamp(actionDelaySeconds, MinActionDelaySeconds, MaxActionDelaySeconds);
@@ -121,6 +125,13 @@ namespace Taskato.Views
                 RestButton.Visibility = Visibility.Collapsed;
                 ContinueButton.Content = "💪 开始工作";
                 ContinueButton.Style = (Style)FindResource("PrimaryButton");
+            }
+            else if (_onCompletionSubmit is not null)
+            {
+                CompletionInputPanel.Visibility = Visibility.Visible;
+                RestButton.Content = "☕ 完成并休息";
+                ContinueButton.Content = "💪 完成并继续";
+                Loaded += (_, _) => CompletionNoteTextBox.Focus();
             }
 
             // 播放提示音 (使用 Windows 默认现代通知音)
@@ -234,7 +245,8 @@ namespace Taskato.Views
             if (_actionDelaySeconds <= 0)
             {
                 SetActionButtonsEnabled(true);
-                ActionDelayText.Visibility = Visibility.Collapsed;
+                // Hidden 会保留倒计时提示的布局空间，避免按钮解锁时窗口高度突变。
+                ActionDelayText.Visibility = Visibility.Hidden;
                 return;
             }
 
@@ -253,7 +265,7 @@ namespace Taskato.Views
                 {
                     StopActionDelay();
                     SetActionButtonsEnabled(true);
-                    ActionDelayText.Visibility = Visibility.Collapsed;
+                    ActionDelayText.Visibility = Visibility.Hidden;
                     return;
                 }
 
@@ -270,10 +282,16 @@ namespace Taskato.Views
 
         private void SetActionButtonsEnabled(bool isEnabled)
         {
-            RestButton.IsEnabled = isEnabled;
-            ContinueButton.IsEnabled = isEnabled;
-            RestButton.Opacity = isEnabled ? 1.0 : 0.55;
-            ContinueButton.Opacity = isEnabled ? 1.0 : 0.55;
+            var effectiveEnabled = isEnabled && !_isSubmitting;
+            RestButton.IsEnabled = effectiveEnabled;
+            ContinueButton.IsEnabled = effectiveEnabled;
+            RestButton.Opacity = effectiveEnabled ? 1.0 : 0.55;
+            ContinueButton.Opacity = effectiveEnabled ? 1.0 : 0.55;
+        }
+
+        public void SetCompletionDestination(string displayName)
+        {
+            DestinationText.Text = $"将归入：{displayName}";
         }
 
         /// <summary>
@@ -287,9 +305,15 @@ namespace Taskato.Views
         /// <summary>
         /// 点击"休息一下"
         /// </summary>
-        private void RestButton_Click(object sender, RoutedEventArgs e)
+        private async void RestButton_Click(object sender, RoutedEventArgs e)
         {
             if (!RestButton.IsEnabled) return;
+
+            if (_onCompletionSubmit is not null)
+            {
+                await SubmitCompletionAsync(startRest: true);
+                return;
+            }
 
             _onRest?.Invoke();
             Close();
@@ -298,13 +322,42 @@ namespace Taskato.Views
         /// <summary>
         /// 点击"继续工作"
         /// </summary>
-        private void ContinueButton_Click(object sender, RoutedEventArgs e)
+        private async void ContinueButton_Click(object sender, RoutedEventArgs e)
         {
             if (!ContinueButton.IsEnabled) return;
+
+            if (_onCompletionSubmit is not null)
+            {
+                await SubmitCompletionAsync(startRest: false);
+                return;
+            }
 
             StopTimer();
             _onContinue?.Invoke();
             Close();
+        }
+
+        private async Task SubmitCompletionAsync(bool startRest)
+        {
+            if (_onCompletionSubmit is null || _isSubmitting) return;
+
+            _isSubmitting = true;
+            SubmissionErrorText.Visibility = Visibility.Collapsed;
+            SetActionButtonsEnabled(false);
+            try
+            {
+                await _onCompletionSubmit(CompletionNoteTextBox.Text, startRest);
+                StopTimer();
+                Close();
+            }
+            catch (Exception exception)
+            {
+                SubmissionErrorText.Text = exception.Message;
+                SubmissionErrorText.Visibility = Visibility.Visible;
+                _isSubmitting = false;
+                SetActionButtonsEnabled(true);
+                CompletionNoteTextBox.Focus();
+            }
         }
 
         private void StopTimer()

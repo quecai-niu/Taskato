@@ -42,6 +42,8 @@ namespace Taskato
         private PomodoroNotificationCoordinator _notificationCoordinator = null!;
         private WebBridgeService _webBridgeService = null!;
         private MainViewModel _mainViewModel = null!;
+        private WorkspaceContextService _workspaceContextService = null!;
+        private PomodoroCompletionService _pomodoroCompletionService = null!;
 
         /// <summary>单例应用锁</summary>
         private static Mutex? _mutex;
@@ -120,13 +122,22 @@ namespace Taskato
                 _feishuService,
                 pomodoroStateStore);
             _mainViewModel = mainVM;
+            _workspaceContextService = new WorkspaceContextService();
+            _pomodoroCompletionService = new PomodoroCompletionService(
+                _dbService,
+                _workspaceContextService);
             Microsoft.Win32.SystemEvents.PowerModeChanged += SystemEvents_PowerModeChanged;
             _notificationCoordinator = new PomodoroNotificationCoordinator(
                 mainVM,
-                showMainWindowAction: ShowMainWindowForTimerNotification);
+                showMainWindowAction: ShowMainWindowForTimerNotification,
+                completionService: _pomodoroCompletionService);
             // 必须先建立通知订阅再恢复，否则关闭期间到期的完成事件会在启动时丢失。
             mainVM.RestorePomodoroState();
-            _webBridgeService = new WebBridgeService(_dbService, mainVM, _settingsService);
+            _webBridgeService = new WebBridgeService(
+                _dbService,
+                mainVM,
+                _settingsService,
+                _workspaceContextService);
 
             var webWindow = new WebShellWindow(_webBridgeService);
             Window activeWindow = webWindow;

@@ -73,6 +73,9 @@ namespace Taskato.Models
         private bool _isCompleted = false;
         public bool IsCompleted { get => _isCompleted; set => SetProperty(ref _isCompleted, value); }
 
+        private TaskWorkStatus _status = TaskWorkStatus.NotStarted;
+        public TaskWorkStatus Status { get => _status; set => SetProperty(ref _status, value); }
+
         /// <summary>
         /// 优先级：0=无, 1=中, 2=高, 3=紧急
         /// </summary>

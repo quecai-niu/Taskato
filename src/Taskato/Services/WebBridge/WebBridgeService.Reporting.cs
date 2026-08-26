@@ -17,6 +17,13 @@ namespace Taskato.Services.WebBridge
             var date = OptionalDate(parameters, "date") ?? DateTime.Today;
             var viewModel = new DailySummaryViewModel(_database) { CurrentDate = date };
             await viewModel.LoadSummaryAsync();
+            var progressRecords = await _database.GetProgressRecordsForDateAsync(date);
+            var existingTaskIds = (await _database.GetTaskTreeItemsAsync())
+                .Select(task => task.Id)
+                .ToHashSet();
+            var progressDurationMinutes = progressRecords.Sum(record => record.DurationMinutes);
+            var taskDurationMinutes = viewModel.TotalDurationMinutes;
+            var totalDurationMinutes = taskDurationMinutes + progressDurationMinutes;
             return new
             {
                 date = date.ToString("yyyy-MM-dd"),
@@ -25,8 +32,16 @@ namespace Taskato.Services.WebBridge
                 viewModel.LeafCompletedCount,
                 viewModel.ParentAchievementCount,
                 viewModel.HighPriorityCompleted,
-                viewModel.TotalDurationMinutes,
-                viewModel.TotalDurationDisplay,
+                taskDurationMinutes,
+                taskDurationDisplay = viewModel.TotalDurationDisplay,
+                totalDurationMinutes,
+                totalDurationDisplay = FormatDuration(totalDurationMinutes),
+                progressCount = progressRecords.Count,
+                progressDurationMinutes,
+                progressDurationDisplay = FormatDuration(progressDurationMinutes),
+                progressRecords = progressRecords
+                    .Select(record => ToProgressDto(record, existingTaskIds))
+                    .ToList(),
                 groups = viewModel.CompletionGroups.Select(group => new
                 {
                     group.TopLevelTaskId,
@@ -100,6 +115,20 @@ namespace Taskato.Services.WebBridge
             var builder = new StringBuilder();
             builder.AppendLine($"{date:yyyy-MM-dd} 每日总结");
             builder.AppendLine(summary.GetProperty("summaryLine").GetString());
+            builder.AppendLine(
+                $"总投入：{summary.GetProperty("totalDurationDisplay").GetString()}" +
+                $"（任务 {summary.GetProperty("taskDurationDisplay").GetString()}，" +
+                $"推进 {summary.GetProperty("progressDurationDisplay").GetString()}）");
+            builder.AppendLine();
+            builder.AppendLine("[今日推进]");
+            foreach (var progress in summary.GetProperty("progressRecords").EnumerateArray())
+            {
+                var note = progress.GetProperty("note").GetString();
+                if (string.IsNullOrWhiteSpace(note)) note = "未填写";
+                builder.AppendLine(
+                    $"- {note}｜{progress.GetProperty("taskPath").GetString()}｜" +
+                    $"{progress.GetProperty("durationMinutes").GetInt32()}分钟");
+            }
             foreach (var group in summary.GetProperty("groups").EnumerateArray())
             {
                 builder.AppendLine();
@@ -108,6 +137,15 @@ namespace Taskato.Services.WebBridge
                     builder.AppendLine($"- {record.GetProperty("titleSnapshot").GetString()}（{record.GetProperty("kindDisplay").GetString()}）");
             }
             return builder.ToString();
+        }
+
+        private static string FormatDuration(int totalMinutes)
+        {
+            if (totalMinutes <= 0) return "0分钟";
+            var hours = totalMinutes / 60;
+            var minutes = totalMinutes % 60;
+            if (hours > 0 && minutes > 0) return $"{hours}小时{minutes}分钟";
+            return hours > 0 ? $"{hours}小时" : $"{minutes}分钟";
         }
 
         private async Task<object> SearchHistoryAsync(JsonElement parameters)

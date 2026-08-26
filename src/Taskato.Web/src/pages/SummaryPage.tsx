@@ -1,7 +1,6 @@
 import {
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
   type FormEvent,
@@ -31,6 +30,7 @@ import {
 } from "@phosphor-icons/react";
 import {
   bridge,
+  type ProgressRecordDto,
   type SettingsDto,
   type SummaryResult,
   type TaskActivityDto,
@@ -44,6 +44,7 @@ import {
   toLocalDateInput,
   useBridgeRefresh,
 } from "../ui";
+import { TaskPicker } from "../components/TaskPicker";
 
 export function SummaryPage({
   reportError,
@@ -56,6 +57,10 @@ export function SummaryPage({
   const [summary, setSummary] = useState<SummaryResult | null>(null);
   const [backfill, setBackfill] = useState(false);
   const [operationStatus, setOperationStatus] = useState("");
+  const [taskOptions, setTaskOptions] = useState<TaskDto[]>([]);
+  const [editingProgress, setEditingProgress] = useState<ProgressRecordDto | null>(
+    null,
+  );
   const load = useCallback(async () => {
     try {
       setSummary(await bridge.request<SummaryResult>("summary.get", { date }));
@@ -66,6 +71,12 @@ export function SummaryPage({
   useEffect(() => {
     void load();
   }, [load]);
+  useEffect(() => {
+    void bridge
+      .request<TaskDto[]>("tasks.options")
+      .then(setTaskOptions)
+      .catch(reportError);
+  }, [reportError]);
   useBridgeRefresh("tasks.changed", () => void load());
   const shift = (days: number) => {
     const value = new Date(`${date}T00:00:00`);
@@ -138,9 +149,13 @@ export function SummaryPage({
               <small>自动汇总达成</small>
             </div>
             <div>
-              <span>专注时长</span>
+              <span>总投入时长</span>
               <strong>{summary?.totalDurationDisplay ?? "0分钟"}</strong>
-              <small>来自完成记录</small>
+              <small>
+                任务 {summary?.taskDurationDisplay ?? "0分钟"} · 推进{
+                  " "
+                }{summary?.progressDurationDisplay ?? "0分钟"}
+              </small>
             </div>
           </div>
           <div className="achievement-list">
@@ -187,6 +202,47 @@ export function SummaryPage({
               </article>
             ))}
           </div>
+          <section className="summary-progress-section">
+            <div className="section-title-row">
+              <div>
+                <h3>今日推进</h3>
+                <span>
+                  {summary?.progressCount ?? 0} 次 ·{
+                    " "
+                  }{summary?.progressDurationDisplay ?? "0分钟"}
+                </span>
+              </div>
+            </div>
+            <div className="summary-progress-list">
+              {(summary?.progressRecords ?? []).map((record) => (
+                <article className="summary-progress-row" key={record.id}>
+                  <div>
+                    <strong>{record.note || "未填写"}</strong>
+                    <span>{record.taskPath}</span>
+                  </div>
+                  <small>
+                    {record.durationMinutes} 分钟
+                    {record.isDurationAdjusted ? " · 已调整" : ""}
+                  </small>
+                  <time>
+                    {new Date(record.completedAt).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </time>
+                  <IconButton
+                    label="编辑推进所属和时长"
+                    onClick={() => setEditingProgress(record)}
+                  >
+                    <NotePencil size={16} />
+                  </IconButton>
+                </article>
+              ))}
+              {(summary?.progressRecords?.length ?? 0) === 0 && (
+                <div className="history-empty">这一天还没有推进记录。</div>
+              )}
+            </div>
+          </section>
           {summary && summary.groups.length === 0 && (
             <div className="history-empty">
               这一天还没有有效完成；取消完成的内容仍可在历史记录中查看。
@@ -227,11 +283,124 @@ export function SummaryPage({
           onDone={load}
         />
       )}
+      {editingProgress && (
+        <SummaryProgressEditor
+          record={editingProgress}
+          tasks={taskOptions}
+          reportError={reportError}
+          onClose={() => setEditingProgress(null)}
+          onSaved={load}
+        />
+      )}
     </div>
   );
 }
 
 export type BackfillSortMode = "newest" | "oldest" | "priority";
+
+function SummaryProgressEditor({
+  record,
+  tasks,
+  reportError,
+  onClose,
+  onSaved,
+}: {
+  record: ProgressRecordDto;
+  tasks: TaskDto[];
+  reportError(error: unknown): void;
+  onClose(): void;
+  onSaved(): Promise<void>;
+}) {
+  const [taskId, setTaskId] = useState(record.taskId);
+  const [note, setNote] = useState(record.note);
+  const [duration, setDuration] = useState(String(record.durationMinutes));
+  const [saving, setSaving] = useState(false);
+  const durationMinutes = Number(duration);
+  const validDuration = Number.isInteger(durationMinutes) &&
+    durationMinutes >= 1 && durationMinutes <= 1440;
+
+  const save = async () => {
+    if (!validDuration) return;
+    try {
+      setSaving(true);
+      await bridge.request("progress.update", {
+        recordId: record.id,
+        taskId,
+        note,
+        durationMinutes,
+      });
+      await onSaved();
+      onClose();
+    } catch (error) {
+      reportError(error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div
+      className="modal-backdrop"
+      onMouseDown={(event) => event.target === event.currentTarget && onClose()}
+    >
+      <section className="modal progress-editor-modal" role="dialog" aria-modal="true">
+        <header>
+          <div>
+            <span className="section-kicker">今日推进</span>
+            <h2>修改所属和时长</h2>
+          </div>
+          <IconButton label="关闭" onClick={onClose}>
+            <X size={19} />
+          </IconButton>
+        </header>
+        <label className="progress-note-field">
+          <span>推进内容（可选）</span>
+          <textarea
+            maxLength={5000}
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+          />
+        </label>
+        <span className="field-label">所属任务</span>
+        <TaskPicker tasks={tasks} value={taskId} onChange={setTaskId} embedded />
+        <div className="modal-fields progress-fields">
+          <label>
+            <span>统计时长（分钟）</span>
+            <input
+              type="number"
+              min="1"
+              max="1440"
+              value={duration}
+              onChange={(event) => setDuration(event.target.value)}
+            />
+          </label>
+        </div>
+        {record.originalDurationMinutes > 0 &&
+          record.originalDurationMinutes !== durationMinutes && (
+            <div className="adjusted-duration-note">
+              <span>原始计时：{record.originalDurationMinutes} 分钟</span>
+              <button
+                type="button"
+                onClick={() => setDuration(String(record.originalDurationMinutes))}
+              >
+                恢复原始计时
+              </button>
+            </div>
+          )}
+        <footer>
+          <button className="secondary-button" onClick={onClose}>取消</button>
+          <button
+            className="primary-button"
+            disabled={!validDuration || saving}
+            onClick={() => void save()}
+          >
+            {saving ? "正在保存…" : "保存修改"}
+          </button>
+        </footer>
+      </section>
+    </div>
+  );
+}
 
 export function sortBackfillTasks(
   tasks: TaskDto[],
@@ -270,13 +439,8 @@ function BackfillDialog({
 }) {
   const [tasks, setTasks] = useState<TaskDto[]>([]);
   const [taskId, setTaskId] = useState<number | null>(null);
-  const [sortMode, setSortMode] = useState<BackfillSortMode>("newest");
   const [duration, setDuration] = useState("");
   const [time, setTime] = useState(new Date().toTimeString().slice(0, 5));
-  const sortedTasks = useMemo(
-    () => sortBackfillTasks(tasks, sortMode),
-    [sortMode, tasks],
-  );
   useEffect(() => {
     void bridge
       .request<TaskDto[]>("summary.candidates")
@@ -317,41 +481,14 @@ function BackfillDialog({
           </IconButton>
         </header>
         <p>选择未完成叶子任务；补充完成后，父任务仍需手动确认。</p>
-        <div className="task-choice-heading">
-          <span className="field-label">选择任务</span>
-          <select
-            className="backfill-sort-select"
-            aria-label="补充任务排序方式"
-            value={sortMode}
-            onChange={(event) =>
-              setSortMode(event.target.value as BackfillSortMode)
-            }
-          >
-            <option value="newest">最新发布</option>
-            <option value="oldest">最早发布</option>
-            <option value="priority">优先级从高到低</option>
-          </select>
-        </div>
-        <div className="task-choice-list">
-          {sortedTasks.map((task) => (
-            <button
-              key={task.id}
-              className={taskId === task.id ? "selected" : ""}
-              onClick={() => setTaskId(task.id)}
-            >
-              <span className="radio-mark">
-                {taskId === task.id && <Check size={10} />}
-              </span>
-              <div>
-                <strong>{task.title}</strong>
-                <small>第 {task.depth + 1} 层</small>
-              </div>
-            </button>
-          ))}
-          {sortedTasks.length === 0 && (
-            <p className="dialog-empty">没有可补充的未完成叶子任务。</p>
-          )}
-        </div>
+        <span className="field-label">选择任务</span>
+        <TaskPicker
+          tasks={tasks}
+          value={taskId}
+          onChange={setTaskId}
+          embedded
+          allowUnassigned={false}
+        />
         <div className="modal-fields">
           <label>
             <span>完成时间</span>

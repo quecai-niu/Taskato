@@ -11,24 +11,27 @@ namespace Taskato.Services
     {
         private readonly MainViewModel _viewModel;
         private readonly Dictionary<PomodoroTimerViewModel, TimerHandlers> _handlers = new();
-        private readonly Action<PomodoroTimerViewModel> _workCompletedAction;
+        private readonly Action<PomodoroTimerViewModel>? _workCompletedAction;
         private readonly Action<PomodoroTimerViewModel> _restCompletedAction;
         private readonly Action<PomodoroTimerViewModel> _restHalfwayAction;
         private readonly Action _showMainWindowAction;
+        private readonly PomodoroCompletionService? _completionService;
 
         public PomodoroNotificationCoordinator(
             MainViewModel viewModel,
             Action<PomodoroTimerViewModel>? workCompletedAction = null,
             Action<PomodoroTimerViewModel>? restCompletedAction = null,
             Action<PomodoroTimerViewModel>? restHalfwayAction = null,
-            Action? showMainWindowAction = null)
+            Action? showMainWindowAction = null,
+            PomodoroCompletionService? completionService = null)
         {
             _viewModel = viewModel;
             // 可注入动作让订阅生命周期能够在无弹窗、无外部网络的测试中被直接证明。
-            _workCompletedAction = workCompletedAction ?? ShowWorkCompleted;
+            _workCompletedAction = workCompletedAction;
             _restCompletedAction = restCompletedAction ?? ShowRestCompleted;
             _restHalfwayAction = restHalfwayAction ?? ShowRestHalfway;
             _showMainWindowAction = showMainWindowAction ?? (() => { });
+            _completionService = completionService;
             _viewModel.AllTimers.CollectionChanged += Timers_CollectionChanged;
             foreach (var timer in _viewModel.AllTimers) Register(timer);
         }
@@ -45,10 +48,13 @@ namespace Taskato.Services
         {
             if (_handlers.ContainsKey(timer)) return;
 
-            Action workCompleted = () =>
+            Action<PomodoroWorkCompletion> workCompleted = completion =>
             {
                 ShowMainWindowWhenEnabled();
-                _workCompletedAction(timer);
+                if (_workCompletedAction is not null)
+                    _workCompletedAction(timer);
+                else
+                    ShowWorkCompleted(timer, completion);
             };
 
             Action restCompleted = () =>
@@ -59,7 +65,7 @@ namespace Taskato.Services
 
             Action restHalfway = () => _restHalfwayAction(timer);
 
-            timer.WorkCompleted += workCompleted;
+            timer.WorkCompletionRequested += workCompleted;
             timer.RestCompleted += restCompleted;
             timer.RestHalfway += restHalfway;
             _handlers[timer] = new TimerHandlers(workCompleted, restCompleted, restHalfway);
@@ -75,7 +81,7 @@ namespace Taskato.Services
         private void Unregister(PomodoroTimerViewModel timer)
         {
             if (!_handlers.Remove(timer, out var handlers)) return;
-            timer.WorkCompleted -= handlers.WorkCompleted;
+            timer.WorkCompletionRequested -= handlers.WorkCompleted;
             timer.RestCompleted -= handlers.RestCompleted;
             timer.RestHalfway -= handlers.RestHalfway;
         }
@@ -86,17 +92,49 @@ namespace Taskato.Services
                 await _viewModel.FeishuService.NotifyAsync(title, content, notificationCount);
         }
 
-        private void ShowWorkCompleted(PomodoroTimerViewModel timer)
+        private void ShowWorkCompleted(PomodoroTimerViewModel timer, PomodoroWorkCompletion completion)
         {
             var elapsedSeconds = timer.CompletionElapsedSeconds;
-            new ToastWindow(
+            ToastWindow? toast = null;
+            toast = new ToastWindow(
                 $"{timer.TimerName} 时间到！", "你已完成专注工作，要休息一下吗？",
                 () => timer.StartRest(), () => timer.StartWork(),
                 _viewModel.EnableToastTimer || timer.IsRecoveredCompletion,
                 actionDelaySeconds: _viewModel.ToastActionDelaySeconds,
                 soundChoice: _viewModel.NotificationSoundChoice,
                 customSoundPath: _viewModel.CustomSoundPath,
-                initialElapsedSeconds: elapsedSeconds).Show();
+                initialElapsedSeconds: elapsedSeconds,
+                onCompletionSubmit: _completionService is null
+                    ? null
+                    : async (note, startRest) =>
+                    {
+                        await _completionService.SaveAsync(completion, note);
+                        if (startRest) timer.StartRest();
+                        else timer.StartWork();
+                    });
+            if (_completionService is not null)
+            {
+                async void RefreshDestination()
+                {
+                    try
+                    {
+                        var destination = await _completionService.GetDestinationAsync();
+                        if (toast.IsLoaded)
+                            await toast.Dispatcher.InvokeAsync(() =>
+                                toast.SetCompletionDestination(destination.DisplayName));
+                    }
+                    catch (Exception exception)
+                    {
+                        DiagnosticsService.Log("刷新番茄钟记录归属失败", exception);
+                    }
+                }
+
+                void ContextChanged() => RefreshDestination();
+                _completionService.DestinationChanged += ContextChanged;
+                toast.Closed += (_, _) => _completionService.DestinationChanged -= ContextChanged;
+                toast.Loaded += (_, _) => RefreshDestination();
+            }
+            toast.Show();
             _ = NotifyFeishuAsync(
                 _viewModel.FeishuEnabled && _viewModel.FeishuNotifyOnWork,
                 $"{timer.TimerName} 时间到！", "你已完成专注工作，要休息一下吗？",
@@ -134,6 +172,9 @@ namespace Taskato.Services
             foreach (var timer in _handlers.Keys.ToList()) Unregister(timer);
         }
 
-        private sealed record TimerHandlers(Action WorkCompleted, Action RestCompleted, Action RestHalfway);
+        private sealed record TimerHandlers(
+            Action<PomodoroWorkCompletion> WorkCompleted,
+            Action RestCompleted,
+            Action RestHalfway);
     }
 }

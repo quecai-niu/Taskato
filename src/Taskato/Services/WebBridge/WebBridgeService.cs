@@ -22,6 +22,7 @@ namespace Taskato.Services.WebBridge
         private readonly MainViewModel _taskWorkspace;
         private readonly SettingsService _settings;
         private readonly DataBackupService _dataBackup;
+        private readonly WorkspaceContextService _workspaceContext;
         private readonly JsonSerializerOptions _jsonOptions = new(JsonSerializerDefaults.Web)
         {
             Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
@@ -32,12 +33,17 @@ namespace Taskato.Services.WebBridge
 
         public event Action<string>? WindowCommandRequested;
 
-        public WebBridgeService(DatabaseService database, MainViewModel taskWorkspace, SettingsService settings)
+        public WebBridgeService(
+            DatabaseService database,
+            MainViewModel taskWorkspace,
+            SettingsService settings,
+            WorkspaceContextService? workspaceContext = null)
         {
             _database = database;
             _taskWorkspace = taskWorkspace;
             _settings = settings;
             _dataBackup = new DataBackupService(database, settings);
+            _workspaceContext = workspaceContext ?? new WorkspaceContextService();
 
             _database.OnDataChanged += HandleDataChanged;
             _taskWorkspace.FocusTrackingChanged += HandleFocusTrackingChanged;
@@ -103,7 +109,9 @@ namespace Taskato.Services.WebBridge
                     protocolVersion = 1,
                     appVersion = System.Reflection.Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "1.0.0"
                 },
+                "workspace.context.set" => UpdateWorkspaceContext(request.Params),
                 "tasks.list" => await GetTasksAsync(),
+                "tasks.options" => await GetTaskOptionsAsync(),
                 "tasks.parentCandidates" => await GetParentCandidatesAsync(request.Params),
                 "tasks.add" => await AddTaskAsync(request.Params),
                 "tasks.update" => await UpdateTaskAsync(request.Params),
@@ -117,6 +125,10 @@ namespace Taskato.Services.WebBridge
                 "summary.backfill" => await BackfillTaskAsync(request.Params),
                 "summary.copy" => await CopySummaryAsync(request.Params),
                 "summary.export" => await ExportSummaryAsync(request.Params),
+                "progress.list" => await GetProgressRecordsAsync(request.Params),
+                "progress.create" => await CreateProgressRecordAsync(request.Params),
+                "progress.update" => await UpdateProgressRecordAsync(request.Params),
+                "progress.delete" => await DeleteProgressRecordAsync(request.Params),
                 "history.search" => await SearchHistoryAsync(request.Params),
                 "history.events" => await GetHistoryEventsAsync(request.Params),
                 "history.export" => await ExportHistoryAsync(request.Params),
@@ -155,6 +167,21 @@ namespace Taskato.Services.WebBridge
                 selectedTaskId,
                 maximumDepth = DatabaseService.MaximumTaskDepth
             };
+        }
+
+        private async Task<object> GetTaskOptionsAsync()
+        {
+            var tasks = PrepareTaskTree(await _database.GetTaskTreeItemsAsync());
+            return tasks.Select(ToTaskDto).ToList();
+        }
+
+        private object UpdateWorkspaceContext(JsonElement parameters)
+        {
+            var activePage = RequiredString(parameters, "activePage");
+            var taskViewMode = OptionalString(parameters, "taskViewMode") ?? "detail";
+            var selectedTaskId = OptionalInt(parameters, "selectedTaskId");
+            _workspaceContext.Update(activePage, taskViewMode, selectedTaskId);
+            return _workspaceContext.Current;
         }
 
         private async Task<object> AddTaskAsync(JsonElement parameters)
@@ -321,7 +348,7 @@ namespace Taskato.Services.WebBridge
                 case "start": ExecuteTimerCommand(timer.StartWorkCommand, "当前状态不能开始计时。"); break;
                 case "pause": ExecuteTimerCommand(timer.PauseCommand, "当前状态不能暂停或继续。"); break;
                 case "stop": ExecuteTimerCommand(timer.StopCommand, "当前状态不能停止计时。"); break;
-                case "rest": ExecuteTimerCommand(timer.EarlyRestCommand, "只有工作计时中才能提前休息。"); break;
+                case "rest": ExecuteTimerCommand(timer.EarlyRestCommand, "只有工作计时中才能提前完成。"); break;
                 case "increase": ExecuteTimerCommand(timer.IncreaseTimeCommand, "只能在计时器空闲时调整时长。"); break;
                 case "decrease": ExecuteTimerCommand(timer.DecreaseTimeCommand, "只能在计时器空闲时调整时长。"); break;
                 case "add":
@@ -353,7 +380,14 @@ namespace Taskato.Services.WebBridge
         }
 
         private TaskBridgeDto ToTaskDto(TaskItem task) => new(
-            task.Id, task.Title, task.ParentId, task.Depth, task.IsCompleted, task.Priority,
+            task.Id, task.Title, task.ParentId, task.Depth, task.IsCompleted,
+            task.Status switch
+            {
+                TaskWorkStatus.Completed => "completed",
+                TaskWorkStatus.InProgress => "inProgress",
+                _ => "notStarted"
+            },
+            task.Priority,
             task.HasChildren, task.CanAddChild, task.CompletedLeafCount, task.TotalLeafCount,
             task.CreatedAt, task.CompletedAt, task.CompletionDurationMinutes);
 

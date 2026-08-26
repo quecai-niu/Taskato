@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Bell,
   CalendarBlank,
@@ -35,6 +35,7 @@ const sections: Array<{ id: Section; label: string; icon: typeof Sparkle }> = [
 ];
 
 export function SettingsPage({ reportError }: { reportError(error: unknown): void }) {
+  const pageRef = useRef<HTMLDivElement>(null);
   const [settings, setSettings] = useState<SettingsDto | null>(null);
   const [savedSettings, setSavedSettings] = useState<SettingsDto | null>(null);
   const [active, setActive] = useState<Section>("theme");
@@ -200,6 +201,18 @@ export function SettingsPage({ reportError }: { reportError(error: unknown): voi
     setActive(section);
     requestAnimationFrame(() => document.getElementById(`settings-${section}`)?.scrollIntoView({ behavior: "smooth", block: "start" }));
   };
+  const syncActiveSection = () => {
+    const page = pageRef.current;
+    if (!page) return;
+    const probeTop = page.getBoundingClientRect().top + 150;
+    let next: Section = "theme";
+    for (const section of sections) {
+      const element = document.getElementById(`settings-${section.id}`);
+      if (!element || element.getBoundingClientRect().top > probeTop) break;
+      next = section.id;
+    }
+    setActive(next);
+  };
   const chooseSound = async () => {
     try {
       const result = await bridge.request<{ selected: boolean; path: string }>("settings.chooseSound");
@@ -243,7 +256,11 @@ export function SettingsPage({ reportError }: { reportError(error: unknown): voi
     } catch (error) { setDataStatus("恢复校验失败，当前数据未改变"); reportError(error); }
   };
   return (
-    <div className="full-page settings-page page-enter">
+    <div
+      className="full-page settings-page page-enter"
+      ref={pageRef}
+      onScroll={syncActiveSection}
+    >
       <div className="page-heading-row">
         <div><span className="section-kicker">完整应用设置</span><h2>设置</h2><p>完整保留应用设置能力，设置仍由 C# 校验并保存。</p></div>
         <div className="heading-actions">

@@ -1,6 +1,7 @@
 import type {
   BridgeApi,
   FocusAnalyticsResult,
+  ProgressRecordDto,
   SettingsDto,
   SummaryResult,
   TaskActivityDto,
@@ -66,6 +67,7 @@ function reopenTaskAndAncestors(items: TaskDto[], taskId: number): TaskDto[] {
       ? {
           ...task,
           isCompleted: false,
+          status: "notStarted",
           completedAt: null,
           completionDurationMinutes: null,
         }
@@ -80,6 +82,7 @@ let tasks: TaskDto[] = [
     parentId: null,
     depth: 0,
     isCompleted: false,
+    status: "inProgress",
     priority: 2,
     hasChildren: true,
     canAddChild: true,
@@ -95,6 +98,7 @@ let tasks: TaskDto[] = [
     parentId: 1,
     depth: 1,
     isCompleted: true,
+    status: "completed",
     priority: 2,
     hasChildren: false,
     canAddChild: true,
@@ -110,6 +114,7 @@ let tasks: TaskDto[] = [
     parentId: 1,
     depth: 1,
     isCompleted: false,
+    status: "inProgress",
     priority: 2,
     hasChildren: true,
     canAddChild: true,
@@ -125,6 +130,7 @@ let tasks: TaskDto[] = [
     parentId: 3,
     depth: 2,
     isCompleted: false,
+    status: "inProgress",
     priority: 2,
     hasChildren: false,
     canAddChild: true,
@@ -140,6 +146,7 @@ let tasks: TaskDto[] = [
     parentId: 3,
     depth: 2,
     isCompleted: false,
+    status: "notStarted",
     priority: 1,
     hasChildren: false,
     canAddChild: true,
@@ -148,6 +155,26 @@ let tasks: TaskDto[] = [
     createdAt: now,
     completedAt: null,
     completionDurationMinutes: null,
+  },
+];
+
+let progressRecords: ProgressRecordDto[] = [
+  {
+    id: 1,
+    taskId: 4,
+    taskTitle: "实现详情编辑面板",
+    taskPath: "发布 Taskato 3.0 > 重构任务工作区 > 实现详情编辑面板",
+    note: "完成推进记录区域的信息结构",
+    startedAt: new Date(Date.now() - 25 * 60_000).toISOString(),
+    completedAt: now,
+    createdAt: now,
+    originalDurationMinutes: 25,
+    durationMinutes: 25,
+    isDurationAdjusted: false,
+    endReason: "completed",
+    endReasonDisplay: "自然结束",
+    source: "pomodoro",
+    canOpenTask: true,
   },
 ];
 
@@ -212,6 +239,16 @@ export class MockBridge implements BridgeApi {
       case "app.ready":
         result = { protocolVersion: 1, appVersion: "preview" };
         break;
+      case "workspace.context.set":
+        result = {
+          activePage: String(params.activePage ?? "tasks"),
+          taskViewMode: String(params.taskViewMode ?? "detail"),
+          selectedTaskId:
+            typeof params.selectedTaskId === "number"
+              ? params.selectedTaskId
+              : null,
+        };
+        break;
       case "tasks.list":
         result = {
           tasks,
@@ -219,6 +256,9 @@ export class MockBridge implements BridgeApi {
           selectedTaskId: tasks[0]?.id ?? null,
           maximumDepth: 5,
         } satisfies TaskListResult;
+        break;
+      case "tasks.options":
+        result = tasks;
         break;
       case "tasks.add": {
         const parentId =
@@ -230,6 +270,7 @@ export class MockBridge implements BridgeApi {
           parentId,
           depth: parent ? parent.depth + 1 : 0,
           isCompleted: false,
+          status: "notStarted",
           priority: Number(params.priority ?? 0),
           hasChildren: false,
           canAddChild: true,
@@ -288,6 +329,7 @@ export class MockBridge implements BridgeApi {
                 ? {
                     ...task,
                     isCompleted: true,
+                    status: "completed",
                     completedAt: now,
                     completionDurationMinutes:
                       typeof params.durationMinutes === "number"
@@ -337,6 +379,112 @@ export class MockBridge implements BridgeApi {
         break;
       case "summary.get":
         result = this.summary(String(params.date ?? now.slice(0, 10)));
+        break;
+      case "progress.list": {
+        const taskId = Number(params.taskId);
+        const descendantIds = new Set<number>([taskId]);
+        if (params.includeDescendants === true) {
+          const pending = [taskId];
+          while (pending.length) {
+            const parentId = pending.shift()!;
+            tasks.filter((task) => task.parentId === parentId).forEach((task) => {
+              if (descendantIds.has(task.id)) return;
+              descendantIds.add(task.id);
+              pending.push(task.id);
+            });
+          }
+        }
+        const own = progressRecords.filter((record) => record.taskId === taskId);
+        const allIds = new Set<number>([taskId]);
+        const pending = [taskId];
+        while (pending.length) {
+          const parentId = pending.shift()!;
+          tasks.filter((task) => task.parentId === parentId).forEach((task) => {
+            if (allIds.has(task.id)) return;
+            allIds.add(task.id);
+            pending.push(task.id);
+          });
+        }
+        const all = progressRecords.filter(
+          (record) => record.taskId != null && allIds.has(record.taskId),
+        );
+        const selected = progressRecords.filter(
+          (record) => record.taskId != null && descendantIds.has(record.taskId),
+        );
+        result = {
+          records: selected,
+          ownCount: own.length,
+          allCount: all.length,
+          ownDurationMinutes: own.reduce((sum, item) => sum + item.durationMinutes, 0),
+          allDurationMinutes: all.reduce((sum, item) => sum + item.durationMinutes, 0),
+          lastProgressAt: all[0]?.completedAt ?? null,
+        };
+        break;
+      }
+      case "progress.create": {
+        const taskId = typeof params.taskId === "number" ? params.taskId : null;
+        const task = tasks.find((item) => item.id === taskId);
+        const durationMinutes = Number(params.durationMinutes);
+        const completedAt = String(params.completedAt ?? now);
+        const created: ProgressRecordDto = {
+          id: Math.max(0, ...progressRecords.map((item) => item.id)) + 1,
+          taskId,
+          taskTitle: task?.title.split(/\r?\n/, 1)[0] ?? "无所属",
+          taskPath: task?.title.split(/\r?\n/, 1)[0] ?? "无所属",
+          note: String(params.note ?? ""),
+          startedAt: new Date(new Date(completedAt).getTime() - durationMinutes * 60_000).toISOString(),
+          completedAt,
+          createdAt: now,
+          originalDurationMinutes: durationMinutes,
+          durationMinutes,
+          isDurationAdjusted: false,
+          endReason: "manual",
+          endReasonDisplay: "手动补录",
+          source: "manual",
+          canOpenTask: task != null,
+        };
+        progressRecords = [created, ...progressRecords];
+        if (taskId != null) {
+          tasks = tasks.map((item) =>
+            item.id === taskId && !item.isCompleted
+              ? { ...item, status: "inProgress" }
+              : item,
+          );
+        }
+        result = created;
+        this.emit("tasks.changed", {});
+        break;
+      }
+      case "progress.update": {
+        const id = Number(params.recordId);
+        const taskId = typeof params.taskId === "number" ? params.taskId : null;
+        const task = tasks.find((item) => item.id === taskId);
+        progressRecords = progressRecords.map((record) =>
+          record.id === id
+            ? {
+                ...record,
+                taskId,
+                taskTitle: task?.title.split(/\r?\n/, 1)[0] ?? "无所属",
+                taskPath: task?.title.split(/\r?\n/, 1)[0] ?? "无所属",
+                note: String(params.note ?? record.note),
+                durationMinutes: Number(params.durationMinutes ?? record.durationMinutes),
+                isDurationAdjusted:
+                  Number(params.durationMinutes ?? record.durationMinutes) !==
+                  record.originalDurationMinutes,
+                canOpenTask: task != null,
+              }
+            : record,
+        );
+        result = progressRecords.find((record) => record.id === id);
+        this.emit("tasks.changed", {});
+        break;
+      }
+      case "progress.delete":
+        progressRecords = progressRecords.filter(
+          (record) => record.id !== Number(params.recordId),
+        );
+        result = { deleted: true };
+        this.emit("tasks.changed", {});
         break;
       case "focus.analytics":
         result = buildMockFocusAnalytics(
@@ -450,8 +598,8 @@ export class MockBridge implements BridgeApi {
             if (command === "rest")
               return {
                 ...timer,
-                status: "休息中",
-                display: "05:00",
+                status: "等待处理",
+                display: "+00:00",
                 canRest: false,
               };
             if (command === "stop")
@@ -504,6 +652,20 @@ export class MockBridge implements BridgeApi {
   }
   private summary(date: string): SummaryResult {
     const completed = tasks.filter((task) => task.isCompleted);
+    const taskDurationMinutes = completed.reduce(
+      (sum, task) => sum + (task.completionDurationMinutes ?? 0),
+      0,
+    );
+    const progressDurationMinutes = progressRecords.reduce(
+      (sum, record) => sum + record.durationMinutes,
+      0,
+    );
+    const formatDuration = (minutes: number) => {
+      const hours = Math.floor(minutes / 60);
+      const remainder = minutes % 60;
+      if (hours > 0 && remainder > 0) return `${hours}小时${remainder}分钟`;
+      return hours > 0 ? `${hours}小时` : `${remainder}分钟`;
+    };
     return {
       date,
       summaryLine: `今天完成了 ${completed.length} 项有效成果。`,
@@ -512,11 +674,16 @@ export class MockBridge implements BridgeApi {
       parentAchievementCount: 0,
       highPriorityCompleted: completed.filter((task) => task.priority >= 2)
         .length,
-      totalDurationMinutes: completed.reduce(
-        (sum, task) => sum + (task.completionDurationMinutes ?? 0),
-        0,
+      taskDurationMinutes,
+      taskDurationDisplay: formatDuration(taskDurationMinutes),
+      totalDurationMinutes: taskDurationMinutes + progressDurationMinutes,
+      totalDurationDisplay: formatDuration(
+        taskDurationMinutes + progressDurationMinutes,
       ),
-      totalDurationDisplay: "28分钟",
+      progressCount: progressRecords.length,
+      progressDurationMinutes,
+      progressDurationDisplay: formatDuration(progressDurationMinutes),
+      progressRecords,
       groups: [
         {
           topLevelTaskId: 1,

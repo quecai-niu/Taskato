@@ -7,6 +7,7 @@ namespace Taskato.Models.BridgeDtos
         int? ParentId,
         int Depth,
         bool IsCompleted,
+        string Status,
         int Priority,
         bool HasChildren,
         bool CanAddChild,
@@ -15,6 +16,23 @@ namespace Taskato.Models.BridgeDtos
         DateTime CreatedAt,
         DateTime? CompletedAt,
         int? CompletionDurationMinutes);
+
+    public sealed record TaskProgressBridgeDto(
+        int Id,
+        int? TaskId,
+        string TaskTitle,
+        string TaskPath,
+        string Note,
+        DateTime StartedAt,
+        DateTime CompletedAt,
+        DateTime CreatedAt,
+        int OriginalDurationMinutes,
+        int DurationMinutes,
+        bool IsDurationAdjusted,
+        string EndReason,
+        string EndReasonDisplay,
+        string Source,
+        bool CanOpenTask);
 
     /// <summary>由只追加活动记录投影出的历史时间线条目。</summary>
     public sealed record TaskActivityBridgeDto(

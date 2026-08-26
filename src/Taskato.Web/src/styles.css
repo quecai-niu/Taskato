@@ -135,6 +135,20 @@ body{color:var(--text)}
 .settings-page .setting-row>.setting-actions{display:flex;flex-direction:row;align-items:center;flex-wrap:wrap}
 .settings-nav button:hover{background:var(--hover);color:var(--text)}
 .settings-nav button.active{color:var(--text);box-shadow:inset 3px 0 var(--primary)}
+
+/* 设置页由自身滚动；导航和保存区保持可见，长页面无需返回顶部操作。 */
+.settings-page .page-heading-row{position:sticky;top:-34px;z-index:8;padding-top:34px;padding-bottom:14px;margin-bottom:13px;background:var(--bg)}
+.settings-page .settings-nav{position:sticky;top:92px;align-self:start;max-height:calc(100vh - 126px);overflow-y:auto}
+
+.task-picker{position:relative;min-width:250px}.task-picker-trigger{width:100%;min-height:46px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 11px;border:1px solid var(--border);border-radius:8px;background:var(--surface-2);color:var(--text);text-align:left}.task-picker-trigger>span{min-width:0;display:flex;flex-direction:column;gap:3px}.task-picker-trigger small{color:var(--text-3);font-size:var(--font-caption)}.task-picker-trigger strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--font-body)}.task-picker-popover{position:absolute;right:0;top:calc(100% + 7px);z-index:15;width:min(520px,calc(100vw - 64px));padding:12px;border:1px solid var(--border-strong);border-radius:10px;background:var(--surface);box-shadow:0 18px 50px rgba(0,0,0,.3)}.task-picker.embedded{min-width:0}.task-picker-body{display:flex;min-height:0;flex-direction:column;gap:8px}.task-picker-search{min-width:0;flex:1;height:34px;display:flex;align-items:center;gap:7px;padding:0 10px;border:1px solid var(--border);border-radius:7px;background:var(--surface-2);color:var(--text-3)}.task-picker-search input{min-width:0;flex:1;border:0;outline:0;background:transparent;color:var(--text);font-size:var(--font-body)}.task-picker-completed-filter{align-self:flex-start;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text-3);font-size:var(--font-caption)}.task-picker-completed-filter.active{border-color:var(--primary);background:var(--primary-soft);color:var(--text)}.task-picker-list{max-height:280px}.task-picker-list button{position:relative}.task-picker-list button>div{min-width:0}.task-picker-list strong,.task-picker-list small{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.task-picker-state{margin-left:auto;padding:3px 6px;border-radius:5px;background:var(--surface-3);color:var(--text-3);font-size:var(--font-caption)}
+
+.progress-section-heading .secondary-button{display:flex;align-items:center;gap:6px}.progress-scope-tabs{display:flex;margin:14px 0 8px}.progress-record-list{border:1px solid var(--border);border-radius:9px;overflow:hidden}.progress-record-row{min-height:68px;display:grid;grid-template-columns:92px minmax(0,1fr) auto 34px;align-items:center;gap:12px;padding:10px 12px;border-bottom:1px solid var(--border)}.progress-record-row:last-child{border-bottom:0}.progress-record-time,.progress-record-content,.progress-record-duration{min-width:0;display:flex;flex-direction:column;gap:4px}.progress-record-time strong,.progress-record-content strong,.progress-record-duration strong{font-size:var(--font-body)}.progress-record-time span,.progress-record-content span,.progress-record-duration span{color:var(--text-3);font-size:var(--font-caption)}.progress-record-content strong,.progress-record-content span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.progress-record-duration{text-align:right}.progress-record-duration span{color:var(--primary)}.progress-empty{padding:24px;color:var(--text-3);font-size:var(--font-body);text-align:center}
+
+.progress-editor-modal{max-height:calc(100vh - 48px);display:flex;flex-direction:column;overflow:hidden}.progress-note-field{display:flex;flex-direction:column;gap:7px;margin:18px 0 14px;color:var(--text-3);font-size:var(--font-caption)}.progress-note-field textarea{min-height:78px;max-height:150px;resize:vertical;padding:10px;border:1px solid var(--border);border-radius:8px;outline:0;background:var(--surface-2);color:var(--text);font:inherit;line-height:1.6}.progress-editor-modal .task-picker.embedded{min-height:0}.progress-editor-modal .task-picker-list{max-height:210px}.progress-fields{grid-template-columns:repeat(3,minmax(0,1fr))}.adjusted-duration-note{display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding:9px 10px;border-radius:7px;background:var(--primary-soft);color:var(--text-2);font-size:var(--font-caption)}.adjusted-duration-note button{color:var(--primary);background:transparent}.danger-text-button{color:#ef7777;background:transparent}.modal-footer-spacer{flex:1}
+
+.summary-progress-section{margin-top:16px;border:1px solid var(--border);border-radius:10px;background:var(--surface);overflow:hidden}.summary-progress-section>.section-title-row{padding:16px 18px;border-bottom:1px solid var(--border)}.summary-progress-list{display:flex;flex-direction:column}.summary-progress-row{min-height:58px;display:grid;grid-template-columns:minmax(0,1fr) auto 52px 34px;align-items:center;gap:10px;padding:9px 14px;border-bottom:1px solid var(--border)}.summary-progress-row:last-child{border-bottom:0}.summary-progress-row>div{min-width:0;display:flex;flex-direction:column;gap:4px}.summary-progress-row strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:var(--font-body)}.summary-progress-row span,.summary-progress-row small,.summary-progress-row time{color:var(--text-3);font-size:var(--font-caption)}.summary-progress-row span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+@media(max-width:760px){.settings-page .page-heading-row{position:static}.settings-page .settings-nav{position:static;max-height:none}.progress-record-row{grid-template-columns:76px minmax(0,1fr) 34px}.progress-record-duration{grid-column:2}.summary-progress-row{grid-template-columns:minmax(0,1fr) auto 34px}.summary-progress-row time{display:none}.progress-fields{grid-template-columns:1fr}}
 .segmented button:hover{color:var(--text)}
 .segmented button.active{background:var(--primary-soft);color:var(--text);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--primary) 34%,transparent)}
 .switch{background:var(--border-strong)}
@@ -280,3 +294,45 @@ body{font-size:var(--font-control)}
 @media(max-width:1020px){.top-bar{grid-template-columns:minmax(110px,1fr) minmax(170px,240px) max-content;gap:12px;padding-inline:14px}.search-command{min-width:0}.search-command kbd{display:none}}
 /* 窄窗口沿用紧凑导航列；此规则必须晚于桌面端列宽声明，避免主内容被固有宽度撑出视口。 */
 @media(max-width:1020px){.app-shell{grid-template-columns:76px minmax(0,1fr)}}
+
+/* 新增任务使用中央画布，左侧入口只负责切换视图，避免在窄栏内承载长内容。 */
+.open-task-create{width:100%;min-height:42px;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:12px;border:1px solid color-mix(in srgb,var(--primary) 48%,var(--border));border-radius:9px;background:var(--primary-soft);color:var(--text);font-size:11px;font-weight:700;cursor:pointer;transition:background .16s,border-color .16s,color .16s}
+.open-task-create svg{color:var(--primary)}
+.open-task-create:hover{border-color:var(--primary);background:color-mix(in srgb,var(--primary) 20%,var(--surface));color:var(--text)}
+.open-task-create.active{border-color:var(--primary);background:var(--primary);color:#fff}
+.open-task-create.active svg{color:currentColor}
+:root[data-theme="light"] .open-task-create.active{color:#fffaf0}
+.task-create-page{width:min(100%,820px);margin:0 auto;padding:8px 0 36px}
+.task-create-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;margin-bottom:28px;padding-bottom:22px;border-bottom:1px solid var(--border)}
+.task-create-heading h2{margin:7px 0 8px;font-size:clamp(24px,2.3vw,32px);letter-spacing:-.025em}
+.task-create-heading p{margin:0;color:var(--text-2);font-size:12px;line-height:1.7}
+.task-create-heading .secondary-button{min-height:36px;padding:0 14px;border-radius:8px;cursor:pointer}
+.task-create-form{display:flex;flex-direction:column;gap:22px}
+.task-create-content{display:flex;flex-direction:column;gap:8px}
+.task-create-content>span,.task-create-parent>span{color:var(--text-2);font-size:11px;font-weight:650}
+.task-create-content textarea{width:100%;min-height:230px;max-height:52vh;resize:vertical;padding:18px;border:1px solid var(--border-strong);border-radius:12px;outline:none;background:var(--surface);color:var(--text);font:inherit;font-size:14px;line-height:1.75;box-shadow:0 16px 42px rgba(0,0,0,.14)}
+.task-create-content textarea:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft),0 16px 42px rgba(0,0,0,.14)}
+.task-create-content small{align-self:flex-end;color:var(--text-3);font-size:9px}
+.task-create-options{display:grid;grid-template-columns:1fr;align-items:end;gap:18px;padding:18px;border:1px solid var(--border);border-radius:11px;background:rgba(255,255,255,.018)}
+.task-create-parent{display:flex;flex-direction:column;gap:8px}
+.task-create-parent select{width:100%;height:38px;padding:0 10px;border:1px solid var(--border);border-radius:8px;outline:none;background:var(--surface-2);color:var(--text-2);font-size:11px}
+.task-create-parent select:focus{border-color:var(--primary)}
+.task-create-actions{display:flex;justify-content:flex-end;gap:9px;padding-top:4px}
+.task-create-actions button{min-height:39px;display:flex;align-items:center;justify-content:center;gap:7px;padding:0 17px;border-radius:8px;cursor:pointer}
+.task-create-actions button:disabled{opacity:.42;cursor:not-allowed}
+.create-context-panel{display:flex;flex-direction:column;align-items:flex-start;gap:7px;color:#b8b7ff}
+.create-context-panel h3{margin:2px 0 0;color:var(--text);font-size:13px}
+.create-context-panel p{margin:0;color:var(--text-3);font-size:10px;line-height:1.7}
+@media(max-width:760px){.task-create-heading{flex-direction:column}.task-create-options{grid-template-columns:1fr}.task-create-actions{flex-direction:column-reverse}.task-create-actions button{width:100%}}
+
+/* 浮层脱离任务画布的滚动流，并根据视口空间自动向上或向下展开。 */
+.task-picker-popover{position:fixed;top:auto;right:auto;bottom:auto;z-index:35;min-height:120px;display:flex;overflow:hidden;padding:12px}
+.task-picker-popover .task-picker-body{width:100%;min-height:0;flex:1}
+.task-picker-popover .task-picker-list{min-height:0;max-height:none;flex:1;overflow-y:auto}
+
+/* 选择标记不参与横向压缩，长任务名也不能把圆形挤成椭圆。 */
+.radio-mark{flex:0 0 17px;min-width:17px;aspect-ratio:1}
+.sound-options input[type="radio"]{flex:0 0 16px;width:16px;min-width:16px;height:16px;margin:0;aspect-ratio:1;accent-color:var(--primary)}
+
+/* 左侧导航定位到设置分区时，为顶部吸附操作区预留完整可视空间。 */
+.settings-page .settings-content section{scroll-margin-top:148px}

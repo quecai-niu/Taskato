@@ -148,17 +148,21 @@ namespace Taskato.Services
         /// <summary>
         /// 将当前内存中的配置保存到磁盘
         /// </summary>
-        public void Save()
+        public bool Save()
         {
             try
             {
                 NormalizeNotificationCounts();
                 string json = JsonSerializer.Serialize(Config, new JsonSerializerOptions { WriteIndented = true });
-                File.WriteAllText(_configPath, json);
+                var temporaryPath = _configPath + ".tmp";
+                File.WriteAllText(temporaryPath, json);
+                File.Move(temporaryPath, _configPath, true);
+                return true;
             }
-            catch
+            catch (Exception exception)
             {
-                // 忽略没有读写权限时的报错（例如权限问题）
+                DiagnosticsService.Log("保存设置失败", exception, _configPath);
+                return false;
             }
         }
 
@@ -173,6 +177,8 @@ namespace Taskato.Services
                 Config.FeishuRestCompletedNotificationCount, 0, FeishuService.MaximumNotificationCount);
             Config.FeishuTestNotificationCount = Math.Clamp(
                 Config.FeishuTestNotificationCount, 1, FeishuService.MaximumNotificationCount);
+            Config.ToastActionDelaySeconds =
+                Math.Round(Math.Clamp(Config.ToastActionDelaySeconds, 0, 5) * 2) / 2;
         }
     }
 }

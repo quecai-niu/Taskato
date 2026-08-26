@@ -34,11 +34,13 @@ import {
 } from "@phosphor-icons/react";
 import {
   bridge,
+  type ProgressRecordDto,
   type SettingsDto,
   type SummaryResult,
   type TaskActivityDto,
   type TaskDto,
   type TaskListResult,
+  type TaskProgressResult,
   type TimerListResult,
 } from "../bridge";
 import {
@@ -47,6 +49,7 @@ import {
   toLocalDateInput,
   useBridgeRefresh,
 } from "../ui";
+import { TaskPicker } from "../components/TaskPicker";
 
 type TaskNode = TaskDto & { children: TaskNode[] };
 
@@ -485,23 +488,210 @@ function CompletionDialog({
   );
 }
 
+function toDateTimeFields(value: string | Date): { date: string; time: string } {
+  const date = new Date(value);
+  return {
+    date: toLocalDateInput(date),
+    time: date.toTimeString().slice(0, 5),
+  };
+}
+
+function formatProgressDuration(minutes: number): string {
+  const hours = Math.floor(minutes / 60);
+  const remainder = minutes % 60;
+  if (hours && remainder) return `${hours} 小时 ${remainder} 分钟`;
+  if (hours) return `${hours} 小时`;
+  return `${minutes} 分钟`;
+}
+
+function ProgressEditorDialog({
+  tasks,
+  initialTaskId,
+  record,
+  reportError,
+  onClose,
+  onSaved,
+}: {
+  tasks: TaskDto[];
+  initialTaskId: number | null;
+  record?: ProgressRecordDto | null;
+  reportError(error: unknown): void;
+  onClose(): void;
+  onSaved(): Promise<void>;
+}) {
+  const initialDateTime = toDateTimeFields(record?.completedAt ?? new Date());
+  const [taskId, setTaskId] = useState(record?.taskId ?? initialTaskId);
+  const [note, setNote] = useState(record?.note ?? "");
+  const [duration, setDuration] = useState(
+    String(record?.durationMinutes ?? 25),
+  );
+  const [date, setDate] = useState(initialDateTime.date);
+  const [time, setTime] = useState(initialDateTime.time);
+  const [saving, setSaving] = useState(false);
+  const durationMinutes = Number(duration);
+  const validDuration = Number.isInteger(durationMinutes) &&
+    durationMinutes >= 1 && durationMinutes <= 1440;
+
+  const save = async () => {
+    if (!validDuration) return;
+    try {
+      setSaving(true);
+      if (record) {
+        await bridge.request("progress.update", {
+          recordId: record.id,
+          taskId,
+          note,
+          durationMinutes,
+        });
+      } else {
+        await bridge.request("progress.create", {
+          taskId,
+          note,
+          durationMinutes,
+          completedAt: new Date(`${date}T${time}:00`).toISOString(),
+        });
+      }
+      await onSaved();
+      onClose();
+    } catch (error) {
+      reportError(error);
+    } finally {
+      setSaving(false);
+    }
+  };
+  const remove = async () => {
+    if (!record || !window.confirm("删除这条推进记录吗？任务状态不会自动回退。")) return;
+    try {
+      setSaving(true);
+      await bridge.request("progress.delete", { recordId: record.id });
+      await onSaved();
+      onClose();
+    } catch (error) {
+      reportError(error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div
+      className="modal-backdrop"
+      onMouseDown={(event) => event.target === event.currentTarget && onClose()}
+    >
+      <section className="modal progress-editor-modal" role="dialog" aria-modal="true">
+        <header>
+          <div>
+            <span className="section-kicker">
+              {record ? "编辑推进记录" : "记录当前进展"}
+            </span>
+            <h2>{record ? "修改推进" : "新增推进"}</h2>
+          </div>
+          <IconButton label="关闭" onClick={onClose}>
+            <X size={19} />
+          </IconButton>
+        </header>
+        <label className="progress-note-field">
+          <span>推进内容（可选）</span>
+          <textarea
+            autoFocus
+            maxLength={5000}
+            placeholder="记录这次完成或推进了什么"
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+          />
+        </label>
+        <span className="field-label">所属任务</span>
+        <TaskPicker tasks={tasks} value={taskId} onChange={setTaskId} embedded />
+        <div className="modal-fields progress-fields">
+          {!record && (
+            <>
+              <label>
+                <span>日期</span>
+                <input
+                  type="date"
+                  max={toLocalDateInput()}
+                  value={date}
+                  onChange={(event) => setDate(event.target.value)}
+                />
+              </label>
+              <label>
+                <span>完成时间</span>
+                <input
+                  type="time"
+                  value={time}
+                  onChange={(event) => setTime(event.target.value)}
+                />
+              </label>
+            </>
+          )}
+          <label>
+            <span>统计时长（分钟）</span>
+            <input
+              type="number"
+              min="1"
+              max="1440"
+              value={duration}
+              onChange={(event) => setDuration(event.target.value)}
+            />
+          </label>
+        </div>
+        {record && record.originalDurationMinutes > 0 &&
+          record.originalDurationMinutes !== durationMinutes && (
+            <div className="adjusted-duration-note">
+              <span>原始计时：{record.originalDurationMinutes} 分钟</span>
+              <button
+                type="button"
+                onClick={() => setDuration(String(record.originalDurationMinutes))}
+              >
+                恢复原始计时
+              </button>
+            </div>
+          )}
+        <footer>
+          {record && (
+            <button className="danger-text-button" onClick={() => void remove()}>
+              删除记录
+            </button>
+          )}
+          <span className="modal-footer-spacer" />
+          <button className="secondary-button" onClick={onClose}>取消</button>
+          <button
+            className="primary-button"
+            disabled={!validDuration || saving}
+            onClick={() => void save()}
+          >
+            {saving ? "正在保存…" : "保存推进"}
+          </button>
+        </footer>
+      </section>
+    </div>
+  );
+}
+
 export function TaskPage({
   reportError,
   requestedTaskId,
   sessionSelectedTaskId = null,
+  sessionTaskViewMode = "detail",
   onSelectedTaskIdChange,
+  onTaskViewModeChange,
   onRequestedTaskHandled,
 }: {
   reportError(error: unknown): void;
   requestedTaskId: number | null;
   sessionSelectedTaskId?: number | null;
+  sessionTaskViewMode?: "detail" | "create";
   onSelectedTaskIdChange?(taskId: number | null): void;
+  onTaskViewModeChange?(mode: "detail" | "create"): void;
   onRequestedTaskHandled?(): void;
 }) {
   const [tasks, setTasks] = useState<TaskDto[]>([]);
   const [detailTasks, setDetailTasks] = useState<TaskDto[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(
     sessionSelectedTaskId,
+  );
+  const [taskViewMode, setTaskViewMode] = useState<"detail" | "create">(
+    sessionTaskViewMode,
   );
   const [storedTaskExpansion] = useState(loadStoredTaskExpansion);
   const [expanded, setExpanded] = useState(
@@ -511,6 +701,7 @@ export function TaskPage({
   const [filter, setFilter] = useState("");
   const [rootTitle, setRootTitle] = useState("");
   const [rootPriority, setRootPriority] = useState(0);
+  const [newTaskParentId, setNewTaskParentId] = useState<number | null>(null);
   const [childTitle, setChildTitle] = useState("");
   const [childPriority, setChildPriority] = useState(0);
   const [contentDraft, setContentDraft] = useState("");
@@ -525,6 +716,11 @@ export function TaskPage({
   const contentRequestVersion = useRef(0);
   const contentFocusTaskId = useRef<number | null>(null);
   const [completionTask, setCompletionTask] = useState<TaskDto | null>(null);
+  const [progressScope, setProgressScope] = useState<"own" | "all">("own");
+  const [progressResult, setProgressResult] = useState<TaskProgressResult | null>(null);
+  const [progressEditor, setProgressEditor] = useState<
+    ProgressRecordDto | "new" | null
+  >(null);
   const [parentCandidates, setParentCandidates] = useState<TaskDto[]>([]);
   const workspaceRef = useRef<HTMLDivElement>(null);
   const paneDrag = useRef<{
@@ -622,18 +818,42 @@ export function TaskPage({
       reportError(error);
     }
   }, [reportError]);
+  const loadProgress = useCallback(async () => {
+    if (selectedId == null || taskViewMode !== "detail") {
+      setProgressResult(null);
+      return;
+    }
+    try {
+      setProgressResult(
+        await bridge.request<TaskProgressResult>("progress.list", {
+          taskId: selectedId,
+          includeDescendants: progressScope === "all",
+        }),
+      );
+    } catch (error) {
+      reportError(error);
+    }
+  }, [progressScope, reportError, selectedId, taskViewMode]);
   useEffect(() => {
     void load();
     void loadTimers();
-  }, [load, loadTimers]);
-  useBridgeRefresh("tasks.changed", () => void load());
+    void loadProgress();
+  }, [load, loadProgress, loadTimers]);
+  useBridgeRefresh("tasks.changed", () => {
+    void load();
+    void loadProgress();
+  });
   useBridgeRefresh("pomodoro.changed", () => void loadTimers());
   useEffect(() => {
     // 选中项只提升到应用会话，不写入本地存储；关闭应用后仍按原规则选择默认任务。
     onSelectedTaskIdChange?.(selectedId);
   }, [onSelectedTaskIdChange, selectedId]);
   useEffect(() => {
+    onTaskViewModeChange?.(taskViewMode);
+  }, [onTaskViewModeChange, taskViewMode]);
+  useEffect(() => {
     if (requestedTaskId == null) return;
+    setTaskViewMode("detail");
     setSelectedId(requestedTaskId);
     onRequestedTaskHandled?.();
     requestAnimationFrame(() =>
@@ -718,11 +938,17 @@ export function TaskPage({
   }, [focusTaskContentEditor, selectedId]);
 
   const editTaskContent = (taskId: number) => {
+    setTaskViewMode("detail");
     if (selectedId === taskId) {
       focusTaskContentEditor();
       return;
     }
     contentFocusTaskId.current = taskId;
+    setSelectedId(taskId);
+  };
+
+  const selectTask = (taskId: number) => {
+    setTaskViewMode("detail");
     setSelectedId(taskId);
   };
 
@@ -761,16 +987,27 @@ export function TaskPage({
     timerState.timers[0];
   const isCompletionPending = activeTimer?.status === "等待处理";
 
-  const add = async (event: FormEvent, parentId: number | null) => {
+  const add = async (
+    event: FormEvent,
+    parentId: number | null,
+    source: "root" | "child",
+  ) => {
     event.preventDefault();
-    const title = parentId == null ? rootTitle.trim() : childTitle.trim();
-    const priority = parentId == null ? rootPriority : childPriority;
+    const title = source === "root" ? rootTitle.trim() : childTitle.trim();
+    const priority = source === "root" ? rootPriority : childPriority;
     if (!title) return;
     try {
-      await bridge.request("tasks.add", { title, parentId, priority });
-      if (parentId == null) {
+      const created = await bridge.request<TaskDto>("tasks.add", {
+        title,
+        parentId,
+        priority,
+      });
+      if (source === "root") {
         setRootTitle("");
         setRootPriority(0);
+        setNewTaskParentId(null);
+        setSelectedId(created.id);
+        setTaskViewMode("detail");
       } else {
         setChildTitle("");
         setChildPriority(0);
@@ -1012,37 +1249,14 @@ export function TaskPage({
             <h2>项目与任务</h2>
           </div>
         </div>
-        <form
-          className="root-task-composer"
-          onSubmit={(event) => void add(event, null)}
+        <button
+          type="button"
+          className={`open-task-create ${taskViewMode === "create" ? "active" : ""}`}
+          onClick={() => setTaskViewMode("create")}
         >
-          <div className="composer-input-row">
-            <input
-              aria-label="新建顶级任务"
-              value={rootTitle}
-              onChange={(event) => setRootTitle(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
-                event.preventDefault();
-                event.currentTarget.form?.requestSubmit();
-              }}
-              placeholder="输入任务内容，按 Enter 新增"
-            />
-            <button
-              type="submit"
-              aria-label="添加顶级任务"
-              disabled={!rootTitle.trim()}
-            >
-              <Plus size={16} />
-              新增
-            </button>
-          </div>
-          <PrioritySelector
-            label="新任务优先级"
-            value={rootPriority}
-            onChange={setRootPriority}
-          />
-        </form>
+          <Plus size={17} weight="bold" />
+          新增任务
+        </button>
         <label className="pane-search">
           <MagnifyingGlass size={16} />
           <input
@@ -1076,10 +1290,10 @@ export function TaskPage({
             <TaskTreeRow
               key={task.id}
               task={task}
-              selectedId={selectedId}
+              selectedId={taskViewMode === "detail" ? selectedId : null}
               expanded={expanded}
               onToggle={toggleExpanded}
-              onSelect={setSelectedId}
+              onSelect={selectTask}
               onEditContent={editTaskContent}
               onComplete={toggleComplete}
             />
@@ -1092,10 +1306,10 @@ export function TaskPage({
             <TaskTreeRow
               key={task.id}
               task={task}
-              selectedId={selectedId}
+              selectedId={taskViewMode === "detail" ? selectedId : null}
               expanded={expanded}
               onToggle={toggleExpanded}
-              onSelect={setSelectedId}
+              onSelect={selectTask}
               onEditContent={editTaskContent}
               onComplete={toggleComplete}
             />
@@ -1115,7 +1329,75 @@ export function TaskPage({
         onKeyDown={resizePaneByKeyboard("tree")}
       />
       <main className="task-canvas">
-        {selected ? (
+        {taskViewMode === "create" ? (
+          <section className="task-create-page" aria-labelledby="task-create-title">
+            <div className="task-create-heading">
+              <div>
+                <span className="section-kicker">新增任务</span>
+                <h2 id="task-create-title">记录接下来要完成的事情</h2>
+                <p>停留在此页面时，番茄钟推进记录默认设为“无所属”。</p>
+              </div>
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => setTaskViewMode("detail")}
+              >
+                取消
+              </button>
+            </div>
+            <form
+              className="task-create-form"
+              onSubmit={(event) => void add(event, newTaskParentId, "root")}
+            >
+              <label className="task-create-content">
+                <span>任务内容</span>
+                <textarea
+                  autoFocus
+                  maxLength={5000}
+                  aria-label="新任务内容"
+                  placeholder="写下任务内容；可以使用多行文字。"
+                  value={rootTitle}
+                  onChange={(event) => setRootTitle(event.target.value)}
+                />
+                <small>{rootTitle.length} / 5000</small>
+              </label>
+              <div className="task-create-options">
+                <PrioritySelector
+                  label="新任务优先级"
+                  value={rootPriority}
+                  onChange={setRootPriority}
+                />
+                <div className="task-create-parent">
+                  <span>所属父任务</span>
+                  <TaskPicker
+                    tasks={detailTasks.filter((task) => task.canAddChild)}
+                    value={newTaskParentId}
+                    onChange={setNewTaskParentId}
+                    unassignedLabel="未归类（顶级任务）"
+                    label="新任务所属父任务"
+                  />
+                </div>
+              </div>
+              <div className="task-create-actions">
+                <button
+                  type="button"
+                  className="secondary-button"
+                  onClick={() => setTaskViewMode("detail")}
+                >
+                  返回任务详情
+                </button>
+                <button
+                  type="submit"
+                  className="primary-button"
+                  disabled={!rootTitle.trim()}
+                >
+                  <Plus size={17} />
+                  创建任务
+                </button>
+              </div>
+            </form>
+          </section>
+        ) : selected ? (
           <>
             <div className="canvas-header">
               <div className="breadcrumbs">
@@ -1131,7 +1413,7 @@ export function TaskPage({
                         <button
                           className="breadcrumb-link"
                           aria-label={`返回父任务：${item.title}`}
-                          onClick={() => setSelectedId(item.id)}
+                          onClick={() => selectTask(item.id)}
                         >
                           {item.title}
                         </button>
@@ -1238,7 +1520,7 @@ export function TaskPage({
               {selected.canAddChild && (
                 <form
                   className="inline-add subtask-composer"
-                  onSubmit={(event) => void add(event, selected.id)}
+                  onSubmit={(event) => void add(event, selected.id, "child")}
                 >
                   <div className="subtask-input-row">
                     <button type="submit" aria-label="添加子任务">
@@ -1311,6 +1593,101 @@ export function TaskPage({
                 }}
               />
             </section>
+            <section id="task-progress" className="content-section progress-section">
+              <div className="section-title-row progress-section-heading">
+                <div>
+                  <h3>推进记录</h3>
+                  <span>
+                    本任务 {progressResult?.ownCount ?? 0} 次 · 全部投入{
+                      " "
+                    }
+                    {formatProgressDuration(progressResult?.allDurationMinutes ?? 0)}
+                  </span>
+                </div>
+                <button
+                  className="secondary-button"
+                  onClick={() => setProgressEditor("new")}
+                >
+                  <Plus size={16} />
+                  记录推进
+                </button>
+              </div>
+              {selected.hasChildren && (
+                <div className="segmented progress-scope-tabs" role="tablist">
+                  <button
+                    className={progressScope === "own" ? "active" : ""}
+                    role="tab"
+                    aria-selected={progressScope === "own"}
+                    onClick={() => setProgressScope("own")}
+                  >
+                    本任务 {progressResult?.ownCount ?? 0}
+                  </button>
+                  <button
+                    className={progressScope === "all" ? "active" : ""}
+                    role="tab"
+                    aria-selected={progressScope === "all"}
+                    onClick={() => setProgressScope("all")}
+                  >
+                    全部推进 {progressResult?.allCount ?? 0}
+                  </button>
+                </div>
+              )}
+              <div className="progress-record-list">
+                {progressResult?.records.map((record) => (
+                  <article className="progress-record-row" key={record.id}>
+                    <div className="progress-record-time">
+                      <strong>
+                        {new Date(record.completedAt).toLocaleDateString([], {
+                          month: "2-digit",
+                          day: "2-digit",
+                        })}
+                      </strong>
+                      <span>
+                        {new Date(record.startedAt).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                        {"–"}
+                        {new Date(record.completedAt).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                    </div>
+                    <div className="progress-record-content">
+                      <strong>{record.note || "未填写"}</strong>
+                      <span>
+                        {progressScope === "all" ? `${record.taskPath} · ` : ""}
+                        {record.endReasonDisplay} · 记录于{
+                          " "
+                        }
+                        {new Date(record.createdAt).toLocaleString([], {
+                          month: "2-digit",
+                          day: "2-digit",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                    </div>
+                    <div className="progress-record-duration">
+                      <strong>{formatProgressDuration(record.durationMinutes)}</strong>
+                      {record.isDurationAdjusted && <span>已调整</span>}
+                    </div>
+                    <IconButton
+                      label="编辑推进记录"
+                      onClick={() => setProgressEditor(record)}
+                    >
+                      <NotePencil size={16} />
+                    </IconButton>
+                  </article>
+                ))}
+                {progressResult && progressResult.records.length === 0 && (
+                  <div className="progress-empty">
+                    还没有推进记录。完成一次番茄钟，或点击“记录推进”手动补录。
+                  </div>
+                )}
+              </div>
+            </section>
             <section id="task-operations" className="content-section">
               <div className="section-title-row">
                 <h3>任务操作</h3>
@@ -1320,14 +1697,12 @@ export function TaskPage({
                   <strong>所属父任务</strong>
                   <span>移动后由 C# 校验循环引用和五层限制</span>
                 </div>
-                <ParentTaskPicker
-                  task={selected}
-                  candidates={parentCandidates}
-                  currentParentTitle={
-                    tasks.find((task) => task.id === selected.parentId)?.title ??
-                    null
-                  }
-                  onMove={(parentId) => void moveTask(parentId)}
+                <TaskPicker
+                  tasks={parentCandidates}
+                  value={selected.parentId}
+                  onChange={(parentId) => void moveTask(parentId)}
+                  unassignedLabel="设为顶级任务"
+                  label="所属父任务"
                 />
               </div>
               <div className="timer-controls">
@@ -1351,7 +1726,7 @@ export function TaskPage({
         ) : (
           <div className="empty-state">
             <h2>还没有任务</h2>
-            <p>从左侧创建一个顶级任务开始。</p>
+            <p>从左侧打开新增任务页面开始。</p>
           </div>
         )}
       </main>
@@ -1406,7 +1781,11 @@ export function TaskPage({
             <strong className="timer-value">
               {activeTimer?.display ?? "25:00"}
             </strong>
-            <p>{selected?.title ?? "选择任务后开始专注"}</p>
+            <p>
+              {taskViewMode === "create"
+                ? "新增任务页面 · 推进记录将设为无所属"
+                : (selected?.title ?? "选择任务后开始专注")}
+            </p>
             <div className="timer-progress" aria-label="当前计时进度">
               <span style={{ width: `${(activeTimer?.progress ?? 1) * 100}%` }} />
             </div>
@@ -1469,7 +1848,7 @@ export function TaskPage({
               onClick={() => void timerCommand("rest")}
             >
               <Timer size={15} />
-              提前休息
+              提前完成
             </button>
           </div>
           <div className="timer-secondary-controls timer-management-row">
@@ -1486,38 +1865,65 @@ export function TaskPage({
           </div>
         </section>
         <section className="details-panel">
-          <div className="section-title-row">
-            <h3>任务详情</h3>
-            <IconButton
-              label="编辑任务"
-              onClick={focusTaskContentEditor}
-            >
-              <NotePencil size={16} />
-            </IconButton>
-          </div>
-          <dl>
-            <div>
-              <dt>状态</dt>
-              <dd>
-                <span
-                  className={`status-dot ${selected && !selected.isCompleted ? "active" : ""}`}
-                />
-                {selected?.isCompleted ? "已完成" : "进行中"}
-              </dd>
+          {taskViewMode === "create" ? (
+            <div className="create-context-panel">
+              <Plus size={20} />
+              <h3>正在新增任务</h3>
+              <p>当前没有打开具体任务，番茄钟推进记录将设为“无所属”。</p>
             </div>
-            <div>
-              <dt>层级</dt>
-              <dd>{selected ? `${selected.depth + 1} / 5` : "—"}</dd>
-            </div>
-            <div>
-              <dt>累计专注</dt>
-              <dd>
-                {selected?.completionDurationMinutes
-                  ? `${selected.completionDurationMinutes} 分钟`
-                  : "未记录"}
-              </dd>
-            </div>
-          </dl>
+          ) : (
+            <>
+              <div className="section-title-row">
+                <h3>任务详情</h3>
+                <IconButton
+                  label="编辑任务"
+                  onClick={focusTaskContentEditor}
+                >
+                  <NotePencil size={16} />
+                </IconButton>
+              </div>
+              <dl>
+                <div>
+                  <dt>状态</dt>
+                  <dd>
+                    <span
+                      className={`status-dot ${selected?.status === "inProgress" ? "active" : ""}`}
+                    />
+                    {selected?.isCompleted || selected?.status === "completed"
+                      ? "已完成"
+                      : selected?.status === "inProgress"
+                        ? "进行中"
+                        : "未开始"}
+                  </dd>
+                </div>
+                <div>
+                  <dt>层级</dt>
+                  <dd>{selected ? `${selected.depth + 1} / 5` : "—"}</dd>
+                </div>
+                <div>
+                  <dt>累计专注</dt>
+                  <dd>
+                    {progressResult && progressResult.ownDurationMinutes > 0
+                      ? formatProgressDuration(progressResult.ownDurationMinutes)
+                      : "未记录"}
+                  </dd>
+                </div>
+                <div>
+                  <dt>{selected?.hasChildren ? "最近推进（含子任务）" : "最近推进"}</dt>
+                  <dd>
+                    {progressResult?.lastProgressAt
+                      ? new Date(progressResult.lastProgressAt).toLocaleString([], {
+                          month: "2-digit",
+                          day: "2-digit",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
+                      : "未记录"}
+                  </dd>
+                </div>
+              </dl>
+            </>
+          )}
         </section>
       </aside>
       {completionTask && (
@@ -1525,6 +1931,19 @@ export function TaskPage({
           task={completionTask}
           onClose={() => setCompletionTask(null)}
           onComplete={(duration) => void complete(duration)}
+        />
+      )}
+      {progressEditor && selected && (
+        <ProgressEditorDialog
+          tasks={detailTasks}
+          initialTaskId={selected.id}
+          record={progressEditor === "new" ? null : progressEditor}
+          reportError={reportError}
+          onClose={() => setProgressEditor(null)}
+          onSaved={async () => {
+            await load();
+            await loadProgress();
+          }}
         />
       )}
       {undoAction && (

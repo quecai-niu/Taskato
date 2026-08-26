@@ -8,6 +8,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using SQLite;
 using Taskato.Models;
 using Taskato.Models.BridgeDtos;
 using Taskato.Services;
@@ -39,6 +40,8 @@ internal static class Program
         try
         {
             await RunFeishuNotificationCountTestsAsync(testDirectory);
+            await RunPomodoroCompletionCaptureTestsAsync(testDirectory);
+            await RunLegacyPomodoroProgressMigrationTestsAsync(testDirectory);
             database = new DatabaseService(databasePath);
             await database.InitializeAsync();
             await RunFocusAnalyticsTestsAsync(database);
@@ -358,7 +361,12 @@ internal static class Program
                     pomodoro,
                     settings,
                     new FeishuService(settings));
-                using var bridge = new WebBridgeService(database, mainViewModel, settings);
+                var bridgeContext = new WorkspaceContextService();
+                using var bridge = new WebBridgeService(
+                    database,
+                    mainViewModel,
+                    settings,
+                    bridgeContext);
 
                 var ready = await bridge.ProcessRequestAsync(new WebBridgeRequest
                 {
@@ -366,6 +374,21 @@ internal static class Program
                     Method = "app.ready"
                 });
                 Assert(ready.Ok && ready.Id == "ready-1", "桥接握手必须回传请求 id。");
+
+                var contextUpdate = await bridge.ProcessRequestAsync(new WebBridgeRequest
+                {
+                    Id = "context-1",
+                    Method = "workspace.context.set",
+                    Params = JsonSerializer.SerializeToElement(new
+                    {
+                        activePage = "tasks",
+                        taskViewMode = "create",
+                        selectedTaskId = root.Id
+                    })
+                });
+                Assert(contextUpdate.Ok &&
+                       bridgeContext.Current == new WorkspaceContextSnapshot("tasks", "create", root.Id),
+                    "桥接必须只通过白名单方法同步当前页面和任务视图上下文。");
 
                 var unknown = await bridge.ProcessRequestAsync(new WebBridgeRequest
                 {
@@ -405,6 +428,35 @@ internal static class Program
                     "任务桥接必须分别返回左侧可见任务和详情完整任务。");
                 Assert(!JsonSerializer.Serialize(taskList.Result).Contains("\"Notes\"", StringComparison.Ordinal),
                     "网页任务契约不得再暴露第二份 Notes 内容。");
+
+                var summaryProgressAt = DateTime.Today.AddHours(16);
+                await database.AddProgressRecordAsync(
+                    root.Id,
+                    "验证每日总结总投入",
+                    summaryProgressAt.AddMinutes(-17),
+                    summaryProgressAt,
+                    17,
+                    17,
+                    "manual",
+                    TaskProgressSource.Manual);
+                var summaryResponse = await bridge.ProcessRequestAsync(new WebBridgeRequest
+                {
+                    Id = "summary-duration-total",
+                    Method = "summary.get",
+                    Params = JsonSerializer.SerializeToElement(new
+                    {
+                        date = DateTime.Today.ToString("yyyy-MM-dd")
+                    })
+                });
+                Assert(summaryResponse.Ok && summaryResponse.Result is not null,
+                    "每日总结桥接必须返回总投入统计。");
+                var summaryJson = JsonSerializer.SerializeToElement(summaryResponse.Result);
+                var taskDuration = summaryJson.GetProperty("taskDurationMinutes").GetInt32();
+                var progressDuration = summaryJson.GetProperty("progressDurationMinutes").GetInt32();
+                var totalDuration = summaryJson.GetProperty("totalDurationMinutes").GetInt32();
+                Assert(progressDuration == 17 &&
+                       totalDuration == taskDuration + progressDuration,
+                    "每日总结总投入时长必须等于任务耗时与推进耗时之和。");
 
                 var taskCountBeforeAdd = (await database.GetTaskTreeItemsAsync()).Count;
                 var validAdd = await bridge.ProcessRequestAsync(new WebBridgeRequest
@@ -497,9 +549,18 @@ internal static class Program
                        settings.Config.FeishuRestCompletedNotificationCount == 20 &&
                        settings.Config.FeishuTestNotificationCount == 1,
                     "飞书通知次数必须由 C# 桥接约束到各自允许范围。");
+                var toastDelay = await bridge.ProcessRequestAsync(new WebBridgeRequest
+                {
+                    Id = "settings-toast-delay",
+                    Method = "settings.save",
+                    Params = JsonSerializer.SerializeToElement(new { toastActionDelaySeconds = 4.5 })
+                });
+                Assert(toastDelay.Ok && settings.Config.ToastActionDelaySeconds == 4.5,
+                    "Toast 操作延迟必须通过手动保存写入配置。");
                 var reloadedNotificationSettings = new SettingsService(bridgeSettingsPath);
-                Assert(reloadedNotificationSettings.Config.ShowMainWindowOnTimerNotification,
-                    "启用提示时打开主界面后，重新加载配置不得恢复为默认关闭。");
+                Assert(reloadedNotificationSettings.Config.ShowMainWindowOnTimerNotification &&
+                       reloadedNotificationSettings.Config.ToastActionDelaySeconds == 4.5,
+                    "重新加载配置时必须保留强提示开关和 Toast 操作延迟。");
 
                 var invalidAppearance = await bridge.ProcessRequestAsync(new WebBridgeRequest
                 {
@@ -573,6 +634,187 @@ internal static class Program
         }
         Assert(completedCycles == 1440,
             "模拟连续 24 小时的计时循环时，每轮只能产生一次完成事件。");
+
+        var earlyClock = new DateTimeOffset(2026, 7, 29, 14, 0, 0, TimeSpan.Zero);
+        var earlyService = new PomodoroService(5, 1, () => earlyClock);
+        PomodoroWorkCompletion? earlyCompletion = null;
+        earlyService.WorkCompletionRequested += completion => earlyCompletion = completion;
+        earlyService.StartWork();
+        earlyClock = earlyClock.AddSeconds(20);
+        earlyService.RefreshElapsedTime();
+        earlyService.TogglePause();
+        earlyClock = earlyClock.AddMinutes(5);
+        earlyService.TogglePause();
+        earlyClock = earlyClock.AddSeconds(10);
+        earlyService.CompleteWorkEarly();
+        Assert(earlyService.CurrentState == PomodoroService.PomodoroState.CompletionPending &&
+               earlyCompletion is { FocusedSeconds: 30, EndReason: "completed_early" },
+            "提前完成应进入等待处理，并排除暂停时间后冻结有效专注秒数。");
+        Assert(earlyService.CreateSnapshot("timer-0").CompletedFocusSeconds == 30,
+            "等待处理快照必须保存提前完成的有效专注秒数。");
+
+        var stoppedCompletionCount = 0;
+        var stoppedService = new PomodoroService(5, 1, () => earlyClock);
+        stoppedService.WorkCompletionRequested += _ => stoppedCompletionCount++;
+        stoppedService.StartWork();
+        earlyClock = earlyClock.AddSeconds(15);
+        stoppedService.Stop();
+        Assert(stoppedCompletionCount == 0 &&
+               stoppedService.CurrentState == PomodoroService.PomodoroState.Idle,
+            "停止应放弃本轮，不得进入完成记录流程。");
+    }
+
+    private static async Task RunPomodoroCompletionCaptureTestsAsync(string testDirectory)
+    {
+        var databasePath = Path.Combine(
+            testDirectory,
+            $"pomodoro-completion-{Guid.NewGuid():N}.db");
+        var database = new DatabaseService(databasePath);
+        try
+        {
+            await database.InitializeAsync();
+            var group = await AddTaskAsync(database, "完成记录任务组");
+            var existingChild = await database.AddChildTaskAsync(group, "已有子任务")
+                ?? throw new InvalidOperationException("创建完成记录测试子任务失败。");
+            var context = new WorkspaceContextService();
+            var completionService = new PomodoroCompletionService(database, context);
+            context.Update("tasks", "detail", existingChild.Id);
+
+            var destination = await completionService.GetDestinationAsync();
+            Assert(destination.TaskId == existingChild.Id && destination.DisplayName == existingChild.Title,
+                "番茄钟推进应精确归属于当前打开的任意层级任务。");
+
+            var completedAt = new DateTimeOffset(2026, 8, 24, 10, 30, 0, TimeSpan.FromHours(8));
+            var saved = await completionService.SaveAsync(
+                new PomodoroWorkCompletion(completedAt, 380, "completed_early"),
+                "整理番茄钟完成记录");
+            Assert(saved.CreatedRecord.TaskId == existingChild.Id &&
+                   saved.CreatedRecord.DurationMinutes == 6 &&
+                   saved.CreatedRecord.OriginalDurationMinutes == 6 &&
+                   saved.CreatedRecord.Note == "整理番茄钟完成记录",
+                "番茄钟应创建当前任务的推进记录，并按规则取整耗时。");
+            var savedChild = await database.GetTaskByIdAsync(existingChild.Id);
+            Assert(savedChild is { IsCompleted: false, Status: TaskWorkStatus.InProgress },
+                "第一条推进应把未完成任务改为进行中，但不得自动完成任务。");
+
+            context.Update("tasks", "create", existingChild.Id);
+            var blankResult = await completionService.SaveAsync(
+                new PomodoroWorkCompletion(completedAt, 20, "completed"),
+                "   ");
+            Assert(blankResult.CreatedRecord.TaskId is null &&
+                   blankResult.CreatedRecord.Note == string.Empty &&
+                   blankResult.CreatedRecord.DurationMinutes == 1 &&
+                   (await completionService.GetDestinationAsync()).TaskId is null,
+                "新增页面中的空内容仍应保存无所属推进，正数耗时至少记一分钟。");
+
+            var ungrouped = await completionService.SaveAsync(
+                new PomodoroWorkCompletion(completedAt, 20, "completed"),
+                "新增页面完成的记录");
+            Assert(ungrouped.CreatedRecord.TaskId is null &&
+                   ungrouped.CreatedRecord.Note == "新增页面完成的记录" &&
+                   ungrouped.CreatedRecord.DurationMinutes == 1,
+                "新增页面中的非空内容应保存无所属推进，且不创建任务。");
+
+            var taskCount = (await database.GetTaskTreeItemsAsync()).Count;
+            Assert(taskCount == 2,
+                "推进记录不得伪装成已完成子任务或改变任务树数量。");
+            var dayProgress = await database.GetProgressRecordsForDateAsync(completedAt.Date);
+            Assert(dayProgress.Count == 3,
+                "空内容、非空内容和已归属番茄钟都必须进入当日推进记录。");
+
+            context.Update("tasks", "detail", int.MaxValue);
+            Assert((await completionService.GetDestinationAsync()).TaskId is null,
+                "失效的任务上下文必须安全回退到无所属。");
+        }
+        finally
+        {
+            await database.CloseAsync();
+            if (File.Exists(databasePath)) File.Delete(databasePath);
+        }
+    }
+
+    private static async Task RunLegacyPomodoroProgressMigrationTestsAsync(string testDirectory)
+    {
+        var databasePath = Path.Combine(
+            testDirectory,
+            $"legacy-pomodoro-progress-{Guid.NewGuid():N}.db");
+        var database = new DatabaseService(databasePath);
+        try
+        {
+            await database.InitializeAsync();
+            var group = await AddTaskAsync(database, "旧版任务组");
+            _ = await database.AddChildTaskAsync(group, "真实子任务")
+                ?? throw new InvalidOperationException("创建迁移测试真实子任务失败。");
+            var completedAt = DateTime.Today.AddHours(11);
+            await database.CloseAsync();
+
+            var legacyRecordTask = new TaskItem
+            {
+                ParentId = group.Id,
+                Title = "旧版番茄钟自动记录",
+                CreatedAt = completedAt,
+                LastModifiedAt = completedAt,
+                IsCompleted = true,
+                Status = TaskWorkStatus.Completed,
+                CompletedAt = completedAt,
+                CompletionDurationMinutes = 25
+            };
+            using (var connection = new SQLiteConnection(databasePath))
+            {
+                connection.Insert(legacyRecordTask);
+                var completion = new TaskCompletionRecord
+                {
+                    TaskId = legacyRecordTask.Id,
+                    TopLevelTaskId = group.Id,
+                    TitleSnapshot = legacyRecordTask.Title,
+                    PathSnapshot = $"{group.Title} > {legacyRecordTask.Title}",
+                    TopLevelTitleSnapshot = group.Title,
+                    DepthSnapshot = 1,
+                    CompletionKind = CompletionKind.LeafTask,
+                    TriggerType = CompletionTrigger.Manual,
+                    CompletedAt = completedAt,
+                    DurationMinutes = 25
+                };
+                connection.Insert(completion);
+                connection.Insert(new TaskActivityRecord
+                {
+                    TaskId = legacyRecordTask.Id,
+                    ActivityType = TaskActivityType.Created,
+                    TitleSnapshot = legacyRecordTask.Title,
+                    DetailSnapshot = $"由番茄钟完成记录创建为“{group.Title}”的子任务",
+                    ParentIdSnapshot = group.Id,
+                    DepthSnapshot = 1,
+                    OccurredAt = completedAt,
+                    CompletionRecordId = completion.Id,
+                    SourceKey = $"legacy-pomodoro:{legacyRecordTask.Id}"
+                });
+            }
+
+            database = new DatabaseService(databasePath);
+            await database.InitializeAsync();
+            var tasks = await database.GetTaskTreeItemsAsync();
+            Assert(tasks.All(task => task.Id != legacyRecordTask.Id) &&
+                   tasks.Any(task => task.Title == "真实子任务"),
+                "迁移只能移除明确标记的旧版番茄钟任务，不能误删真实子任务。");
+            var records = await database.GetProgressRecordsForDateAsync(completedAt.Date);
+            Assert(records.Count == 1 &&
+                   records[0].LegacyTaskId == legacyRecordTask.Id &&
+                   records[0].TaskId == group.Id &&
+                   records[0].Note == "旧版番茄钟自动记录" &&
+                   records[0].DurationMinutes == 25,
+                "可靠识别的旧版番茄钟任务必须无损转换为所属父任务的推进记录。");
+
+            await database.CloseAsync();
+            database = new DatabaseService(databasePath);
+            await database.InitializeAsync();
+            Assert((await database.GetProgressRecordsForDateAsync(completedAt.Date)).Count == 1,
+                "旧版番茄钟迁移必须幂等，重复启动不能生成重复推进记录。");
+        }
+        finally
+        {
+            await database.CloseAsync();
+            if (File.Exists(databasePath)) File.Delete(databasePath);
+        }
     }
 
     private static void RunCurrentTaskVisibilityTests()

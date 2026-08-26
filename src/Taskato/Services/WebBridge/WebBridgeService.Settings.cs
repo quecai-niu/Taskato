@@ -64,7 +64,8 @@ namespace Taskato.Services.WebBridge
             c.SelectedColorIndex = ClampedOptionalInt(parameters, "selectedColorIndex", c.SelectedColorIndex, 0, 5);
             if (OptionalBool(parameters, "autoStartEnabled") is { } autoStartEnabled)
                 AutoStartService.SetAutoStart(autoStartEnabled);
-            _settings.Save();
+            if (!_settings.Save())
+                throw new BridgeRequestException("settings_write_failed", "设置无法写入本地文件，请检查数据目录权限。");
             _taskWorkspace.ApplySettingsFromConfig();
             ApplyNativeTheme(c.ThemePrimaryColor, c.ThemeSecondaryColor);
             PostEvent("settings.changed", GetSettings());

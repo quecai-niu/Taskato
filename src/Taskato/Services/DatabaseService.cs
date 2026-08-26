@@ -85,6 +85,13 @@ namespace Taskato.Services
                 await _db.ExecuteAsync("ALTER TABLE TaskItems ADD COLUMN Notes TEXT NOT NULL DEFAULT ''");
             }
 
+            var statusColCheck = await _db.ExecuteScalarAsync<int>(
+                "SELECT COUNT(*) FROM pragma_table_info('TaskItems') WHERE name='Status'");
+            if (statusColCheck == 0)
+            {
+                await _db.ExecuteAsync("ALTER TABLE TaskItems ADD COLUMN Status INTEGER NOT NULL DEFAULT 0");
+            }
+
             // Notes 曾被错误设计成第二份任务内容。先无损合并再清空，使迁移可重复执行且不会二次追加。
             await _db.ExecuteAsync(@"
                 UPDATE TaskItems
@@ -101,6 +108,7 @@ namespace Taskato.Services
             await MigrateLegacyCompletionRecordsAsync();
             await InitializeActivityRecordsAsync();
             await InitializeFocusAnalyticsAsync();
+            await InitializeProgressRecordsAsync();
         }
 
         /// <summary>

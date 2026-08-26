@@ -37,6 +37,9 @@ export function App() {
   const [sessionSelectedTaskId, setSessionSelectedTaskId] = useState<
     number | null
   >(null);
+  const [sessionTaskViewMode, setSessionTaskViewMode] = useState<
+    "detail" | "create"
+  >("detail");
   const [appearanceMode, setAppearanceMode] = useState<"dark" | "light">(
     "dark",
   );
@@ -45,6 +48,7 @@ export function App() {
   }, []);
   const openTask = useCallback((taskId: number) => {
     setActivePage("tasks");
+    setSessionTaskViewMode("detail");
     setSearchOpen(false);
     setNotificationsOpen(false);
     setSessionSelectedTaskId(taskId);
@@ -55,6 +59,16 @@ export function App() {
     () => setRequestedTaskId(null),
     [],
   );
+
+  useEffect(() => {
+    void bridge
+      .request("workspace.context.set", {
+        activePage,
+        taskViewMode: sessionTaskViewMode,
+        selectedTaskId: sessionSelectedTaskId,
+      })
+      .catch(reportError);
+  }, [activePage, reportError, sessionSelectedTaskId, sessionTaskViewMode]);
 
   useEffect(() => {
     window.localStorage.setItem(
@@ -145,7 +159,9 @@ export function App() {
             reportError={reportError}
             requestedTaskId={requestedTaskId}
             sessionSelectedTaskId={sessionSelectedTaskId}
+            sessionTaskViewMode={sessionTaskViewMode}
             onSelectedTaskIdChange={setSessionSelectedTaskId}
+            onTaskViewModeChange={setSessionTaskViewMode}
             onRequestedTaskHandled={handleRequestedTaskHandled}
           />
         )}

@@ -392,6 +392,7 @@ namespace Taskato.Services
             List<int> completedTaskIds)
         {
             task.IsCompleted = true;
+            task.Status = TaskWorkStatus.Completed;
             task.CompletedAt = completedAt;
             task.CompletionDurationMinutes = durationMinutes is > 0 ? durationMinutes : null;
             task.LastModifiedAt = DateTime.Now;
@@ -465,6 +466,9 @@ namespace Taskato.Services
                 if (current.IsCompleted || current.CompletedAt.HasValue || current.CompletionDurationMinutes.HasValue)
                 {
                     current.IsCompleted = false;
+                    current.Status = HasProgress(connection, current.Id)
+                        ? TaskWorkStatus.InProgress
+                        : TaskWorkStatus.NotStarted;
                     current.CompletedAt = null;
                     current.CompletionDurationMinutes = null;
                     current.LastModifiedAt = DateTime.Now;
@@ -498,6 +502,9 @@ namespace Taskato.Services
 
             // 父级成果由各层独立确认；取消当前父任务不能清除已经手动确认的祖先成果。
             task.IsCompleted = false;
+            task.Status = HasProgress(connection, task.Id)
+                ? TaskWorkStatus.InProgress
+                : TaskWorkStatus.NotStarted;
             task.CompletedAt = null;
             task.CompletionDurationMinutes = null;
             task.LastModifiedAt = DateTime.Now;
