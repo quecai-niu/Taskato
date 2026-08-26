@@ -82,6 +82,33 @@ describe("独立业务页面", () => {
     expect(host.querySelectorAll('[role="separator"]')).toHaveLength(2);
     expect(host.querySelector('[aria-label="所属父任务"]')).not.toBeNull();
     expect(host.querySelector("#task-operations select")).toBeNull();
+    expect(
+      host.querySelector("#task-operations .parent-task-operation > .task-picker"),
+    ).not.toBeNull();
+  });
+
+  it("顶级任务组默认折叠已完成的直属任务并允许展开", async () => {
+    await renderAndFlush(
+      <TaskPage reportError={() => undefined} requestedTaskId={1} />,
+    );
+
+    const subtaskList = host.querySelector<HTMLElement>(
+      ".task-canvas .subtask-list",
+    )!;
+    expect(subtaskList.textContent).toContain("重构任务工作区");
+    expect(subtaskList.textContent).not.toContain("确定新版信息架构");
+
+    const toggle = subtaskList.querySelector<HTMLButtonElement>(
+      ".completed-subtasks-toggle",
+    )!;
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(toggle.textContent).toContain("已完成任务");
+    expect(toggle.textContent).toContain("1 项");
+
+    await act(async () => toggle.click());
+
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    expect(subtaskList.textContent).toContain("确定新版信息架构");
   });
 
   it("专注统计页支持天、周、月热力图切换", async () => {
@@ -273,9 +300,13 @@ describe("独立业务页面", () => {
     expect(host.querySelector(".task-tree")?.textContent).not.toContain(
       hiddenHistoricalChild.title,
     );
-    expect(host.querySelector(".subtask-list")?.textContent).toContain(
-      hiddenHistoricalChild.title,
-    );
+    const detailList = host.querySelector<HTMLElement>(".subtask-list")!;
+    expect(detailList.textContent).not.toContain(hiddenHistoricalChild.title);
+    const completedToggle = detailList.querySelector<HTMLButtonElement>(
+      ".completed-subtasks-toggle",
+    )!;
+    await act(async () => completedToggle.click());
+    expect(detailList.textContent).toContain(hiddenHistoricalChild.title);
     expect(host.querySelector(".content-section")?.textContent).toContain(
       "1/1 已完成",
     );

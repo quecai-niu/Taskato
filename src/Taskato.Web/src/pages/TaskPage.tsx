@@ -721,6 +721,8 @@ export function TaskPage({
   const [progressEditor, setProgressEditor] = useState<
     ProgressRecordDto | "new" | null
   >(null);
+  const [completedChildrenExpanded, setCompletedChildrenExpanded] =
+    useState(false);
   const [parentCandidates, setParentCandidates] = useState<TaskDto[]>([]);
   const workspaceRef = useRef<HTMLDivElement>(null);
   const paneDrag = useRef<{
@@ -904,6 +906,10 @@ export function TaskPage({
   const children = detailTasks
     .filter((task) => task.parentId === selectedId)
     .sort(compareSubtaskDisplayOrder);
+  const incompleteChildren = children.filter((task) => !task.isCompleted);
+  const completedChildren = children.filter((task) => task.isCompleted);
+  const collapseCompletedChildren =
+    selected?.depth === 0 && completedChildren.length > 0;
   const selectedPath = useMemo(() => {
     if (!selected) return [];
     const byId = new Map(detailTasks.map((task) => [task.id, task]));
@@ -922,6 +928,7 @@ export function TaskPage({
     },
     [selected?.id, selected?.title],
   );
+  useEffect(() => setCompletedChildrenExpanded(false), [selected?.id]);
 
   const focusTaskContentEditor = useCallback(() => {
     const editor = document.querySelector<HTMLTextAreaElement>(
@@ -1230,6 +1237,30 @@ export function TaskPage({
     }, 700);
     return () => window.clearTimeout(timer);
   }, [contentDraft, saveTaskContent, selected]);
+
+  const renderSubtaskRow = (item: TaskDto) => (
+    <div className="subtask-row" key={item.id}>
+      <button
+        className={`task-check ${item.isCompleted ? "checked" : ""}`}
+        aria-label={item.isCompleted ? "取消完成" : "标记完成"}
+        onClick={() => toggleComplete(item)}
+      >
+        {item.isCompleted && <Check size={12} />}
+      </button>
+      <span
+        className={item.isCompleted ? "done" : ""}
+        title="双击编辑任务内容"
+        onDoubleClick={() => editTaskContent(item.id)}
+      >
+        {item.title}
+      </span>
+      <small>
+        {item.completionDurationMinutes
+          ? `${item.completionDurationMinutes} 分钟`
+          : ""}
+      </small>
+    </div>
+  );
 
   return (
     <div
@@ -1541,28 +1572,32 @@ export function TaskPage({
                 </form>
               )}
               <div className="subtask-list">
-                {children.map((item) => (
-                  <div className="subtask-row" key={item.id}>
-                    <button
-                      className={`task-check ${item.isCompleted ? "checked" : ""}`}
-                      onClick={() => toggleComplete(item)}
-                    >
-                      {item.isCompleted && <Check size={12} />}
-                    </button>
-                    <span
-                      className={item.isCompleted ? "done" : ""}
-                      title="双击编辑任务内容"
-                      onDoubleClick={() => editTaskContent(item.id)}
-                    >
-                      {item.title}
-                    </span>
-                    <small>
-                      {item.completionDurationMinutes
-                        ? `${item.completionDurationMinutes} 分钟`
-                        : ""}
-                    </small>
-                  </div>
-                ))}
+                {(collapseCompletedChildren ? incompleteChildren : children).map(
+                  renderSubtaskRow,
+                )}
+                {collapseCompletedChildren && (
+                  <button
+                    type="button"
+                    className="completed-subtasks-toggle"
+                    aria-expanded={completedChildrenExpanded}
+                    onClick={() =>
+                      setCompletedChildrenExpanded((current) => !current)
+                    }
+                  >
+                    <CaretRight
+                      size={15}
+                      className={completedChildrenExpanded ? "expanded" : ""}
+                    />
+                    <span>已完成任务</span>
+                    <small>{completedChildren.length} 项</small>
+                    <strong>
+                      {completedChildrenExpanded ? "收起" : "展开"}
+                    </strong>
+                  </button>
+                )}
+                {collapseCompletedChildren &&
+                  completedChildrenExpanded &&
+                  completedChildren.map(renderSubtaskRow)}
               </div>
             </section>
             <section id="task-content" className="content-section task-content-section">
@@ -1692,7 +1727,7 @@ export function TaskPage({
               <div className="section-title-row">
                 <h3>任务操作</h3>
               </div>
-              <div className="setting-row compact-setting-row">
+              <div className="setting-row compact-setting-row parent-task-operation">
                 <div>
                   <strong>所属父任务</strong>
                   <span>移动后由 C# 校验循环引用和五层限制</span>
