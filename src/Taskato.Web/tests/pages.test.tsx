@@ -14,7 +14,13 @@ import {
   calculateTaskPickerPlacement,
   filterAndSortTaskOptions,
 } from "../src/components/TaskPicker";
-import { bridge, type TaskDto, type TaskListResult } from "../src/bridge";
+import {
+  bridge,
+  type ProgressRecordDto,
+  type TaskDto,
+  type TaskListResult,
+  type TaskProgressResult,
+} from "../src/bridge";
 
 function createTask(overrides: Partial<TaskDto> & Pick<TaskDto, "id" | "title">): TaskDto {
   return {
@@ -31,6 +37,27 @@ function createTask(overrides: Partial<TaskDto> & Pick<TaskDto, "id" | "title">)
     completedAt: null,
     completionDurationMinutes: null,
     ...overrides,
+  };
+}
+
+function createProgressRecord(id: number, note: string): ProgressRecordDto {
+  const completedAt = new Date(Date.UTC(2026, 7, 28, 12, 30 - id));
+  return {
+    id,
+    taskId: 1,
+    taskTitle: "发布 Taskato 3.0",
+    taskPath: "发布 Taskato 3.0",
+    note,
+    startedAt: new Date(completedAt.getTime() - 25 * 60_000).toISOString(),
+    completedAt: completedAt.toISOString(),
+    createdAt: completedAt.toISOString(),
+    originalDurationMinutes: 25,
+    durationMinutes: 25,
+    isDurationAdjusted: false,
+    endReason: "completed",
+    endReasonDisplay: "自然结束",
+    source: "pomodoro",
+    canOpenTask: true,
   };
 }
 
@@ -111,6 +138,28 @@ describe("独立业务页面", () => {
     expect(subtaskList.textContent).toContain("确定新版信息架构");
   });
 
+  it("任务详情优先级选择会立即更新并写入任务", async () => {
+    await renderAndFlush(
+      <TaskPage reportError={() => undefined} requestedTaskId={4} />,
+    );
+    const requestSpy = vi.spyOn(bridge, "request");
+    const highPriority = host.querySelector<HTMLButtonElement>(
+      '[aria-label="任务优先级：高"]',
+    )!;
+
+    await act(async () => {
+      highPriority.click();
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
+
+    expect(requestSpy).toHaveBeenCalledWith("tasks.update", {
+      taskId: 4,
+      priority: 3,
+    });
+    expect(highPriority.getAttribute("aria-checked")).toBe("true");
+    expect(host.querySelector(".tree-row.selected .priority-3")).not.toBeNull();
+  });
+
   it("专注统计页支持天、周、月热力图切换", async () => {
     await renderAndFlush(<FocusAnalyticsPage reportError={() => undefined} />);
     expect(host.textContent).toContain("专注统计");
@@ -146,6 +195,55 @@ describe("独立业务页面", () => {
     await act(async () => createProgress?.click());
     expect(host.querySelector(".progress-editor-modal")).not.toBeNull();
     expect(host.querySelector('[aria-label="搜索任务"]')).not.toBeNull();
+  });
+
+  it("任务详情默认只显示最新三条推进记录并允许展开", async () => {
+    const records = Array.from({ length: 5 }, (_, index) =>
+      createProgressRecord(index + 1, `推进记录 ${index + 1}`),
+    );
+    const progressResult: TaskProgressResult = {
+      records,
+      ownCount: records.length,
+      allCount: records.length,
+      ownDurationMinutes: 125,
+      allDurationMinutes: 125,
+      lastProgressAt: records[0].completedAt,
+    };
+    const originalRequest = bridge.request.bind(bridge);
+    vi.spyOn(bridge, "request").mockImplementation(
+      async <T,>(method: string, params?: Record<string, unknown>) => {
+        if (method === "progress.list") return progressResult as T;
+        return originalRequest<T>(method, params);
+      },
+    );
+
+    await renderAndFlush(
+      <TaskPage reportError={() => undefined} requestedTaskId={1} />,
+    );
+
+    expect(host.querySelectorAll(".progress-record-row")).toHaveLength(3);
+    expect(host.textContent).toContain("推进记录 1");
+    expect(host.textContent).toContain("推进记录 3");
+    expect(host.textContent).not.toContain("推进记录 4");
+
+    const expand = host.querySelector<HTMLButtonElement>(
+      '[aria-label="展开全部推进记录"]',
+    )!;
+    expect(expand.getAttribute("aria-expanded")).toBe("false");
+    await act(async () => expand.click());
+    expect(host.querySelectorAll(".progress-record-row")).toHaveLength(5);
+    expect(host.textContent).toContain("推进记录 5");
+
+    const allProgressTab = [...host.querySelectorAll<HTMLButtonElement>('[role="tab"]')]
+      .find((button) => button.textContent?.includes("全部推进"))!;
+    await act(async () => {
+      allProgressTab.click();
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
+    expect(host.querySelectorAll(".progress-record-row")).toHaveLength(3);
+    expect(
+      host.querySelector('[aria-label="展开全部推进记录"]'),
+    ).not.toBeNull();
   });
 
   it("统一任务选择器默认隐藏已完成任务并支持按完整路径搜索", () => {

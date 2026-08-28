@@ -54,6 +54,7 @@ import { TaskPicker } from "../components/TaskPicker";
 type TaskNode = TaskDto & { children: TaskNode[] };
 
 const TASK_EXPANSION_STORAGE_KEY = "taskato.expandedTaskIds";
+const PROGRESS_RECORD_PREVIEW_COUNT = 3;
 
 function loadStoredTaskExpansion(): {
   hasStoredValue: boolean;
@@ -151,13 +152,22 @@ function PrioritySelector({
   value,
   onChange,
   label,
+  className = "",
+  disabled = false,
 }: {
   value: number;
   onChange(value: number): void;
   label: string;
+  className?: string;
+  disabled?: boolean;
 }) {
   return (
-    <div className="priority-selector" role="radiogroup" aria-label={label}>
+    <div
+      className={`priority-selector ${className}`.trim()}
+      role="radiogroup"
+      aria-label={label}
+      aria-busy={disabled}
+    >
       <span>优先级</span>
       {priorityLabels.map((priority, index) => (
         <button
@@ -166,6 +176,7 @@ function PrioritySelector({
           role="radio"
           aria-label={`${label}：${priority}`}
           aria-checked={value === index}
+          disabled={disabled}
           className={`priority-option priority-${index} ${value === index ? "selected" : ""}`}
           onClick={() => onChange(index)}
         >
@@ -721,6 +732,8 @@ export function TaskPage({
   const [progressEditor, setProgressEditor] = useState<
     ProgressRecordDto | "new" | null
   >(null);
+  const [progressRecordsExpanded, setProgressRecordsExpanded] = useState(false);
+  const [prioritySaving, setPrioritySaving] = useState(false);
   const [completedChildrenExpanded, setCompletedChildrenExpanded] =
     useState(false);
   const [parentCandidates, setParentCandidates] = useState<TaskDto[]>([]);
@@ -910,6 +923,12 @@ export function TaskPage({
   const completedChildren = children.filter((task) => task.isCompleted);
   const collapseCompletedChildren =
     selected?.depth === 0 && completedChildren.length > 0;
+  const progressRecords = progressResult?.records ?? [];
+  const hasHiddenProgressRecords =
+    progressRecords.length > PROGRESS_RECORD_PREVIEW_COUNT;
+  const visibleProgressRecords = progressRecordsExpanded
+    ? progressRecords
+    : progressRecords.slice(0, PROGRESS_RECORD_PREVIEW_COUNT);
   const selectedPath = useMemo(() => {
     if (!selected) return [];
     const byId = new Map(detailTasks.map((task) => [task.id, task]));
@@ -929,6 +948,10 @@ export function TaskPage({
     [selected?.id, selected?.title],
   );
   useEffect(() => setCompletedChildrenExpanded(false), [selected?.id]);
+  useEffect(
+    () => setProgressRecordsExpanded(false),
+    [progressScope, selected?.id],
+  );
 
   const focusTaskContentEditor = useCallback(() => {
     const editor = document.querySelector<HTMLTextAreaElement>(
@@ -1096,24 +1119,33 @@ export function TaskPage({
       reportError(error);
     }
   };
-  const updateTask = async (
-    changes: { title?: string; priority?: number },
-    undoChanges?: { title?: string; priority?: number },
-    successMessage?: string,
-  ) => {
-    if (!selected) return;
+  const updatePriority = async (priority: number) => {
+    if (!selected || prioritySaving || priority === selected.priority) return;
+    const taskId = selected.id;
+    const previousPriority = selected.priority;
+    const applyPriority = (items: TaskDto[], value: number) =>
+      items.map((task) =>
+        task.id === taskId ? { ...task, priority: value } : task,
+      );
+
+    setTasks((current) => applyPriority(current, priority));
+    setDetailTasks((current) => applyPriority(current, priority));
+    setPrioritySaving(true);
     try {
-      await bridge.request("tasks.update", { taskId: selected.id, ...changes });
+      await bridge.request("tasks.update", { taskId, priority });
       await load();
-      if (undoChanges && successMessage) {
-        const taskId = selected.id;
-        offerUndo(successMessage, async () => {
-          await bridge.request("tasks.update", { taskId, ...undoChanges });
-          await load();
+      offerUndo(`已将优先级设为“${priorityLabels[priority]}”`, async () => {
+        await bridge.request("tasks.update", {
+          taskId,
+          priority: previousPriority,
         });
-      }
+        await load();
+      });
     } catch (error) {
+      await load();
       reportError(error);
+    } finally {
+      setPrioritySaving(false);
     }
   };
   const deleteTask = async (mode: "deleteBranch" | "promoteChildren") => {
@@ -1514,18 +1546,13 @@ export function TaskPage({
               </div>
             </div>
             <div className="meta-strip">
-              <button
-                title="点击切换优先级"
-                onClick={() =>
-                  void updateTask(
-                    { priority: (selected.priority + 1) % 4 },
-                    { priority: selected.priority },
-                    "已调整任务优先级",
-                  )
-                }
-              >
-                优先级：{priorityLabels[selected.priority]}
-              </button>
+              <PrioritySelector
+                className="detail-priority-selector"
+                label="任务优先级"
+                value={selected.priority}
+                disabled={prioritySaving}
+                onChange={(priority) => void updatePriority(priority)}
+              />
               <span className="meta-item">
                 <CalendarBlank size={16} />
                 {new Date(selected.createdAt).toLocaleDateString()}
@@ -1668,7 +1695,7 @@ export function TaskPage({
                 </div>
               )}
               <div className="progress-record-list">
-                {progressResult?.records.map((record) => (
+                {visibleProgressRecords.map((record) => (
                   <article className="progress-record-row" key={record.id}>
                     <div className="progress-record-time">
                       <strong>
@@ -1716,10 +1743,35 @@ export function TaskPage({
                     </IconButton>
                   </article>
                 ))}
-                {progressResult && progressResult.records.length === 0 && (
+                {progressResult && progressRecords.length === 0 && (
                   <div className="progress-empty">
                     还没有推进记录。完成一次番茄钟，或点击“记录推进”手动补录。
                   </div>
+                )}
+                {hasHiddenProgressRecords && (
+                  <button
+                    type="button"
+                    className="progress-record-toggle"
+                    aria-expanded={progressRecordsExpanded}
+                    aria-label={
+                      progressRecordsExpanded
+                        ? "收起推进记录"
+                        : "展开全部推进记录"
+                    }
+                    onClick={() =>
+                      setProgressRecordsExpanded((current) => !current)
+                    }
+                  >
+                    <CaretDown
+                      size={15}
+                      className={progressRecordsExpanded ? "expanded" : ""}
+                    />
+                    <span>
+                      {progressRecordsExpanded
+                        ? `收起，只显示最新 ${PROGRESS_RECORD_PREVIEW_COUNT} 条`
+                        : `展开其余 ${progressRecords.length - PROGRESS_RECORD_PREVIEW_COUNT} 条`}
+                    </span>
+                  </button>
                 )}
               </div>
             </section>
