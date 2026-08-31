@@ -136,6 +136,9 @@ const INSPECTOR_PANE_MIN = 250;
 const INSPECTOR_PANE_MAX = 560;
 const CANVAS_PANE_MIN = 360;
 const RESIZER_WIDTH = 24;
+const PRIORITY_CONTEXT_MENU_WIDTH = 176;
+const PRIORITY_CONTEXT_MENU_HEIGHT = 190;
+const CONTEXT_MENU_VIEWPORT_GAP = 8;
 
 function storedPaneWidth(key: string, fallback: number): number {
   const value = Number(window.localStorage.getItem(key));
@@ -152,12 +155,14 @@ function PrioritySelector({
   value,
   onChange,
   label,
+  caption = "优先级",
   className = "",
   disabled = false,
 }: {
   value: number;
   onChange(value: number): void;
   label: string;
+  caption?: string;
   className?: string;
   disabled?: boolean;
 }) {
@@ -168,7 +173,7 @@ function PrioritySelector({
       aria-label={label}
       aria-busy={disabled}
     >
-      <span>优先级</span>
+      <span>{caption}</span>
       {priorityLabels.map((priority, index) => (
         <button
           key={priority}
@@ -187,6 +192,102 @@ function PrioritySelector({
   );
 }
 
+function PriorityContextMenu({
+  task,
+  left,
+  top,
+  disabled,
+  onChange,
+  onClose,
+}: {
+  task: TaskDto;
+  left: number;
+  top: number;
+  disabled: boolean;
+  onChange(priority: number): void;
+  onClose(): void;
+}) {
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const closeOnOutsideClick = (event: globalThis.MouseEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) onClose();
+    };
+    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose();
+      }
+    };
+    const focusTimer = window.setTimeout(() => {
+      menuRef.current
+        ?.querySelector<HTMLButtonElement>('[aria-checked="true"]')
+        ?.focus();
+    });
+    window.addEventListener("mousedown", closeOnOutsideClick);
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("resize", onClose);
+    window.addEventListener("blur", onClose);
+    return () => {
+      window.clearTimeout(focusTimer);
+      window.removeEventListener("mousedown", closeOnOutsideClick);
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("resize", onClose);
+      window.removeEventListener("blur", onClose);
+    };
+  }, [onClose]);
+
+  const moveFocus = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
+    event.preventDefault();
+    const items = [
+      ...(menuRef.current?.querySelectorAll<HTMLButtonElement>(
+        '[role="menuitemradio"]:not(:disabled)',
+      ) ?? []),
+    ];
+    if (items.length === 0) return;
+    const currentIndex = items.indexOf(document.activeElement as HTMLButtonElement);
+    if (event.key === "Home") items[0].focus();
+    else if (event.key === "End") items.at(-1)?.focus();
+    else {
+      const offset = event.key === "ArrowDown" ? 1 : -1;
+      const nextIndex = (currentIndex + offset + items.length) % items.length;
+      items[nextIndex].focus();
+    }
+  };
+
+  return (
+    <div
+      ref={menuRef}
+      className="priority-context-menu"
+      role="menu"
+      aria-label={`修改“${task.title}”的优先级`}
+      style={{ left, top }}
+      onContextMenu={(event) => event.preventDefault()}
+      onKeyDown={moveFocus}
+    >
+      <span className="priority-context-menu-title" role="presentation">
+        切换优先级
+      </span>
+      {priorityLabels.map((priority, index) => (
+        <button
+          key={priority}
+          type="button"
+          role="menuitemradio"
+          aria-label={`切换为${priority}优先级`}
+          aria-checked={task.priority === index}
+          disabled={disabled}
+          className={`priority-context-option priority-${index}`}
+          onClick={() => onChange(index)}
+        >
+          <span>{priority}</span>
+          {task.priority === index && <Check size={14} weight="bold" />}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function TaskTreeRow({
   task,
   selectedId,
@@ -195,6 +296,7 @@ function TaskTreeRow({
   onSelect,
   onEditContent,
   onComplete,
+  onOpenPriorityMenu,
 }: {
   task: TaskNode;
   selectedId: number | null;
@@ -203,6 +305,7 @@ function TaskTreeRow({
   onSelect(id: number): void;
   onEditContent(id: number): void;
   onComplete(task: TaskDto): void;
+  onOpenPriorityMenu(task: TaskDto, clientX: number, clientY: number): void;
 }) {
   const isParent = task.hasChildren;
   const hasVisibleChildren = task.children.length > 0;
@@ -213,6 +316,10 @@ function TaskTreeRow({
         className={`tree-row ${isParent ? "parent-node" : "leaf-node"} ${
           selectedId === task.id ? "selected" : ""
         }`}
+        onContextMenu={(event) => {
+          event.preventDefault();
+          onOpenPriorityMenu(task, event.clientX, event.clientY);
+        }}
       >
         <button
           className="tree-expand"
@@ -293,6 +400,7 @@ function TaskTreeRow({
               onSelect={onSelect}
               onEditContent={onEditContent}
               onComplete={onComplete}
+              onOpenPriorityMenu={onOpenPriorityMenu}
             />
           ))}
         </div>
@@ -720,6 +828,11 @@ export function TaskPage({
     "saved" | "unsaved" | "saving" | "error"
   >("saved");
   const [taskMenuOpen, setTaskMenuOpen] = useState(false);
+  const [priorityContextMenu, setPriorityContextMenu] = useState<{
+    task: TaskDto;
+    left: number;
+    top: number;
+  } | null>(null);
   const [undoAction, setUndoAction] = useState<{
     message: string;
     run(): Promise<void>;
@@ -1119,13 +1232,13 @@ export function TaskPage({
       reportError(error);
     }
   };
-  const updatePriority = async (priority: number) => {
-    if (!selected || prioritySaving || priority === selected.priority) return;
-    const taskId = selected.id;
-    const previousPriority = selected.priority;
+  const updateTaskPriority = async (task: TaskDto, priority: number) => {
+    if (prioritySaving || priority === task.priority) return;
+    const taskId = task.id;
+    const previousPriority = task.priority;
     const applyPriority = (items: TaskDto[], value: number) =>
-      items.map((task) =>
-        task.id === taskId ? { ...task, priority: value } : task,
+      items.map((item) =>
+        item.id === taskId ? { ...item, priority: value } : item,
       );
 
     setTasks((current) => applyPriority(current, priority));
@@ -1134,13 +1247,16 @@ export function TaskPage({
     try {
       await bridge.request("tasks.update", { taskId, priority });
       await load();
-      offerUndo(`已将优先级设为“${priorityLabels[priority]}”`, async () => {
-        await bridge.request("tasks.update", {
-          taskId,
-          priority: previousPriority,
-        });
-        await load();
-      });
+      offerUndo(
+        `已将“${task.title}”优先级设为“${priorityLabels[priority]}”`,
+        async () => {
+          await bridge.request("tasks.update", {
+            taskId,
+            priority: previousPriority,
+          });
+          await load();
+        },
+      );
     } catch (error) {
       await load();
       reportError(error);
@@ -1148,6 +1264,31 @@ export function TaskPage({
       setPrioritySaving(false);
     }
   };
+  const openPriorityContextMenu = (
+    task: TaskDto,
+    clientX: number,
+    clientY: number,
+  ) => {
+    const left = clamp(
+      clientX,
+      CONTEXT_MENU_VIEWPORT_GAP,
+      window.innerWidth -
+        PRIORITY_CONTEXT_MENU_WIDTH -
+        CONTEXT_MENU_VIEWPORT_GAP,
+    );
+    const top = clamp(
+      clientY,
+      CONTEXT_MENU_VIEWPORT_GAP,
+      window.innerHeight -
+        PRIORITY_CONTEXT_MENU_HEIGHT -
+        CONTEXT_MENU_VIEWPORT_GAP,
+    );
+    setPriorityContextMenu({ task, left, top });
+  };
+  const closePriorityContextMenu = useCallback(
+    () => setPriorityContextMenu(null),
+    [],
+  );
   const deleteTask = async (mode: "deleteBranch" | "promoteChildren") => {
     if (
       !selected ||
@@ -1271,7 +1412,14 @@ export function TaskPage({
   }, [contentDraft, saveTaskContent, selected]);
 
   const renderSubtaskRow = (item: TaskDto) => (
-    <div className="subtask-row" key={item.id}>
+    <div
+      className={`subtask-row ${item.isCompleted ? "completed" : ""}`.trim()}
+      key={item.id}
+      onContextMenu={(event) => {
+        event.preventDefault();
+        openPriorityContextMenu(item, event.clientX, event.clientY);
+      }}
+    >
       <button
         className={`task-check ${item.isCompleted ? "checked" : ""}`}
         aria-label={item.isCompleted ? "取消完成" : "标记完成"}
@@ -1286,6 +1434,14 @@ export function TaskPage({
       >
         {item.title}
       </span>
+      {item.priority > 0 && (
+        <span
+          className={`priority-badge subtask-priority-badge priority-${item.priority}`}
+          title={`优先级：${priorityLabels[item.priority]}`}
+        >
+          {priorityLabels[item.priority]}
+        </span>
+      )}
       <small>
         {item.completionDurationMinutes
           ? `${item.completionDurationMinutes} 分钟`
@@ -1359,6 +1515,7 @@ export function TaskPage({
               onSelect={selectTask}
               onEditContent={editTaskContent}
               onComplete={toggleComplete}
+              onOpenPriorityMenu={openPriorityContextMenu}
             />
           ))}
           <div className="tree-section-label ungrouped">
@@ -1375,6 +1532,7 @@ export function TaskPage({
               onSelect={selectTask}
               onEditContent={editTaskContent}
               onComplete={toggleComplete}
+              onOpenPriorityMenu={openPriorityContextMenu}
             />
           ))}
         </div>
@@ -1551,7 +1709,9 @@ export function TaskPage({
                 label="任务优先级"
                 value={selected.priority}
                 disabled={prioritySaving}
-                onChange={(priority) => void updatePriority(priority)}
+                onChange={(priority) =>
+                  void updateTaskPriority(selected, priority)
+                }
               />
               <span className="meta-item">
                 <CalendarBlank size={16} />
@@ -1577,25 +1737,44 @@ export function TaskPage({
               </div>
               {selected.canAddChild && (
                 <form
-                  className="inline-add subtask-composer"
+                  className="subtask-composer subtask-composer-card"
+                  aria-label="新增直属子任务"
                   onSubmit={(event) => void add(event, selected.id, "child")}
                 >
-                  <div className="subtask-input-row">
-                    <button type="submit" aria-label="添加子任务">
-                      <Plus size={16} />
-                    </button>
-                    <input
-                      aria-label="新建子任务"
-                      value={childTitle}
-                      onChange={(event) => setChildTitle(event.target.value)}
-                      placeholder="添加子任务，按 Enter 保存"
+                  <header className="subtask-composer-heading">
+                    <span aria-hidden="true">
+                      <Plus size={16} weight="bold" />
+                    </span>
+                    <div>
+                      <strong>新增直属子任务</strong>
+                      <small>将创建在当前任务下</small>
+                    </div>
+                  </header>
+                  <div className="subtask-composer-body">
+                    <div className="subtask-input-row">
+                      <input
+                        aria-label="新建子任务"
+                        value={childTitle}
+                        onChange={(event) => setChildTitle(event.target.value)}
+                        placeholder="输入子任务内容，按 Enter 保存"
+                      />
+                      <button
+                        type="submit"
+                        aria-label="添加子任务"
+                        disabled={!childTitle.trim()}
+                      >
+                        <Plus size={15} />
+                        <span>添加</span>
+                      </button>
+                    </div>
+                    <PrioritySelector
+                      className="subtask-create-priority"
+                      label="新子任务优先级"
+                      caption="新子任务优先级"
+                      value={childPriority}
+                      onChange={setChildPriority}
                     />
                   </div>
-                  <PrioritySelector
-                    label="子任务优先级"
-                    value={childPriority}
-                    onChange={setChildPriority}
-                  />
                 </form>
               )}
               <div className="subtask-list">
@@ -1782,7 +1961,7 @@ export function TaskPage({
               <div className="setting-row compact-setting-row parent-task-operation">
                 <div>
                   <strong>所属父任务</strong>
-                  <span>移动后由 C# 校验循环引用和五层限制</span>
+                  <span>仅可选择有效父任务，最多支持 5 层</span>
                 </div>
                 <TaskPicker
                   tasks={parentCandidates}
@@ -2013,6 +2192,20 @@ export function TaskPage({
           )}
         </section>
       </aside>
+      {priorityContextMenu && (
+        <PriorityContextMenu
+          task={priorityContextMenu.task}
+          left={priorityContextMenu.left}
+          top={priorityContextMenu.top}
+          disabled={prioritySaving}
+          onClose={closePriorityContextMenu}
+          onChange={(priority) => {
+            const task = priorityContextMenu.task;
+            closePriorityContextMenu();
+            void updateTaskPriority(task, priority);
+          }}
+        />
+      )}
       {completionTask && (
         <CompletionDialog
           task={completionTask}

@@ -90,6 +90,25 @@ describe("独立业务页面", () => {
     });
   }
 
+  async function openContextMenu(
+    element: HTMLElement,
+    clientX = 120,
+    clientY = 120,
+  ): Promise<MouseEvent> {
+    const event = new MouseEvent("contextmenu", {
+      bubbles: true,
+      cancelable: true,
+      button: 2,
+      clientX,
+      clientY,
+    });
+    await act(async () => {
+      element.dispatchEvent(event);
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
+    return event;
+  }
+
   it("任务页可独立加载任务树、详情与计时器", async () => {
     await renderAndFlush(
       <TaskPage reportError={() => undefined} requestedTaskId={null} />,
@@ -102,7 +121,7 @@ describe("独立业务页面", () => {
     expect(host.querySelector(".open-task-create")).not.toBeNull();
     expect(host.querySelector('[aria-label="新建顶级任务"]')).toBeNull();
     expect(host.querySelector('[aria-label="完成父任务"]')).not.toBeNull();
-    expect(host.querySelector('[aria-label="子任务优先级"]')).not.toBeNull();
+    expect(host.querySelector('[aria-label="新子任务优先级"]')).not.toBeNull();
     expect(host.querySelector('[aria-label="减少五分钟"]')).not.toBeNull();
     expect(host.querySelector('[aria-label="增加五分钟"]')).not.toBeNull();
     expect(host.querySelector(".timer-display-stage")).not.toBeNull();
@@ -112,6 +131,8 @@ describe("独立业务页面", () => {
     expect(
       host.querySelector("#task-operations .parent-task-operation > .task-picker"),
     ).not.toBeNull();
+    expect(host.textContent).toContain("仅可选择有效父任务，最多支持 5 层");
+    expect(host.textContent).not.toContain("移动后由 C# 校验");
   });
 
   it("顶级任务组默认折叠已完成的直属任务并允许展开", async () => {
@@ -158,6 +179,140 @@ describe("独立业务页面", () => {
     });
     expect(highPriority.getAttribute("aria-checked")).toBe("true");
     expect(host.querySelector(".tree-row.selected .priority-3")).not.toBeNull();
+  });
+
+  it("任务组详情只为有优先级的直属子任务显示标签", async () => {
+    const parent = createTask({
+      id: 9200,
+      title: "优先级展示测试",
+      hasChildren: true,
+      totalLeafCount: 2,
+    });
+    const prioritizedChild = createTask({
+      id: 9201,
+      title: "高优先级子任务",
+      parentId: parent.id,
+      depth: 1,
+      priority: 3,
+    });
+    const unprioritizedChild = createTask({
+      id: 9202,
+      title: "无优先级子任务",
+      parentId: parent.id,
+      depth: 1,
+      priority: 0,
+    });
+    const originalRequest = bridge.request.bind(bridge);
+    vi.spyOn(bridge, "request").mockImplementation((method, params) => {
+      if (method === "tasks.list")
+        return Promise.resolve({
+          tasks: [parent, prioritizedChild, unprioritizedChild],
+          detailTasks: [parent, prioritizedChild, unprioritizedChild],
+          selectedTaskId: parent.id,
+          maximumDepth: 5,
+        } satisfies TaskListResult);
+      return originalRequest(method, params);
+    });
+
+    await renderAndFlush(
+      <TaskPage reportError={() => undefined} requestedTaskId={parent.id} />,
+    );
+
+    const detailList = host.querySelector<HTMLElement>(
+      ".task-canvas .subtask-list",
+    )!;
+    const priorityBadges = detailList.querySelectorAll(
+      ".subtask-priority-badge",
+    );
+    expect(priorityBadges).toHaveLength(1);
+    expect(priorityBadges[0].textContent).toBe("高");
+    expect(priorityBadges[0].getAttribute("title")).toBe("优先级：高");
+  });
+
+  it("任务树整行可以右击切换优先级且不会切换当前详情", async () => {
+    await renderAndFlush(
+      <TaskPage reportError={() => undefined} requestedTaskId={4} />,
+    );
+    const selectedTitle = host.querySelector(".tree-row.selected .tree-title")
+      ?.textContent;
+    const groupRow = [...host.querySelectorAll<HTMLElement>(".tree-row")].find(
+      (row) => row.textContent?.includes("发布 Taskato 3.0"),
+    )!;
+
+    const contextEvent = await openContextMenu(groupRow, 5000, 5000);
+    expect(contextEvent.defaultPrevented).toBe(true);
+    let menu = host.querySelector<HTMLElement>(".priority-context-menu")!;
+    expect(menu).not.toBeNull();
+    expect(menu.getAttribute("aria-label")).toContain("发布 Taskato 3.0");
+    expect(
+      menu
+        .querySelector('[aria-label="切换为中优先级"]')
+        ?.getAttribute("aria-checked"),
+    ).toBe("true");
+    expect(Number.parseFloat(menu.style.left)).toBeLessThan(window.innerWidth);
+    expect(Number.parseFloat(menu.style.top)).toBeLessThan(window.innerHeight);
+
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    });
+    expect(host.querySelector(".priority-context-menu")).toBeNull();
+
+    await openContextMenu(groupRow);
+    await act(async () => {
+      document.body.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+    });
+    expect(host.querySelector(".priority-context-menu")).toBeNull();
+
+    await openContextMenu(groupRow);
+    menu = host.querySelector<HTMLElement>(".priority-context-menu")!;
+    const requestSpy = vi.spyOn(bridge, "request");
+    await act(async () => {
+      menu
+        .querySelector<HTMLButtonElement>('[aria-label="切换为高优先级"]')!
+        .click();
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
+
+    expect(requestSpy).toHaveBeenCalledWith("tasks.update", {
+      taskId: 1,
+      priority: 3,
+    });
+    expect(host.querySelector(".tree-row.selected .tree-title")?.textContent).toBe(
+      selectedTitle,
+    );
+  });
+
+  it("直属子任务整行可以右击切换优先级", async () => {
+    await renderAndFlush(
+      <TaskPage reportError={() => undefined} requestedTaskId={3} />,
+    );
+    const subtaskRow = [
+      ...host.querySelectorAll<HTMLElement>(".task-canvas .subtask-row"),
+    ].find((row) => row.textContent?.includes("补充键盘快捷键"))!;
+
+    await openContextMenu(subtaskRow);
+    const menu = host.querySelector<HTMLElement>(".priority-context-menu")!;
+    expect(
+      menu
+        .querySelector('[aria-label="切换为低优先级"]')
+        ?.getAttribute("aria-checked"),
+    ).toBe("true");
+    const requestSpy = vi.spyOn(bridge, "request");
+    await act(async () => {
+      menu
+        .querySelector<HTMLButtonElement>('[aria-label="切换为无优先级"]')!
+        .click();
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
+
+    expect(requestSpy).toHaveBeenCalledWith("tasks.update", {
+      taskId: 5,
+      priority: 0,
+    });
+    const updatedSubtaskRow = [
+      ...host.querySelectorAll<HTMLElement>(".task-canvas .subtask-row"),
+    ].find((row) => row.textContent?.includes("补充键盘快捷键"))!;
+    expect(updatedSubtaskRow.querySelector(".subtask-priority-badge")).toBeNull();
   });
 
   it("专注统计页支持天、周、月热力图切换", async () => {
@@ -337,7 +492,7 @@ describe("独立业务页面", () => {
     ]);
   });
 
-  it("添加子任务输入栏显示在子任务列表顶部", async () => {
+  it("新增直属子任务使用独立卡片并显示在列表顶部", async () => {
     await renderAndFlush(
       <TaskPage reportError={() => undefined} requestedTaskId={null} />,
     );
@@ -347,6 +502,13 @@ describe("独立业务页面", () => {
 
     expect(composer).not.toBeNull();
     expect(list).not.toBeNull();
+    expect(composer.textContent).toContain("新增直属子任务");
+    expect(composer.textContent).toContain("将创建在当前任务下");
+    expect(
+      composer.querySelector('[aria-label="新子任务优先级"]'),
+    ).not.toBeNull();
+    expect(composer.querySelector(".subtask-composer-heading")).not.toBeNull();
+    expect(composer.querySelector(".subtask-composer-body")).not.toBeNull();
     expect(composer.compareDocumentPosition(list)).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
     );

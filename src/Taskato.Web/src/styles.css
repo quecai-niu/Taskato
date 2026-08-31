@@ -195,12 +195,35 @@ body{font-size:var(--font-control)}
 .meta-strip .detail-priority-selector .priority-option{min-width:26px;min-height:25px;height:25px;padding:0 7px;background:transparent}
 .meta-strip .detail-priority-selector .priority-option:hover{background:var(--hover)}
 .meta-strip .detail-priority-selector .priority-option.selected{background:var(--primary-soft)}
-.subtask-composer{display:flex;flex-direction:column;align-items:stretch;gap:0;padding:8px 0}
-.subtask-composer+.subtask-list{border-top:0}
-.subtask-input-row{display:flex;align-items:center;gap:9px;min-height:38px}
-.subtask-input-row input{min-width:0;font-size:var(--font-body)}
-.subtask-input-row>button{width:28px;height:28px;display:grid;place-items:center;border-radius:7px;background:transparent;color:var(--text-3);cursor:pointer}
-.subtask-input-row>button:hover{background:var(--hover);color:var(--text)}
+.subtask-composer{display:block;margin:18px 0 14px;padding:0;overflow:hidden;border:1px solid color-mix(in srgb,var(--primary) 26%,var(--border));border-radius:11px;background:color-mix(in srgb,var(--primary) 4%,var(--surface))}
+.subtask-composer+.subtask-list{border-top:1px solid var(--border)}
+.subtask-composer-heading{display:flex;align-items:center;gap:10px;padding:11px 13px;border-bottom:1px solid var(--border);background:color-mix(in srgb,var(--primary) 8%,var(--surface-2))}
+.subtask-composer-heading>span{width:28px;height:28px;display:grid;place-items:center;flex:0 0 auto;border-radius:8px;background:var(--primary-soft);color:var(--primary)}
+.subtask-composer-heading>div{min-width:0;display:flex;flex-direction:column;gap:2px}
+.subtask-composer-heading strong{font-size:var(--font-control)}
+.subtask-composer-heading small{color:var(--text-3);font-size:var(--font-caption)}
+.subtask-composer-body{padding:10px 12px 12px}
+.subtask-input-row{min-height:40px;display:flex;align-items:center;gap:8px;padding:4px;border:1px solid var(--border);border-radius:8px;background:var(--surface)}
+.subtask-input-row:focus-within{border-color:color-mix(in srgb,var(--primary) 58%,var(--border));box-shadow:0 0 0 2px var(--primary-soft)}
+.subtask-input-row input{min-width:0;flex:1;padding:0 8px;border:0;outline:0;background:transparent;color:var(--text);font-size:var(--font-body)}
+.subtask-input-row input::placeholder{color:var(--text-3)}
+.subtask-input-row>button{min-width:62px;height:31px;display:flex;align-items:center;justify-content:center;gap:5px;padding:0 10px;border-radius:7px;background:var(--primary);color:#fff;font-size:var(--font-caption);font-weight:700;cursor:pointer}
+.subtask-input-row>button:hover{filter:brightness(1.07)}
+.subtask-input-row>button:disabled{opacity:.42;cursor:not-allowed;filter:none}
+.subtask-create-priority{margin-top:10px;padding-top:10px}
+.subtask-create-priority>span{color:var(--text-2);font-weight:600}
+.subtask-row{grid-template-columns:21px minmax(0,1fr) auto auto}
+.subtask-priority-badge{justify-self:end;white-space:nowrap}
+.subtask-row small{white-space:nowrap}
+.subtask-row.completed .subtask-priority-badge{opacity:.58}
+.priority-context-menu{position:fixed;z-index:70;width:176px;padding:6px;border:1px solid var(--border-strong);border-radius:10px;background:var(--surface-3);box-shadow:var(--shadow)}
+.priority-context-menu-title{display:block;padding:7px 9px 8px;color:var(--text-3);font-size:var(--font-caption);font-weight:700}
+.priority-context-option{width:100%;min-height:34px;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 9px;border-radius:7px;background:transparent;color:var(--text-2);font-size:var(--font-body);text-align:left;cursor:pointer}
+.priority-context-option:hover,.priority-context-option:focus-visible{background:var(--hover);color:var(--text)}
+.priority-context-option[aria-checked="true"]{background:var(--primary-soft);color:var(--text);font-weight:700}
+.priority-context-option.priority-2{color:#d5a44e}
+.priority-context-option.priority-3{color:var(--red)}
+.priority-context-option:disabled{opacity:.5;cursor:wait}
 
 /* 历史记录属于高密度阅读页：增加字号、行高和列间距，同时保留横向滚动兜底。 */
 .history-toolbar{gap:10px;margin-bottom:18px}
