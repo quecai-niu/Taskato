@@ -215,9 +215,9 @@ body{font-size:var(--font-control)}
 .subtask-input-row>button:disabled{opacity:.42;cursor:not-allowed;filter:none}
 .subtask-create-priority{margin-top:10px;padding-top:10px}
 .subtask-create-priority>span{color:var(--text-2);font-weight:600}
-.subtask-row{grid-template-columns:21px minmax(0,1fr) auto auto;cursor:pointer}
+.subtask-row{grid-template-columns:21px minmax(0,1fr) auto auto;padding:0 12px;cursor:pointer}
 .subtask-row:focus-visible{outline:2px solid color-mix(in srgb,var(--primary) 65%,transparent);outline-offset:-2px}
-.subtask-row.progress-target{background:var(--primary-soft);box-shadow:inset 3px 0 0 var(--primary)}
+.subtask-row.progress-target{border-radius:9px;background:var(--primary-soft);box-shadow:inset 3px 0 0 var(--primary)}
 .subtask-row-badges{display:flex;align-items:center;justify-content:flex-end;gap:6px;white-space:nowrap}
 .subtask-priority-badge{justify-self:end;white-space:nowrap}
 .progress-target-badge{padding:3px 7px;border:1px solid color-mix(in srgb,var(--primary) 42%,var(--border));border-radius:999px;background:color-mix(in srgb,var(--primary) 14%,var(--surface));color:var(--primary);font-size:var(--font-caption);font-weight:700;white-space:nowrap}
