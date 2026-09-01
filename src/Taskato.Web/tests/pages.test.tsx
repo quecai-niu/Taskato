@@ -13,10 +13,12 @@ import { sortBackfillTasks } from "../src/pages/SummaryPage";
 import {
   calculateTaskPickerPlacement,
   filterAndSortTaskOptions,
+  TaskPicker,
 } from "../src/components/TaskPicker";
 import {
   bridge,
   type ProgressRecordDto,
+  type SummaryResult,
   type TaskDto,
   type TaskListResult,
   type TaskProgressResult,
@@ -157,6 +159,104 @@ describe("独立业务页面", () => {
 
     expect(toggle.getAttribute("aria-expanded")).toBe("true");
     expect(subtaskList.textContent).toContain("确定新版信息架构");
+  });
+
+  it("直属子任务可作为推进目标，空白处取消后恢复当前任务组", async () => {
+    const progressTargetChanged = vi.fn();
+    await renderAndFlush(
+      <TaskPage
+        reportError={() => undefined}
+        requestedTaskId={1}
+        onProgressTargetTaskIdChange={progressTargetChanged}
+      />,
+    );
+
+    const subtaskList = host.querySelector<HTMLElement>(
+      ".task-canvas .subtask-list",
+    )!;
+    const activeRow = [...subtaskList.querySelectorAll<HTMLElement>(".subtask-row")]
+      .find((row) => row.textContent?.includes("重构任务工作区"))!;
+    await act(async () => activeRow.click());
+
+    expect(activeRow.classList.contains("progress-target")).toBe(true);
+    expect(activeRow.getAttribute("aria-current")).toBe("true");
+    expect(activeRow.textContent).toContain("推进目标");
+    expect(progressTargetChanged).toHaveBeenLastCalledWith(3);
+    expect(host.querySelector(".timer-display-stage p")?.textContent).toContain(
+      "重构任务工作区",
+    );
+
+    await act(async () =>
+      activeRow.querySelector<HTMLButtonElement>(".task-check")!.click()
+    );
+    expect(activeRow.classList.contains("progress-target")).toBe(true);
+    const completionClose = host.querySelector<HTMLButtonElement>(
+      '.modal [aria-label="关闭"]',
+    );
+    if (completionClose)
+      await act(async () => completionClose.click());
+
+    const createProgress = [...host.querySelectorAll<HTMLButtonElement>("button")]
+      .find((button) => button.textContent?.includes("记录推进"))!;
+    await act(async () => createProgress.click());
+    let selectedOption = host.querySelector<HTMLElement>(
+      '.progress-editor-modal [role="option"][aria-selected="true"]',
+    )!;
+    expect(selectedOption.textContent).toContain("重构任务工作区");
+    await act(async () =>
+      host
+        .querySelector<HTMLButtonElement>(
+          '.progress-editor-modal [aria-label="关闭"]',
+        )!
+        .click()
+    );
+
+    await act(async () =>
+      subtaskList
+        .querySelector<HTMLButtonElement>(".completed-subtasks-toggle")!
+        .click()
+    );
+    const completedRow = [...subtaskList.querySelectorAll<HTMLElement>(
+      ".subtask-row",
+    )].find((row) => row.textContent?.includes("确定新版信息架构"))!;
+    await act(async () => completedRow.click());
+    expect(completedRow.classList.contains("progress-target")).toBe(true);
+    expect(progressTargetChanged).toHaveBeenLastCalledWith(2);
+
+    await act(async () => createProgress.click());
+    expect(
+      host
+        .querySelector(".progress-editor-modal .task-picker-completed-filter")
+        ?.getAttribute("aria-pressed"),
+    ).toBe("true");
+    selectedOption = host.querySelector<HTMLElement>(
+      '.progress-editor-modal [role="option"][aria-selected="true"]',
+    )!;
+    expect(selectedOption.textContent).toContain("确定新版信息架构");
+    await act(async () =>
+      host
+        .querySelector<HTMLButtonElement>(
+          '.progress-editor-modal [aria-label="关闭"]',
+        )!
+        .click()
+    );
+
+    await act(async () =>
+      host
+        .querySelector<HTMLElement>(".task-canvas")!
+        .dispatchEvent(new MouseEvent("click", { bubbles: true }))
+    );
+    expect(host.querySelector(".subtask-row.progress-target")).toBeNull();
+    expect(progressTargetChanged).toHaveBeenLastCalledWith(null);
+    expect(host.querySelector(".timer-display-stage p")?.textContent).toContain(
+      "发布 Taskato 3.0",
+    );
+
+    await act(async () => createProgress.click());
+    selectedOption = host.querySelector<HTMLElement>(
+      '.progress-editor-modal [role="option"][aria-selected="true"]',
+    )!;
+    expect(selectedOption.textContent).toContain("发布 Taskato 3.0");
   });
 
   it("任务详情优先级选择会立即更新并写入任务", async () => {
@@ -413,6 +513,77 @@ describe("独立业务页面", () => {
       .map((task) => task.id)).not.toContain(3);
     expect(filterAndSortTaskOptions(source, "", true, "newest")
       .map((task) => task.id)).toContain(3);
+  });
+
+  it("任务选择器记住最后排序方式并对非法存储值安全回退", async () => {
+    const tasks = [
+      createTask({ id: 1, title: "旧任务", createdAt: "2026-08-01T09:00:00" }),
+      createTask({ id: 2, title: "高优先级任务", priority: 3 }),
+    ];
+    window.localStorage.setItem("taskato.taskPickerSortMode", "unknown");
+
+    await renderAndFlush(
+      <TaskPicker
+        tasks={tasks}
+        value={null}
+        onChange={() => undefined}
+        embedded
+      />,
+    );
+    let sortSelect = host.querySelector<HTMLSelectElement>(
+      '[aria-label="任务排序方式"]',
+    )!;
+    expect(sortSelect.value).toBe("newest");
+
+    await act(async () => {
+      sortSelect.value = "priority";
+      sortSelect.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    expect(window.localStorage.getItem("taskato.taskPickerSortMode")).toBe(
+      "priority",
+    );
+
+    await renderAndFlush(<div />);
+    await renderAndFlush(
+      <TaskPicker
+        tasks={tasks}
+        value={null}
+        onChange={() => undefined}
+        embedded
+      />,
+    );
+    sortSelect = host.querySelector<HTMLSelectElement>(
+      '[aria-label="任务排序方式"]',
+    )!;
+    expect(sortSelect.value).toBe("priority");
+    expect(
+      host.querySelector<HTMLButtonElement>(".task-picker-completed-filter")
+        ?.getAttribute("aria-pressed"),
+    ).toBe("false");
+  });
+
+  it("任务选择器中的不同层级任务保持左侧对齐", async () => {
+    const tasks = [
+      createTask({ id: 1, title: "顶级任务", depth: 0 }),
+      createTask({ id: 2, title: "三级任务", parentId: 1, depth: 3 }),
+    ];
+
+    await renderAndFlush(
+      <TaskPicker
+        tasks={tasks}
+        value={null}
+        onChange={() => undefined}
+        embedded
+        allowUnassigned={false}
+      />,
+    );
+
+    const optionRows = host.querySelectorAll<HTMLElement>(
+      ".task-picker-list [role=option]",
+    );
+    expect(optionRows).toHaveLength(2);
+    expect(optionRows[0].style.paddingLeft).toBe("");
+    expect(optionRows[1].style.paddingLeft).toBe("");
   });
 
   it("任务选择器靠近视口底部时改为向上展开", () => {
@@ -899,6 +1070,79 @@ describe("独立业务页面", () => {
     expect(host.textContent).not.toContain("立即切换到旧版界面");
   });
 
+  it("每日总结任务显示所属路径和固定的四档优先级", async () => {
+    const originalRequest = bridge.request.bind(bridge);
+    const completedAt = new Date().toISOString();
+    const priorityLabels = ["无", "低", "中", "高"];
+    const summaryFixture: SummaryResult = {
+      date: "2026-08-31",
+      summaryLine: "优先级展示测试",
+      completedCount: 4,
+      leafCompletedCount: 4,
+      parentAchievementCount: 0,
+      highPriorityCompleted: 2,
+      taskDurationMinutes: 40,
+      taskDurationDisplay: "40分钟",
+      totalDurationMinutes: 40,
+      totalDurationDisplay: "40分钟",
+      progressCount: 0,
+      progressDurationMinutes: 0,
+      progressDurationDisplay: "0分钟",
+      progressRecords: [],
+      groups: [
+        {
+          topLevelTaskId: 100,
+          title: "任务所属展示",
+          records: priorityLabels.map((label, priority) => ({
+            taskId: 100 + priority,
+            titleSnapshot: `${label}优先级任务`,
+            pathSnapshot:
+              priority === 3
+                ? "长期项目 > 第一阶段 > 第二阶段 > 第三阶段 > 一个用于检查省略显示但仍保留完整提示的长路径任务"
+                : `任务所属展示 > ${label}优先级任务`,
+            depthSnapshot: 1,
+            prioritySnapshot: priority,
+            kindDisplay: "子任务完成",
+            completedAt,
+            durationDisplay: "10分钟",
+            exists: true,
+          })),
+        },
+      ],
+    };
+    vi.spyOn(bridge, "request").mockImplementation(
+      ((method: string, params?: Record<string, unknown>) => {
+        if (method === "summary.get") return Promise.resolve(summaryFixture);
+        return originalRequest(method, params);
+      }) as typeof bridge.request,
+    );
+
+    await renderAndFlush(
+      <SummaryPage reportError={() => undefined} onOpenTask={() => undefined} />,
+    );
+
+    const rows = [...host.querySelectorAll<HTMLElement>(".achievement-row")];
+    expect(rows).toHaveLength(4);
+    expect(
+      rows.map(
+        (row) =>
+          row.querySelector<HTMLElement>(".achievement-priority-badge")
+            ?.textContent,
+      ),
+    ).toEqual(priorityLabels);
+    expect(
+      rows.map(
+        (row) =>
+          row.querySelector<HTMLElement>(".achievement-task-path")?.textContent,
+      ),
+    ).toEqual(summaryFixture.groups[0].records.map((record) => record.pathSnapshot));
+    expect(
+      rows[3]
+        .querySelector<HTMLElement>(".achievement-task-path")
+        ?.getAttribute("title"),
+    ).toBe(summaryFixture.groups[0].records[3].pathSnapshot);
+  });
+
   it("补充任务支持按发布时间和优先级排序", () => {
     const makeTask = (
       id: number,
@@ -949,5 +1193,143 @@ describe("独立业务页面", () => {
       }
     });
     expect(sortSelect?.value).toBe("priority");
+  });
+
+  it("每日总结推进记录支持通过右键菜单确认删除", async () => {
+    const requestSpy = vi.spyOn(bridge, "request");
+    await renderAndFlush(
+      <SummaryPage reportError={() => undefined} onOpenTask={() => undefined} />,
+    );
+    let progressRow = host.querySelector<HTMLElement>(".summary-progress-row")!;
+
+    const firstContextEvent = await openContextMenu(progressRow, 5000, 5000);
+    expect(firstContextEvent.defaultPrevented).toBe(true);
+    let menu = host.querySelector<HTMLElement>(".progress-context-menu")!;
+    expect(menu).not.toBeNull();
+    expect(Number.parseFloat(menu.style.left)).toBeLessThan(window.innerWidth);
+    expect(Number.parseFloat(menu.style.top)).toBeLessThan(window.innerHeight);
+
+    await act(async () => {
+      window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    });
+    expect(host.querySelector(".progress-context-menu")).toBeNull();
+
+    await openContextMenu(progressRow);
+    menu = host.querySelector<HTMLElement>(".progress-context-menu")!;
+    await act(async () => {
+      menu.querySelector<HTMLButtonElement>('[role="menuitem"]')!.click();
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
+    let confirmDialog = host.querySelector<HTMLElement>(
+      ".progress-delete-backdrop .progress-delete-modal",
+    )!;
+    expect(confirmDialog).not.toBeNull();
+    expect(confirmDialog.textContent).toContain("删除这条推进记录？");
+    await act(async () => {
+      [...confirmDialog.querySelectorAll<HTMLButtonElement>("button")]
+        .find((button) => button.textContent?.trim() === "取消")!
+        .click();
+    });
+    expect(requestSpy).not.toHaveBeenCalledWith("progress.delete", {
+      recordId: 1,
+    });
+    expect(host.querySelector(".progress-delete-modal")).toBeNull();
+
+    progressRow = host.querySelector<HTMLElement>(".summary-progress-row")!;
+    await openContextMenu(progressRow);
+    menu = host.querySelector<HTMLElement>(".progress-context-menu")!;
+    await act(async () => {
+      menu.querySelector<HTMLButtonElement>('[role="menuitem"]')!.click();
+    });
+    confirmDialog = host.querySelector<HTMLElement>(".progress-delete-modal")!;
+    await act(async () => {
+      confirmDialog
+        .querySelector<HTMLButtonElement>(".progress-delete-confirm-button")!
+        .click();
+      await new Promise((resolve) => window.setTimeout(resolve, 20));
+    });
+    expect(requestSpy).toHaveBeenCalledWith("progress.delete", { recordId: 1 });
+    expect(host.querySelector(".summary-progress-row")).toBeNull();
+  });
+
+  it("每日总结推进管理支持全选、取消全选、退出和批量删除", async () => {
+    for (let index = 1; index <= 3; index += 1) {
+      await bridge.request("progress.create", {
+        taskId: null,
+        note: `批量管理记录 ${index}`,
+        durationMinutes: index,
+        completedAt: new Date().toISOString(),
+      });
+    }
+    const requestSpy = vi.spyOn(bridge, "request");
+    await renderAndFlush(
+      <SummaryPage reportError={() => undefined} onOpenTask={() => undefined} />,
+    );
+    const findButton = (label: string) =>
+      [...host.querySelectorAll<HTMLButtonElement>("button")].find(
+        (button) => button.textContent?.trim() === label,
+      )!;
+
+    await act(async () => findButton("管理").click());
+    let checkboxes = [
+      ...host.querySelectorAll<HTMLInputElement>(".summary-progress-checkbox"),
+    ];
+    expect(checkboxes).toHaveLength(3);
+    expect(findButton("删除已选").disabled).toBe(true);
+
+    await act(async () => checkboxes[0].click());
+    expect(checkboxes[0].checked).toBe(true);
+    await act(async () => findButton("完成").click());
+    expect(host.querySelector(".summary-progress-checkbox")).toBeNull();
+
+    await act(async () => findButton("管理").click());
+    expect(findButton("删除已选").disabled).toBe(true);
+    await act(async () => findButton("全选").click());
+    checkboxes = [
+      ...host.querySelectorAll<HTMLInputElement>(".summary-progress-checkbox"),
+    ];
+    expect(checkboxes.every((checkbox) => checkbox.checked)).toBe(true);
+    expect(findButton("全选").disabled).toBe(true);
+
+    await act(async () => findButton("取消全选").click());
+    expect(checkboxes.every((checkbox) => !checkbox.checked)).toBe(true);
+    expect(host.querySelector(".summary-progress-checkbox")).not.toBeNull();
+
+    await act(async () => {
+      checkboxes[0].click();
+      checkboxes[1].click();
+    });
+    await act(async () => findButton("删除已选（2）").click());
+    let confirmDialog = host.querySelector<HTMLElement>(
+      ".progress-delete-modal",
+    )!;
+    expect(confirmDialog.textContent).toContain("删除选中的 2 条推进记录？");
+    await act(async () => {
+      [...confirmDialog.querySelectorAll<HTMLButtonElement>("button")]
+        .find((button) => button.textContent?.trim() === "取消")!
+        .click();
+    });
+    expect(
+      [...host.querySelectorAll<HTMLInputElement>(".summary-progress-checkbox")]
+        .filter((checkbox) => checkbox.checked),
+    ).toHaveLength(2);
+    expect(requestSpy).not.toHaveBeenCalledWith(
+      "progress.deleteBatch",
+      expect.anything(),
+    );
+
+    await act(async () => findButton("删除已选（2）").click());
+    confirmDialog = host.querySelector<HTMLElement>(".progress-delete-modal")!;
+    await act(async () => {
+      confirmDialog
+        .querySelector<HTMLButtonElement>(".progress-delete-confirm-button")!
+        .click();
+      await new Promise((resolve) => window.setTimeout(resolve, 20));
+    });
+    expect(requestSpy).toHaveBeenCalledWith("progress.deleteBatch", {
+      recordIds: expect.any(Array),
+    });
+    expect(host.querySelector(".summary-progress-checkbox")).toBeNull();
+    expect(host.querySelectorAll(".summary-progress-row")).toHaveLength(1);
   });
 });

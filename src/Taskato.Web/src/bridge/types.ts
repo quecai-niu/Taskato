@@ -131,6 +131,7 @@ export interface FocusAnalyticsResult {
 export interface SummaryRecord {
   taskId: number;
   titleSnapshot: string;
+  pathSnapshot: string;
   depthSnapshot: number;
   prioritySnapshot: number;
   kindDisplay: string;

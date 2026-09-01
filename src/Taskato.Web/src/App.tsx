@@ -37,6 +37,9 @@ export function App() {
   const [sessionSelectedTaskId, setSessionSelectedTaskId] = useState<
     number | null
   >(null);
+  const [sessionProgressTargetTaskId, setSessionProgressTargetTaskId] = useState<
+    number | null
+  >(null);
   const [sessionTaskViewMode, setSessionTaskViewMode] = useState<
     "detail" | "create"
   >("detail");
@@ -51,6 +54,7 @@ export function App() {
     setSessionTaskViewMode("detail");
     setSearchOpen(false);
     setNotificationsOpen(false);
+    setSessionProgressTargetTaskId(null);
     setSessionSelectedTaskId(taskId);
     setRequestedTaskId(null);
     requestAnimationFrame(() => setRequestedTaskId(taskId));
@@ -66,9 +70,16 @@ export function App() {
         activePage,
         taskViewMode: sessionTaskViewMode,
         selectedTaskId: sessionSelectedTaskId,
+        progressTargetTaskId: sessionProgressTargetTaskId,
       })
       .catch(reportError);
-  }, [activePage, reportError, sessionSelectedTaskId, sessionTaskViewMode]);
+  }, [
+    activePage,
+    reportError,
+    sessionProgressTargetTaskId,
+    sessionSelectedTaskId,
+    sessionTaskViewMode,
+  ]);
 
   useEffect(() => {
     window.localStorage.setItem(
@@ -159,8 +170,10 @@ export function App() {
             reportError={reportError}
             requestedTaskId={requestedTaskId}
             sessionSelectedTaskId={sessionSelectedTaskId}
+            sessionProgressTargetTaskId={sessionProgressTargetTaskId}
             sessionTaskViewMode={sessionTaskViewMode}
             onSelectedTaskIdChange={setSessionSelectedTaskId}
+            onProgressTargetTaskIdChange={setSessionProgressTargetTaskId}
             onTaskViewModeChange={setSessionTaskViewMode}
             onRequestedTaskHandled={handleRequestedTaskHandled}
           />

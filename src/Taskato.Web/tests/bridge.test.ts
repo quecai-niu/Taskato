@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { WebViewBridge } from "../src/bridge/client";
 import { MockBridge } from "../src/bridge/mock";
+import type { SummaryResult } from "../src/bridge/types";
 
 describe("MockBridge", () => {
   it("保持主任务与子任务输入状态分离", async () => {
@@ -17,7 +18,10 @@ describe("MockBridge", () => {
   it("能够返回四个页面需要的基础数据", async () => {
     const bridge = new MockBridge();
     await expect(bridge.request("tasks.list")).resolves.toBeTruthy();
-    await expect(bridge.request("summary.get")).resolves.toBeTruthy();
+    const summary = await bridge.request<SummaryResult>("summary.get");
+    expect(summary.groups[0]?.records[0]?.pathSnapshot).toBe(
+      "发布 Taskato 3.0 / 确定新版信息架构",
+    );
     await expect(bridge.request("history.events")).resolves.toBeTruthy();
     await expect(bridge.request("settings.get")).resolves.toBeTruthy();
   });

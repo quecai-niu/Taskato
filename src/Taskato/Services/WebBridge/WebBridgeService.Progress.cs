@@ -94,6 +94,49 @@ namespace Taskato.Services.WebBridge
             return new { deleted = true };
         }
 
+        private async Task<object> DeleteProgressRecordsAsync(JsonElement parameters)
+        {
+            var recordIds = RequiredProgressRecordIds(parameters);
+            try
+            {
+                var deletedCount = await _database.DeleteProgressRecordsAsync(recordIds);
+                return new { deletedCount };
+            }
+            catch (InvalidOperationException exception)
+            {
+                throw new BridgeRequestException("progress_not_found", exception.Message);
+            }
+        }
+
+        private static IReadOnlyList<int> RequiredProgressRecordIds(JsonElement parameters)
+        {
+            if (parameters.ValueKind != JsonValueKind.Object ||
+                !parameters.TryGetProperty("recordIds", out var value) ||
+                value.ValueKind != JsonValueKind.Array)
+            {
+                throw new BridgeRequestException("invalid_params", "缺少参数：recordIds");
+            }
+
+            var recordIds = new List<int>();
+            foreach (var item in value.EnumerateArray())
+            {
+                if (item.ValueKind != JsonValueKind.Number ||
+                    !item.TryGetInt32(out var recordId) ||
+                    recordId <= 0)
+                {
+                    throw new BridgeRequestException(
+                        "invalid_params",
+                        "recordIds 必须是正整数数组。");
+                }
+                recordIds.Add(recordId);
+            }
+
+            var distinctRecordIds = recordIds.Distinct().ToArray();
+            if (distinctRecordIds.Length == 0)
+                throw new BridgeRequestException("invalid_params", "至少选择一条推进记录。");
+            return distinctRecordIds;
+        }
+
         private static DateTime ParseProgressDateTime(
             JsonElement parameters,
             string name,

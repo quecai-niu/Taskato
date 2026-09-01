@@ -12,6 +12,23 @@ import type { TaskDto } from "../bridge";
 
 export type TaskPickerSortMode = "newest" | "oldest" | "priority";
 
+const TASK_PICKER_SORT_STORAGE_KEY = "taskato.taskPickerSortMode";
+const TASK_PICKER_SORT_CHANGED_EVENT = "taskato:task-picker-sort-changed";
+
+function isTaskPickerSortMode(value: string | null): value is TaskPickerSortMode {
+  return value === "newest" || value === "oldest" || value === "priority";
+}
+
+function loadStoredTaskPickerSortMode(): TaskPickerSortMode {
+  const storedValue = window.localStorage.getItem(TASK_PICKER_SORT_STORAGE_KEY);
+  return isTaskPickerSortMode(storedValue) ? storedValue : "newest";
+}
+
+function saveTaskPickerSortMode(sortMode: TaskPickerSortMode): void {
+  window.localStorage.setItem(TASK_PICKER_SORT_STORAGE_KEY, sortMode);
+  window.dispatchEvent(new Event(TASK_PICKER_SORT_CHANGED_EVENT));
+}
+
 type TaskPickerPlacement = {
   style: CSSProperties;
   opensAbove: boolean;
@@ -113,8 +130,12 @@ export function TaskPicker({
 }) {
   const [open, setOpen] = useState(embedded);
   const [query, setQuery] = useState("");
-  const [includeCompleted, setIncludeCompleted] = useState(false);
-  const [sortMode, setSortMode] = useState<TaskPickerSortMode>("newest");
+  const [includeCompleted, setIncludeCompleted] = useState(
+    () => tasks.find((task) => task.id === value)?.isCompleted ?? false,
+  );
+  const [sortMode, setSortMode] = useState<TaskPickerSortMode>(
+    loadStoredTaskPickerSortMode,
+  );
   const [placement, setPlacement] = useState<TaskPickerPlacement | null>(null);
   const controlRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -145,6 +166,24 @@ export function TaskPicker({
       window.removeEventListener("keydown", closeOnEscape);
     };
   }, [embedded, open]);
+
+  useEffect(() => {
+    const restoreSortMode = (event: Event) => {
+      if (
+        event instanceof StorageEvent &&
+        event.key !== TASK_PICKER_SORT_STORAGE_KEY
+      ) {
+        return;
+      }
+      setSortMode(loadStoredTaskPickerSortMode());
+    };
+    window.addEventListener("storage", restoreSortMode);
+    window.addEventListener(TASK_PICKER_SORT_CHANGED_EVENT, restoreSortMode);
+    return () => {
+      window.removeEventListener("storage", restoreSortMode);
+      window.removeEventListener(TASK_PICKER_SORT_CHANGED_EVENT, restoreSortMode);
+    };
+  }, []);
 
   useLayoutEffect(() => {
     if (embedded || !open) return;
@@ -189,9 +228,11 @@ export function TaskPicker({
           className="backfill-sort-select"
           aria-label="任务排序方式"
           value={sortMode}
-          onChange={(event) =>
-            setSortMode(event.target.value as TaskPickerSortMode)
-          }
+          onChange={(event) => {
+            const nextSortMode = event.target.value as TaskPickerSortMode;
+            setSortMode(nextSortMode);
+            saveTaskPickerSortMode(nextSortMode);
+          }}
         >
           <option value="newest">最新发布</option>
           <option value="oldest">最早发布</option>
@@ -229,7 +270,6 @@ export function TaskPicker({
             className={value === task.id ? "selected" : ""}
             role="option"
             aria-selected={value === task.id}
-            style={{ paddingLeft: `${13 + task.depth * 14}px` }}
             onClick={() => choose(task.id)}
           >
             <span className="radio-mark">

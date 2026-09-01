@@ -46,6 +46,188 @@ import {
 } from "../ui";
 import { TaskPicker } from "../components/TaskPicker";
 
+const PROGRESS_CONTEXT_MENU_WIDTH = 184;
+const PROGRESS_CONTEXT_MENU_HEIGHT = 82;
+const CONTEXT_MENU_VIEWPORT_GAP = 8;
+const SUMMARY_PRIORITY_LABELS = ["无", "低", "中", "高"] as const;
+
+function getSummaryPriority(priority: number): {
+  value: number;
+  label: string;
+} {
+  const value = priority >= 0 && priority < SUMMARY_PRIORITY_LABELS.length
+    ? priority
+    : 0;
+  return { value, label: SUMMARY_PRIORITY_LABELS[value] };
+}
+
+type ProgressContextMenuState = {
+  record: ProgressRecordDto;
+  left: number;
+  top: number;
+};
+
+type PendingProgressDelete = {
+  mode: "single" | "batch";
+  records: ProgressRecordDto[];
+};
+
+function fitProgressContextMenu(clientX: number, clientY: number) {
+  const maximumLeft = Math.max(
+    CONTEXT_MENU_VIEWPORT_GAP,
+    window.innerWidth - PROGRESS_CONTEXT_MENU_WIDTH - CONTEXT_MENU_VIEWPORT_GAP,
+  );
+  const maximumTop = Math.max(
+    CONTEXT_MENU_VIEWPORT_GAP,
+    window.innerHeight - PROGRESS_CONTEXT_MENU_HEIGHT - CONTEXT_MENU_VIEWPORT_GAP,
+  );
+  return {
+    left: Math.min(Math.max(CONTEXT_MENU_VIEWPORT_GAP, clientX), maximumLeft),
+    top: Math.min(Math.max(CONTEXT_MENU_VIEWPORT_GAP, clientY), maximumTop),
+  };
+}
+
+function ProgressContextMenu({
+  state,
+  onDelete,
+  onClose,
+}: {
+  state: ProgressContextMenuState;
+  onDelete(record: ProgressRecordDto): void;
+  onClose(): void;
+}) {
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const closeOnOutsideClick = (event: globalThis.MouseEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) onClose();
+    };
+    const closeOnEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      onClose();
+    };
+    const focusTimer = window.setTimeout(() => {
+      menuRef.current?.querySelector<HTMLButtonElement>('[role="menuitem"]')?.focus();
+    });
+    window.addEventListener("mousedown", closeOnOutsideClick);
+    window.addEventListener("keydown", closeOnEscape);
+    window.addEventListener("resize", onClose);
+    window.addEventListener("blur", onClose);
+    return () => {
+      window.clearTimeout(focusTimer);
+      window.removeEventListener("mousedown", closeOnOutsideClick);
+      window.removeEventListener("keydown", closeOnEscape);
+      window.removeEventListener("resize", onClose);
+      window.removeEventListener("blur", onClose);
+    };
+  }, [onClose]);
+
+  return (
+    <div
+      ref={menuRef}
+      className="progress-context-menu"
+      role="menu"
+      aria-label={`管理推进记录“${state.record.note || "未填写"}”`}
+      style={{ left: state.left, top: state.top }}
+      onContextMenu={(event) => event.preventDefault()}
+    >
+      <span className="progress-context-menu-title" role="presentation">
+        推进记录
+      </span>
+      <button
+        type="button"
+        role="menuitem"
+        className="progress-context-delete"
+        onClick={() => onDelete(state.record)}
+      >
+        <Trash size={15} />
+        删除记录
+      </button>
+    </div>
+  );
+}
+
+function ProgressDeleteDialog({
+  request,
+  deleting,
+  onCancel,
+  onConfirm,
+}: {
+  request: PendingProgressDelete;
+  deleting: boolean;
+  onCancel(): void;
+  onConfirm(): void;
+}) {
+  const confirmButtonRef = useRef<HTMLButtonElement>(null);
+  const recordCount = request.records.length;
+
+  useEffect(() => {
+    const closeOnEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== "Escape" || deleting) return;
+      event.preventDefault();
+      onCancel();
+    };
+    const focusTimer = window.setTimeout(() => confirmButtonRef.current?.focus());
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      window.clearTimeout(focusTimer);
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [deleting, onCancel]);
+
+  return (
+    <div
+      className="modal-backdrop progress-delete-backdrop"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget && !deleting) onCancel();
+      }}
+    >
+      <section
+        className="modal progress-delete-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="progress-delete-title"
+      >
+        <header>
+          <div>
+            <span className="section-kicker">今日推进</span>
+            <h2 id="progress-delete-title">
+              {recordCount === 1
+                ? "删除这条推进记录？"
+                : `删除选中的 ${recordCount} 条推进记录？`}
+            </h2>
+          </div>
+          <IconButton label="关闭" onClick={onCancel} disabled={deleting}>
+            <X size={19} />
+          </IconButton>
+        </header>
+        <p>删除后无法撤销，所属任务的状态不会自动回退。</p>
+        <footer>
+          <button
+            type="button"
+            className="secondary-button"
+            disabled={deleting}
+            onClick={onCancel}
+          >
+            取消
+          </button>
+          <button
+            ref={confirmButtonRef}
+            type="button"
+            className="progress-delete-confirm-button"
+            disabled={deleting}
+            onClick={onConfirm}
+          >
+            <Trash size={16} />
+            {deleting ? "正在删除…" : `确认删除 ${recordCount} 条`}
+          </button>
+        </footer>
+      </section>
+    </div>
+  );
+}
+
 export function SummaryPage({
   reportError,
   onOpenTask,
@@ -61,6 +243,15 @@ export function SummaryPage({
   const [editingProgress, setEditingProgress] = useState<ProgressRecordDto | null>(
     null,
   );
+  const [progressContextMenu, setProgressContextMenu] =
+    useState<ProgressContextMenuState | null>(null);
+  const [isManagingProgress, setIsManagingProgress] = useState(false);
+  const [selectedProgressIds, setSelectedProgressIds] = useState<Set<number>>(
+    () => new Set(),
+  );
+  const [pendingProgressDelete, setPendingProgressDelete] =
+    useState<PendingProgressDelete | null>(null);
+  const [deletingProgress, setDeletingProgress] = useState(false);
   const load = useCallback(async () => {
     try {
       setSummary(await bridge.request<SummaryResult>("summary.get", { date }));
@@ -78,10 +269,77 @@ export function SummaryPage({
       .catch(reportError);
   }, [reportError]);
   useBridgeRefresh("tasks.changed", () => void load());
+  useEffect(() => {
+    const validRecordIds = new Set(
+      (summary?.progressRecords ?? []).map((record) => record.id),
+    );
+    setSelectedProgressIds((current) => {
+      const validSelectedIds = new Set(
+        [...current].filter((recordId) => validRecordIds.has(recordId)),
+      );
+      return validSelectedIds.size === current.size ? current : validSelectedIds;
+    });
+  }, [summary?.progressRecords]);
+  const closeProgressContextMenu = useCallback(
+    () => setProgressContextMenu(null),
+    [],
+  );
+  const progressRecords = summary?.progressRecords ?? [];
+  const toggleProgressSelection = (recordId: number) => {
+    setSelectedProgressIds((current) => {
+      const next = new Set(current);
+      if (next.has(recordId)) next.delete(recordId);
+      else next.add(recordId);
+      return next;
+    });
+  };
+  const toggleProgressManagement = () => {
+    closeProgressContextMenu();
+    setSelectedProgressIds(new Set());
+    setIsManagingProgress((current) => !current);
+  };
+  const requestBatchProgressDelete = () => {
+    const selectedRecords = progressRecords.filter((record) =>
+      selectedProgressIds.has(record.id),
+    );
+    if (selectedRecords.length === 0) return;
+    setPendingProgressDelete({ mode: "batch", records: selectedRecords });
+  };
+  const confirmProgressDelete = async () => {
+    if (!pendingProgressDelete) return;
+    try {
+      setDeletingProgress(true);
+      if (pendingProgressDelete.mode === "single") {
+        await bridge.request("progress.delete", {
+          recordId: pendingProgressDelete.records[0].id,
+        });
+      } else {
+        await bridge.request("progress.deleteBatch", {
+          recordIds: pendingProgressDelete.records.map((record) => record.id),
+        });
+      }
+      await load();
+      if (pendingProgressDelete.mode === "batch") {
+        setIsManagingProgress(false);
+        setSelectedProgressIds(new Set());
+      }
+      setPendingProgressDelete(null);
+    } catch (error) {
+      reportError(error);
+    } finally {
+      setDeletingProgress(false);
+    }
+  };
   const shift = (days: number) => {
     const value = new Date(`${date}T00:00:00`);
     value.setDate(value.getDate() + days);
-    if (value <= new Date()) setDate(toLocalDateInput(value));
+    if (value <= new Date()) {
+      closeProgressContextMenu();
+      setIsManagingProgress(false);
+      setSelectedProgressIds(new Set());
+      setPendingProgressDelete(null);
+      setDate(toLocalDateInput(value));
+    }
   };
   const runSummaryOperation = async (
     method: "summary.copy" | "summary.export",
@@ -170,35 +428,54 @@ export function SummaryPage({
                     </div>
                   </div>
                 </header>
-                {group.records.map((item) => (
-                  <button
-                    className="achievement-row"
-                    key={`${item.taskId}-${item.completedAt}`}
-                    style={
-                      { "--indent": item.depthSnapshot } as React.CSSProperties
-                    }
-                    disabled={!item.exists}
-                    title={
-                      item.exists
-                        ? "打开任务详情"
-                        : "任务已删除，仅保留完成快照"
-                    }
-                    onClick={() => item.exists && onOpenTask(item.taskId)}
-                  >
-                    <CheckCircle size={18} weight="fill" />
-                    <div>
-                      <strong>{item.titleSnapshot}</strong>
-                      <span>{item.kindDisplay}</span>
-                    </div>
-                    <small>{item.durationDisplay}</small>
-                    <time>
-                      {new Date(item.completedAt).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </time>
-                  </button>
-                ))}
+                {group.records.map((item) => {
+                  const priority = getSummaryPriority(item.prioritySnapshot);
+                  return (
+                    <button
+                      className="achievement-row"
+                      key={`${item.taskId}-${item.completedAt}`}
+                      style={
+                        { "--indent": item.depthSnapshot } as React.CSSProperties
+                      }
+                      disabled={!item.exists}
+                      title={
+                        item.exists
+                          ? "打开任务详情"
+                          : "任务已删除，仅保留完成快照"
+                      }
+                      onClick={() => item.exists && onOpenTask(item.taskId)}
+                    >
+                      <CheckCircle size={18} weight="fill" />
+                      <div className="achievement-task-copy">
+                        <div className="achievement-task-heading">
+                          <strong>{item.titleSnapshot}</strong>
+                          <span
+                            className={`priority-badge achievement-priority-badge priority-${priority.value}`}
+                            title={`优先级：${priority.label}`}
+                          >
+                            {priority.label}
+                          </span>
+                          <span className="achievement-kind">
+                            {item.kindDisplay}
+                          </span>
+                        </div>
+                        <span
+                          className="achievement-task-path"
+                          title={item.pathSnapshot || item.titleSnapshot}
+                        >
+                          {item.pathSnapshot || item.titleSnapshot}
+                        </span>
+                      </div>
+                      <small>{item.durationDisplay}</small>
+                      <time>
+                        {new Date(item.completedAt).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </time>
+                    </button>
+                  );
+                })}
               </article>
             ))}
           </div>
@@ -212,10 +489,89 @@ export function SummaryPage({
                   }{summary?.progressDurationDisplay ?? "0分钟"}
                 </span>
               </div>
+              <div className="summary-progress-actions">
+                {isManagingProgress ? (
+                  <>
+                    <button
+                      type="button"
+                      disabled={
+                        progressRecords.length === 0 ||
+                        selectedProgressIds.size === progressRecords.length
+                      }
+                      onClick={() =>
+                        setSelectedProgressIds(
+                          new Set(progressRecords.map((record) => record.id)),
+                        )
+                      }
+                    >
+                      全选
+                    </button>
+                    <button
+                      type="button"
+                      disabled={selectedProgressIds.size === 0}
+                      onClick={() => setSelectedProgressIds(new Set())}
+                    >
+                      取消全选
+                    </button>
+                    <button
+                      type="button"
+                      className="summary-progress-batch-delete"
+                      disabled={selectedProgressIds.size === 0}
+                      onClick={requestBatchProgressDelete}
+                    >
+                      删除已选
+                      {selectedProgressIds.size > 0 &&
+                        `（${selectedProgressIds.size}）`}
+                    </button>
+                    <button type="button" onClick={toggleProgressManagement}>
+                      完成
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={progressRecords.length === 0}
+                    onClick={toggleProgressManagement}
+                  >
+                    管理
+                  </button>
+                )}
+              </div>
             </div>
             <div className="summary-progress-list">
-              {(summary?.progressRecords ?? []).map((record) => (
-                <article className="summary-progress-row" key={record.id}>
+              {progressRecords.map((record) => (
+                <article
+                  className={`summary-progress-row ${
+                    isManagingProgress ? "managing" : ""
+                  } ${selectedProgressIds.has(record.id) ? "selected" : ""}`.trim()}
+                  key={record.id}
+                  title={
+                    isManagingProgress
+                      ? "点击勾选这条推进记录"
+                      : "右键可删除这条推进记录"
+                  }
+                  onClick={() =>
+                    isManagingProgress && toggleProgressSelection(record.id)
+                  }
+                  onContextMenu={(event) => {
+                    event.preventDefault();
+                    if (isManagingProgress) return;
+                    setProgressContextMenu({
+                      record,
+                      ...fitProgressContextMenu(event.clientX, event.clientY),
+                    });
+                  }}
+                >
+                  {isManagingProgress && (
+                    <input
+                      type="checkbox"
+                      className="summary-progress-checkbox"
+                      aria-label={`选择推进记录：${record.note || "未填写"}`}
+                      checked={selectedProgressIds.has(record.id)}
+                      onClick={(event) => event.stopPropagation()}
+                      onChange={() => toggleProgressSelection(record.id)}
+                    />
+                  )}
                   <div>
                     <strong>{record.note || "未填写"}</strong>
                     <span>{record.taskPath}</span>
@@ -230,12 +586,17 @@ export function SummaryPage({
                       minute: "2-digit",
                     })}
                   </time>
-                  <IconButton
-                    label="编辑推进所属和时长"
-                    onClick={() => setEditingProgress(record)}
-                  >
-                    <NotePencil size={16} />
-                  </IconButton>
+                  {!isManagingProgress && (
+                    <IconButton
+                      label="编辑推进所属和时长"
+                      onClick={() => {
+                        closeProgressContextMenu();
+                        setEditingProgress(record);
+                      }}
+                    >
+                      <NotePencil size={16} />
+                    </IconButton>
+                  )}
                 </article>
               ))}
               {(summary?.progressRecords?.length ?? 0) === 0 && (
@@ -275,6 +636,24 @@ export function SummaryPage({
           </button>
         </aside>
       </div>
+      {progressContextMenu && (
+        <ProgressContextMenu
+          state={progressContextMenu}
+          onDelete={(record) => {
+            closeProgressContextMenu();
+            setPendingProgressDelete({ mode: "single", records: [record] });
+          }}
+          onClose={closeProgressContextMenu}
+        />
+      )}
+      {pendingProgressDelete && (
+        <ProgressDeleteDialog
+          request={pendingProgressDelete}
+          deleting={deletingProgress}
+          onCancel={() => setPendingProgressDelete(null)}
+          onConfirm={() => void confirmProgressDelete()}
+        />
+      )}
       {backfill && (
         <BackfillDialog
           date={date}

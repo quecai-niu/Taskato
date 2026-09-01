@@ -6,6 +6,7 @@ import {
   useState,
   type FormEvent,
   type KeyboardEvent,
+  type MouseEvent,
   type PointerEvent,
 } from "react";
 import {
@@ -791,16 +792,20 @@ export function TaskPage({
   reportError,
   requestedTaskId,
   sessionSelectedTaskId = null,
+  sessionProgressTargetTaskId = null,
   sessionTaskViewMode = "detail",
   onSelectedTaskIdChange,
+  onProgressTargetTaskIdChange,
   onTaskViewModeChange,
   onRequestedTaskHandled,
 }: {
   reportError(error: unknown): void;
   requestedTaskId: number | null;
   sessionSelectedTaskId?: number | null;
+  sessionProgressTargetTaskId?: number | null;
   sessionTaskViewMode?: "detail" | "create";
   onSelectedTaskIdChange?(taskId: number | null): void;
+  onProgressTargetTaskIdChange?(taskId: number | null): void;
   onTaskViewModeChange?(mode: "detail" | "create"): void;
   onRequestedTaskHandled?(): void;
 }) {
@@ -809,6 +814,10 @@ export function TaskPage({
   const [selectedId, setSelectedId] = useState<number | null>(
     sessionSelectedTaskId,
   );
+  const [progressTargetTaskId, setProgressTargetTaskId] = useState<
+    number | null
+  >(sessionProgressTargetTaskId);
+  const progressTargetOwnerId = useRef<number | null>(sessionSelectedTaskId);
   const [taskViewMode, setTaskViewMode] = useState<"detail" | "create">(
     sessionTaskViewMode,
   );
@@ -977,6 +986,14 @@ export function TaskPage({
     onSelectedTaskIdChange?.(selectedId);
   }, [onSelectedTaskIdChange, selectedId]);
   useEffect(() => {
+    onProgressTargetTaskIdChange?.(progressTargetTaskId);
+  }, [onProgressTargetTaskIdChange, progressTargetTaskId]);
+  useEffect(() => {
+    if (progressTargetOwnerId.current === selectedId) return;
+    progressTargetOwnerId.current = selectedId;
+    setProgressTargetTaskId(null);
+  }, [selectedId]);
+  useEffect(() => {
     onTaskViewModeChange?.(taskViewMode);
   }, [onTaskViewModeChange, taskViewMode]);
   useEffect(() => {
@@ -1029,9 +1046,15 @@ export function TaskPage({
       return next;
     });
   const selected = detailTasks.find((task) => task.id === selectedId) ?? null;
-  const children = detailTasks
-    .filter((task) => task.parentId === selectedId)
-    .sort(compareSubtaskDisplayOrder);
+  const children = useMemo(
+    () =>
+      detailTasks
+        .filter((task) => task.parentId === selectedId)
+        .sort(compareSubtaskDisplayOrder),
+    [detailTasks, selectedId],
+  );
+  const progressTarget =
+    children.find((task) => task.id === progressTargetTaskId) ?? null;
   const incompleteChildren = children.filter((task) => !task.isCompleted);
   const completedChildren = children.filter((task) => task.isCompleted);
   const collapseCompletedChildren =
@@ -1061,10 +1084,18 @@ export function TaskPage({
     [selected?.id, selected?.title],
   );
   useEffect(() => setCompletedChildrenExpanded(false), [selected?.id]);
+  useEffect(() => {
+    if (collapseCompletedChildren && progressTarget?.isCompleted)
+      setCompletedChildrenExpanded(true);
+  }, [collapseCompletedChildren, progressTarget?.id, progressTarget?.isCompleted]);
   useEffect(
     () => setProgressRecordsExpanded(false),
     [progressScope, selected?.id],
   );
+  useEffect(() => {
+    if (!selected || progressTargetTaskId == null || progressTarget) return;
+    setProgressTargetTaskId(null);
+  }, [progressTarget, progressTargetTaskId, selected]);
 
   const focusTaskContentEditor = useCallback(() => {
     const editor = document.querySelector<HTMLTextAreaElement>(
@@ -1333,6 +1364,21 @@ export function TaskPage({
     }
   };
 
+  const clearProgressTargetFromBlank = (event: MouseEvent<HTMLElement>) => {
+    if (progressTargetTaskId == null) return;
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    if (
+      target === event.currentTarget ||
+      target.classList.contains("canvas-header") ||
+      target.classList.contains("content-section") ||
+      target.classList.contains("subtask-list") ||
+      target.classList.contains("progress-track")
+    ) {
+      setProgressTargetTaskId(null);
+    }
+  };
+
   const availableWidth = () =>
     workspaceRef.current?.getBoundingClientRect().width ?? window.innerWidth;
   const resizePane = (side: "tree" | "inspector", width: number) => {
@@ -1411,44 +1457,66 @@ export function TaskPage({
     return () => window.clearTimeout(timer);
   }, [contentDraft, saveTaskContent, selected]);
 
-  const renderSubtaskRow = (item: TaskDto) => (
-    <div
-      className={`subtask-row ${item.isCompleted ? "completed" : ""}`.trim()}
-      key={item.id}
-      onContextMenu={(event) => {
-        event.preventDefault();
-        openPriorityContextMenu(item, event.clientX, event.clientY);
-      }}
-    >
-      <button
-        className={`task-check ${item.isCompleted ? "checked" : ""}`}
-        aria-label={item.isCompleted ? "取消完成" : "标记完成"}
-        onClick={() => toggleComplete(item)}
+  const renderSubtaskRow = (item: TaskDto) => {
+    const isProgressTarget = item.id === progressTarget?.id;
+    return (
+      <div
+        className={`subtask-row ${item.isCompleted ? "completed" : ""} ${isProgressTarget ? "progress-target" : ""}`.trim()}
+        key={item.id}
+        role="listitem"
+        tabIndex={0}
+        aria-current={isProgressTarget ? "true" : undefined}
+        aria-label={`${item.title}${isProgressTarget ? "，当前推进目标" : "，单击设为推进目标"}`}
+        onClick={() => setProgressTargetTaskId(item.id)}
+        onKeyDown={(event) => {
+          if (event.target !== event.currentTarget) return;
+          if (event.key !== "Enter" && event.key !== " ") return;
+          event.preventDefault();
+          setProgressTargetTaskId(item.id);
+        }}
+        onContextMenu={(event) => {
+          event.preventDefault();
+          openPriorityContextMenu(item, event.clientX, event.clientY);
+        }}
       >
-        {item.isCompleted && <Check size={12} />}
-      </button>
-      <span
-        className={item.isCompleted ? "done" : ""}
-        title="双击编辑任务内容"
-        onDoubleClick={() => editTaskContent(item.id)}
-      >
-        {item.title}
-      </span>
-      {item.priority > 0 && (
-        <span
-          className={`priority-badge subtask-priority-badge priority-${item.priority}`}
-          title={`优先级：${priorityLabels[item.priority]}`}
+        <button
+          className={`task-check ${item.isCompleted ? "checked" : ""}`}
+          aria-label={item.isCompleted ? "取消完成" : "标记完成"}
+          onClick={(event) => {
+            event.stopPropagation();
+            toggleComplete(item);
+          }}
         >
-          {priorityLabels[item.priority]}
+          {item.isCompleted && <Check size={12} />}
+        </button>
+        <span
+          className={item.isCompleted ? "done" : ""}
+          title="双击编辑任务内容"
+          onDoubleClick={() => editTaskContent(item.id)}
+        >
+          {item.title}
         </span>
-      )}
-      <small>
-        {item.completionDurationMinutes
-          ? `${item.completionDurationMinutes} 分钟`
-          : ""}
-      </small>
-    </div>
-  );
+        <span className="subtask-row-badges">
+          {item.priority > 0 && (
+            <span
+              className={`priority-badge subtask-priority-badge priority-${item.priority}`}
+              title={`优先级：${priorityLabels[item.priority]}`}
+            >
+              {priorityLabels[item.priority]}
+            </span>
+          )}
+          {isProgressTarget && (
+            <span className="progress-target-badge">推进目标</span>
+          )}
+        </span>
+        <small>
+          {item.completionDurationMinutes
+            ? `${item.completionDurationMinutes} 分钟`
+            : ""}
+        </small>
+      </div>
+    );
+  };
 
   return (
     <div
@@ -1549,7 +1617,7 @@ export function TaskPage({
         onPointerCancel={finishPaneResize}
         onKeyDown={resizePaneByKeyboard("tree")}
       />
-      <main className="task-canvas">
+      <main className="task-canvas" onClick={clearProgressTargetFromBlank}>
         {taskViewMode === "create" ? (
           <section className="task-create-page" aria-labelledby="task-create-title">
             <div className="task-create-heading">
@@ -2050,7 +2118,9 @@ export function TaskPage({
             <p>
               {taskViewMode === "create"
                 ? "新增任务页面 · 推进记录将设为无所属"
-                : (selected?.title ?? "选择任务后开始专注")}
+                : (progressTarget?.title ??
+                  selected?.title ??
+                  "选择任务后开始专注")}
             </p>
             <div className="timer-progress" aria-label="当前计时进度">
               <span style={{ width: `${(activeTimer?.progress ?? 1) * 100}%` }} />
@@ -2216,7 +2286,7 @@ export function TaskPage({
       {progressEditor && selected && (
         <ProgressEditorDialog
           tasks={detailTasks}
-          initialTaskId={selected.id}
+          initialTaskId={progressTarget?.id ?? selected.id}
           record={progressEditor === "new" ? null : progressEditor}
           reportError={reportError}
           onClose={() => setProgressEditor(null)}

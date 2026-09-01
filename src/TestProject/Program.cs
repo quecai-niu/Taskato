@@ -383,12 +383,14 @@ internal static class Program
                     {
                         activePage = "tasks",
                         taskViewMode = "create",
-                        selectedTaskId = root.Id
+                        selectedTaskId = root.Id,
+                        progressTargetTaskId = phase.Id
                     })
                 });
                 Assert(contextUpdate.Ok &&
-                       bridgeContext.Current == new WorkspaceContextSnapshot("tasks", "create", root.Id),
-                    "桥接必须只通过白名单方法同步当前页面和任务视图上下文。");
+                       bridgeContext.Current == new WorkspaceContextSnapshot(
+                           "tasks", "create", root.Id, phase.Id),
+                    "桥接必须只通过白名单方法同步当前页面、任务视图和推进目标上下文。");
 
                 var unknown = await bridge.ProcessRequestAsync(new WebBridgeRequest
                 {
@@ -429,6 +431,16 @@ internal static class Program
                 Assert(!JsonSerializer.Serialize(taskList.Result).Contains("\"Notes\"", StringComparison.Ordinal),
                     "网页任务契约不得再暴露第二份 Notes 内容。");
 
+                var summaryPathParent = await AddTaskAsync(database, "总结路径契约父任务");
+                var summaryPathTask = await database.AddChildTaskAsync(summaryPathParent, "总结路径契约子任务")
+                    ?? throw new InvalidOperationException("创建总结路径契约任务失败。");
+                var summaryPathCompletion = await database.CompleteTaskWithHierarchyValidationAsync(
+                    summaryPathTask,
+                    DateTime.Today.AddHours(15).AddMinutes(30),
+                    8,
+                    CompletionTrigger.Manual);
+                Assert(summaryPathCompletion.Succeeded, "总结路径契约任务必须完成成功。");
+
                 var summaryProgressAt = DateTime.Today.AddHours(16);
                 await database.AddProgressRecordAsync(
                     root.Id,
@@ -451,12 +463,86 @@ internal static class Program
                 Assert(summaryResponse.Ok && summaryResponse.Result is not null,
                     "每日总结桥接必须返回总投入统计。");
                 var summaryJson = JsonSerializer.SerializeToElement(summaryResponse.Result);
+                var summaryRecords = summaryJson.GetProperty("groups")
+                    .EnumerateArray()
+                    .SelectMany(group => group.GetProperty("records").EnumerateArray())
+                    .ToList();
+                Assert(summaryRecords.Any(record =>
+                        record.GetProperty("TaskId").GetInt32() == summaryPathTask.Id &&
+                        record.GetProperty("PathSnapshot").GetString() ==
+                        "总结路径契约父任务 / 总结路径契约子任务"),
+                    "每日总结任务记录必须返回完成时保存的所属路径快照。");
                 var taskDuration = summaryJson.GetProperty("taskDurationMinutes").GetInt32();
                 var progressDuration = summaryJson.GetProperty("progressDurationMinutes").GetInt32();
                 var totalDuration = summaryJson.GetProperty("totalDurationMinutes").GetInt32();
                 Assert(progressDuration == 17 &&
                        totalDuration == taskDuration + progressDuration,
                     "每日总结总投入时长必须等于任务耗时与推进耗时之和。");
+
+                var firstBatchRecord = await database.AddProgressRecordAsync(
+                    root.Id,
+                    "批量删除记录一",
+                    summaryProgressAt.AddMinutes(1),
+                    summaryProgressAt.AddMinutes(6),
+                    5,
+                    5,
+                    "manual",
+                    TaskProgressSource.Manual);
+                var secondBatchRecord = await database.AddProgressRecordAsync(
+                    root.Id,
+                    "批量删除记录二",
+                    summaryProgressAt.AddMinutes(7),
+                    summaryProgressAt.AddMinutes(13),
+                    6,
+                    6,
+                    "manual",
+                    TaskProgressSource.Manual);
+                var batchDataChangedCount = 0;
+                Action trackBatchDataChange = () => batchDataChangedCount++;
+                database.OnDataChanged += trackBatchDataChange;
+                try
+                {
+                    var atomicFailureReported = false;
+                    try
+                    {
+                        await database.DeleteProgressRecordsAsync(
+                            new[] { firstBatchRecord.Id, int.MaxValue });
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        atomicFailureReported = true;
+                    }
+                    Assert(atomicFailureReported &&
+                           await database.GetProgressRecordByIdAsync(firstBatchRecord.Id) is not null &&
+                           batchDataChangedCount == 0,
+                        "批量删除包含失效记录时必须整体回滚，且不得触发数据刷新。");
+
+                    var batchDelete = await bridge.ProcessRequestAsync(new WebBridgeRequest
+                    {
+                        Id = "progress-delete-batch",
+                        Method = "progress.deleteBatch",
+                        Params = JsonSerializer.SerializeToElement(new
+                        {
+                            recordIds = new[]
+                            {
+                                firstBatchRecord.Id,
+                                firstBatchRecord.Id,
+                                secondBatchRecord.Id
+                            }
+                        })
+                    });
+                    var batchDeleteJson = JsonSerializer.SerializeToElement(batchDelete.Result);
+                    Assert(batchDelete.Ok &&
+                           batchDeleteJson.GetProperty("deletedCount").GetInt32() == 2 &&
+                           await database.GetProgressRecordByIdAsync(firstBatchRecord.Id) is null &&
+                           await database.GetProgressRecordByIdAsync(secondBatchRecord.Id) is null &&
+                           batchDataChangedCount == 1,
+                        "批量删除桥接必须去重、原子删除全部记录，并且只触发一次数据刷新。");
+                }
+                finally
+                {
+                    database.OnDataChanged -= trackBatchDataChange;
+                }
 
                 var taskCountBeforeAdd = (await database.GetTaskTreeItemsAsync()).Count;
                 var validAdd = await bridge.ProcessRequestAsync(new WebBridgeRequest
@@ -697,6 +783,21 @@ internal static class Program
             Assert(savedChild is { IsCompleted: false, Status: TaskWorkStatus.InProgress },
                 "第一条推进应把未完成任务改为进行中，但不得自动完成任务。");
 
+            var completedChildResult = await database.CompleteTaskWithHierarchyValidationAsync(
+                existingChild,
+                completedAt.LocalDateTime,
+                null,
+                CompletionTrigger.Manual);
+            Assert(completedChildResult.Succeeded,
+                "推进目标测试的直属子任务应能先被标记为完成。");
+            context.Update("tasks", "detail", group.Id, existingChild.Id);
+            var completedTargetSave = await completionService.SaveAsync(
+                new PomodoroWorkCompletion(completedAt, 60, "completed"),
+                "继续推进已完成子任务");
+            Assert(completedTargetSave.CreatedRecord.TaskId == existingChild.Id &&
+                   completedTargetSave.Destination.TaskId == existingChild.Id,
+                "已完成的直属子任务仍应允许作为番茄钟推进目标。");
+
             context.Update("tasks", "create", existingChild.Id);
             var blankResult = await completionService.SaveAsync(
                 new PomodoroWorkCompletion(completedAt, 20, "completed"),
@@ -719,8 +820,28 @@ internal static class Program
             Assert(taskCount == 2,
                 "推进记录不得伪装成已完成子任务或改变任务树数量。");
             var dayProgress = await database.GetProgressRecordsForDateAsync(completedAt.Date);
-            Assert(dayProgress.Count == 3,
-                "空内容、非空内容和已归属番茄钟都必须进入当日推进记录。");
+            Assert(dayProgress.Count == 4,
+                "空内容、非空内容、普通目标和已完成目标都必须进入当日推进记录。");
+
+            var otherGroup = await AddTaskAsync(database, "另一个任务组");
+            var unrelatedChild = await database.AddChildTaskAsync(otherGroup, "其他直属子任务")
+                ?? throw new InvalidOperationException("创建无效推进目标测试任务失败。");
+            context.Update("tasks", "detail", group.Id, int.MaxValue);
+            var missingTargetDestination = await completionService.GetDestinationAsync();
+            Assert(missingTargetDestination.TaskId == group.Id,
+                "已删除或失效的推进目标必须回退到当前任务组。");
+
+            context.Update("tasks", "detail", group.Id, unrelatedChild.Id);
+            var invalidTargetDestination = await completionService.GetDestinationAsync();
+            Assert(invalidTargetDestination.TaskId == group.Id,
+                "非当前任务组直属子任务的目标必须回退到当前任务组。");
+
+            var moveResult = await database.MoveTaskAsync(existingChild.Id, otherGroup.Id);
+            Assert(moveResult.Succeeded, "推进目标移动测试应能移动直属子任务。");
+            context.Update("tasks", "detail", group.Id, existingChild.Id);
+            var movedTargetDestination = await completionService.GetDestinationAsync();
+            Assert(movedTargetDestination.TaskId == group.Id,
+                "推进目标移出当前任务组后必须回退到当前任务组。");
 
             context.Update("tasks", "detail", int.MaxValue);
             Assert((await completionService.GetDestinationAsync()).TaskId is null,

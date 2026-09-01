@@ -246,6 +246,36 @@ namespace Taskato.Services
             return affected > 0;
         }
 
+        public async Task<int> DeleteProgressRecordsAsync(IReadOnlyCollection<int> recordIds)
+        {
+            ArgumentNullException.ThrowIfNull(recordIds);
+            var distinctRecordIds = recordIds.Distinct().ToArray();
+            if (distinctRecordIds.Length == 0 || distinctRecordIds.Any(id => id <= 0))
+                throw new ArgumentException("批量删除必须提供有效的推进记录 ID。", nameof(recordIds));
+
+            var affected = 0;
+            await _db.RunInTransactionAsync(connection =>
+            {
+                foreach (var recordId in distinctRecordIds)
+                {
+                    if (connection.Find<TaskProgressRecord>(recordId) is null)
+                        throw new InvalidOperationException($"推进记录 {recordId} 不存在。");
+                }
+
+                foreach (var recordId in distinctRecordIds)
+                {
+                    var deleted = connection.Delete<TaskProgressRecord>(recordId);
+                    if (deleted != 1)
+                        throw new InvalidOperationException($"推进记录 {recordId} 删除失败。");
+                    affected += deleted;
+                }
+            });
+
+            if (affected > 0) OnDataChanged?.Invoke();
+            // 与单条删除保持一致，批量删除推进记录也不会自动回退任务状态。
+            return affected;
+        }
+
         private static bool HasProgress(SQLiteConnection connection, int taskId) =>
             connection.Table<TaskProgressRecord>().Any(record => record.TaskId == taskId);
     }

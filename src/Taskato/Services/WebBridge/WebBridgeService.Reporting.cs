@@ -50,6 +50,7 @@ namespace Taskato.Services.WebBridge
                     {
                         record.TaskId,
                         record.TitleSnapshot,
+                        record.PathSnapshot,
                         record.DepthSnapshot,
                         record.PrioritySnapshot,
                         record.KindDisplay,

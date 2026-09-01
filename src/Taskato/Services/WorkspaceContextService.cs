@@ -5,7 +5,8 @@ namespace Taskato.Services
     public sealed record WorkspaceContextSnapshot(
         string ActivePage,
         string TaskViewMode,
-        int? SelectedTaskId);
+        int? SelectedTaskId,
+        int? ProgressTargetTaskId = null);
 
     public sealed record CompletionDestination(int? TaskId, string DisplayName)
     {
@@ -31,11 +32,19 @@ namespace Taskato.Services
             }
         }
 
-        public void Update(string activePage, string taskViewMode, int? selectedTaskId)
+        public void Update(
+            string activePage,
+            string taskViewMode,
+            int? selectedTaskId,
+            int? progressTargetTaskId = null)
         {
             var normalizedPage = string.IsNullOrWhiteSpace(activePage) ? "tasks" : activePage.Trim();
             var normalizedMode = taskViewMode == "create" ? "create" : "detail";
-            var next = new WorkspaceContextSnapshot(normalizedPage, normalizedMode, selectedTaskId);
+            var next = new WorkspaceContextSnapshot(
+                normalizedPage,
+                normalizedMode,
+                selectedTaskId,
+                progressTargetTaskId);
             lock (_sync)
             {
                 if (_current == next) return;
@@ -55,6 +64,15 @@ namespace Taskato.Services
             var byId = tasks.ToDictionary(task => task.Id);
             if (!byId.TryGetValue(snapshot.SelectedTaskId.Value, out var selected))
                 return CompletionDestination.Ungrouped;
+
+            if (snapshot.ProgressTargetTaskId.HasValue &&
+                byId.TryGetValue(snapshot.ProgressTargetTaskId.Value, out var progressTarget) &&
+                progressTarget.ParentId == selected.Id)
+            {
+                return new CompletionDestination(
+                    progressTarget.Id,
+                    DisplayTitle(progressTarget));
+            }
 
             return new CompletionDestination(selected.Id, DisplayTitle(selected));
         }

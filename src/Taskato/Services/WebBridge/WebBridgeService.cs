@@ -129,6 +129,7 @@ namespace Taskato.Services.WebBridge
                 "progress.create" => await CreateProgressRecordAsync(request.Params),
                 "progress.update" => await UpdateProgressRecordAsync(request.Params),
                 "progress.delete" => await DeleteProgressRecordAsync(request.Params),
+                "progress.deleteBatch" => await DeleteProgressRecordsAsync(request.Params),
                 "history.search" => await SearchHistoryAsync(request.Params),
                 "history.events" => await GetHistoryEventsAsync(request.Params),
                 "history.export" => await ExportHistoryAsync(request.Params),
@@ -180,7 +181,12 @@ namespace Taskato.Services.WebBridge
             var activePage = RequiredString(parameters, "activePage");
             var taskViewMode = OptionalString(parameters, "taskViewMode") ?? "detail";
             var selectedTaskId = OptionalInt(parameters, "selectedTaskId");
-            _workspaceContext.Update(activePage, taskViewMode, selectedTaskId);
+            var progressTargetTaskId = OptionalInt(parameters, "progressTargetTaskId");
+            _workspaceContext.Update(
+                activePage,
+                taskViewMode,
+                selectedTaskId,
+                progressTargetTaskId);
             return _workspaceContext.Current;
         }
 

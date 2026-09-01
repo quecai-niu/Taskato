@@ -171,6 +171,7 @@ describe("应用框架交互", () => {
       activePage: "tasks",
       taskViewMode: "create",
       selectedTaskId: expect.any(Number),
+      progressTargetTaskId: null,
     });
 
     const settingsButton = [...host.querySelectorAll<HTMLButtonElement>(".nav-item")]
@@ -183,6 +184,29 @@ describe("应用框架交互", () => {
       activePage: "settings",
       taskViewMode: "create",
       selectedTaskId: expect.any(Number),
+      progressTargetTaskId: null,
+    });
+  });
+
+  it("任务详情选中的直属子任务会同步为番茄钟推进目标", async () => {
+    const request = vi.spyOn(bridge, "request");
+    await act(async () => {
+      root.render(<App />);
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
+
+    const subtaskRow = [...host.querySelectorAll<HTMLElement>(".subtask-row")]
+      .find((row) => row.textContent?.includes("重构任务工作区"))!;
+    await act(async () => {
+      subtaskRow.click();
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
+
+    expect(request).toHaveBeenCalledWith("workspace.context.set", {
+      activePage: "tasks",
+      taskViewMode: "detail",
+      selectedTaskId: 1,
+      progressTargetTaskId: 3,
     });
   });
 });

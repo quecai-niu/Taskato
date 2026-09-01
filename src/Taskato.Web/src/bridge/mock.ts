@@ -75,6 +75,21 @@ function reopenTaskAndAncestors(items: TaskDto[], taskId: number): TaskDto[] {
   );
 }
 
+function buildMockTaskPath(items: TaskDto[], taskId: number): string {
+  const tasksById = new Map(items.map((task) => [task.id, task]));
+  const pathParts: string[] = [];
+  const visitedTaskIds = new Set<number>();
+  let currentTask = tasksById.get(taskId);
+  while (currentTask && visitedTaskIds.add(currentTask.id)) {
+    pathParts.unshift(currentTask.title.split(/\r?\n/, 1)[0] || "未命名任务");
+    currentTask =
+      currentTask.parentId == null
+        ? undefined
+        : tasksById.get(currentTask.parentId);
+  }
+  return pathParts.join(" / ");
+}
+
 let tasks: TaskDto[] = [
   {
     id: 1,
@@ -246,6 +261,10 @@ export class MockBridge implements BridgeApi {
           selectedTaskId:
             typeof params.selectedTaskId === "number"
               ? params.selectedTaskId
+              : null,
+          progressTargetTaskId:
+            typeof params.progressTargetTaskId === "number"
+              ? params.progressTargetTaskId
               : null,
         };
         break;
@@ -486,6 +505,21 @@ export class MockBridge implements BridgeApi {
         result = { deleted: true };
         this.emit("tasks.changed", {});
         break;
+      case "progress.deleteBatch": {
+        const recordIds = [
+          ...new Set(
+            Array.isArray(params.recordIds)
+              ? params.recordIds.map((recordId) => Number(recordId))
+              : [],
+          ),
+        ];
+        progressRecords = progressRecords.filter(
+          (record) => !recordIds.includes(record.id),
+        );
+        result = { deletedCount: recordIds.length };
+        this.emit("tasks.changed", {});
+        break;
+      }
       case "focus.analytics":
         result = buildMockFocusAnalytics(
           String(params.period ?? "day") as "day" | "week" | "month",
@@ -691,6 +725,7 @@ export class MockBridge implements BridgeApi {
           records: completed.map((task) => ({
             taskId: task.id,
             titleSnapshot: task.title,
+            pathSnapshot: buildMockTaskPath(tasks, task.id),
             depthSnapshot: task.depth,
             prioritySnapshot: task.priority,
             kindDisplay: "子任务完成",
