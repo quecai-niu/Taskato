@@ -71,11 +71,11 @@ Taskato 是一个基于 **.NET 8 + WPF + WebView2 + React** 的 Windows 本地�
 
 ## 下载安装
 
-最新稳定版是 **v2.28**：
+最新稳定版是 **v2.40**：
 
-- [下载 Windows 安装包](https://github.com/quecai-niu/Taskato/releases/download/v2.28/Taskato-2.28.0-win-x64-setup.exe)
-- [下载便携版 ZIP](https://github.com/quecai-niu/Taskato/releases/download/v2.28/Taskato-2.28.0-win-x64-portable.zip)
-- [查看 v2.28 Release、SHA-256 与发布清单](https://github.com/quecai-niu/Taskato/releases/tag/v2.28)
+- [下载 Windows 安装包](https://github.com/quecai-niu/Taskato/releases/download/v2.40/Taskato-2.40.0-win-x64-setup.exe)
+- [下载便携版 ZIP](https://github.com/quecai-niu/Taskato/releases/download/v2.40/Taskato-2.40.0-win-x64-portable.zip)
+- [查看 v2.40 Release、SHA-256 与发布清单](https://github.com/quecai-niu/Taskato/releases/tag/v2.40)
 
 安装包是 `.NET 8 win-x64` 自包含版本，目标电脑不需要预装 .NET Desktop Runtime；若系统缺少 WebView2 Evergreen Runtime，安装器会从微软官方入口下载。
 
@@ -87,11 +87,12 @@ Taskato 是一个基于 **.NET 8 + WPF + WebView2 + React** 的 Windows 本地�
 2. 用任务树的一键展开/收起和筛选快速定位当前分支，双击子任务进入详情编辑。
 3. 完成叶子任务后，由你决定何时手动确认父任务或整个任务组完成。
 4. 选择当前任务并启动番茄钟；软件关闭、系统休眠或界面卡顿不会让计时变慢。
-5. 番茄钟自然结束或提前完成后，可填写本次做了什么，也可留空直接保存；记录默认归到提交时打开的具体任务。
-6. 在任务详情查看本任务的推进时间线，父任务可切换查看包含子任务的全部推进。
-7. 在“专注统计”中切换天、周、月，查看哪些时间启动过专注以及实际工作、休息时长。
-8. 在“每日总结”回看成果与推进，并可修正推进所属和时长；在“历史记录”查询完整活动时间线。
-9. 如需远程提醒，在设置中配置飞书 Webhook 和四类通知次数。
+5. 番茄钟自然结束或提前完成后保存本次专注时长，不自动新增推进记录。
+6. 需要记录进展时，在任务详情点击“记录推进”；新增记录默认归属当前详情任务，也可取消归属或选择其他任务。
+7. 在任务详情查看本任务的推进时间线，父任务可切换查看包含子任务的全部推进。
+8. 在“专注统计”中切换天、周、月，查看哪些时间启动过专注以及实际工作、休息时长。
+9. 在“每日总结”回看成果与推进，并可修正推进所属和时长；在“历史记录”查询完整活动时间线。
+10. 如需远程提醒，在设置中配置飞书 Webhook 和四类通知次数。
 
 ## 源码运行
 
@@ -132,13 +133,13 @@ dotnet run --project src/TestProject/TestProject.csproj -c Release
 生成经过前端测试、C# 回归和真实 WebView2 烟测的便携包：
 
 ```powershell
-.\scripts\build-release.ps1 -Version 2.28.0
+.\scripts\build-release.ps1 -Version 2.40.0
 ```
 
 已安装 Inno Setup 时，同时生成安装包：
 
 ```powershell
-.\scripts\build-release.ps1 -Version 2.28.0 -BuildInstaller
+.\scripts\build-release.ps1 -Version 2.40.0 -BuildInstaller
 ```
 
 完整运行时、升级、签名和回滚策略见 [发布与恢复说明](docs/release_Taskato_20260729.md)。
