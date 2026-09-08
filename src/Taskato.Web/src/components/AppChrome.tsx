@@ -1,3 +1,4 @@
+import { taskTitle } from "../taskText";
 import { useEffect, useState, type MouseEvent } from "react";
 import {
   Bell,
@@ -250,7 +251,7 @@ export function GlobalSearchDialog({
                 <button key={task.id} onClick={() => onOpenTask(task.id)}>
                   <ListChecks size={17} />
                   <span>
-                    <strong>{task.title}</strong>
+                    <strong>{taskTitle(task.title)}</strong>
                     <small>第 {task.depth + 1} 层任务</small>
                   </span>
                   <CaretRight size={15} />
@@ -265,7 +266,7 @@ export function GlobalSearchDialog({
                 <button key={activity.id} onClick={onOpenHistory}>
                   <ClockCounterClockwise size={17} />
                   <span>
-                    <strong>{activity.title}</strong>
+                    <strong>{taskTitle(activity.title)}</strong>
                     <small>
                       {activity.eventLabel} · {activity.detail}
                     </small>
@@ -335,7 +336,7 @@ export function NotificationCenter({
             <button key={item.id} onClick={onOpenHistory}>
               <CheckCircle size={17} />
               <span>
-                <strong>{item.eventLabel} · {item.title}</strong>
+                <strong>{item.eventLabel} · {taskTitle(item.title)}</strong>
                 <small>{item.detail}</small>
               </span>
             </button>

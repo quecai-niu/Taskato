@@ -188,7 +188,7 @@ describe("应用框架交互", () => {
     });
   });
 
-  it("任务详情选中的直属子任务会同步为番茄钟推进目标", async () => {
+  it("任务详情选中的直属子任务会同步为番茄钟专注目标", async () => {
     const request = vi.spyOn(bridge, "request");
     await act(async () => {
       root.render(<App />);

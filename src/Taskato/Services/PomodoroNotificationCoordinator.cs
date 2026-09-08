@@ -15,15 +15,13 @@ namespace Taskato.Services
         private readonly Action<PomodoroTimerViewModel> _restCompletedAction;
         private readonly Action<PomodoroTimerViewModel> _restHalfwayAction;
         private readonly Action _showMainWindowAction;
-        private readonly PomodoroCompletionService? _completionService;
 
         public PomodoroNotificationCoordinator(
             MainViewModel viewModel,
             Action<PomodoroTimerViewModel>? workCompletedAction = null,
             Action<PomodoroTimerViewModel>? restCompletedAction = null,
             Action<PomodoroTimerViewModel>? restHalfwayAction = null,
-            Action? showMainWindowAction = null,
-            PomodoroCompletionService? completionService = null)
+            Action? showMainWindowAction = null)
         {
             _viewModel = viewModel;
             // 可注入动作让订阅生命周期能够在无弹窗、无外部网络的测试中被直接证明。
@@ -31,7 +29,6 @@ namespace Taskato.Services
             _restCompletedAction = restCompletedAction ?? ShowRestCompleted;
             _restHalfwayAction = restHalfwayAction ?? ShowRestHalfway;
             _showMainWindowAction = showMainWindowAction ?? (() => { });
-            _completionService = completionService;
             _viewModel.AllTimers.CollectionChanged += Timers_CollectionChanged;
             foreach (var timer in _viewModel.AllTimers) Register(timer);
         }
@@ -103,37 +100,7 @@ namespace Taskato.Services
                 actionDelaySeconds: _viewModel.ToastActionDelaySeconds,
                 soundChoice: _viewModel.NotificationSoundChoice,
                 customSoundPath: _viewModel.CustomSoundPath,
-                initialElapsedSeconds: elapsedSeconds,
-                onCompletionSubmit: _completionService is null
-                    ? null
-                    : async (note, startRest) =>
-                    {
-                        await _completionService.SaveAsync(completion, note);
-                        if (startRest) timer.StartRest();
-                        else timer.StartWork();
-                    });
-            if (_completionService is not null)
-            {
-                async void RefreshDestination()
-                {
-                    try
-                    {
-                        var destination = await _completionService.GetDestinationAsync();
-                        if (toast.IsLoaded)
-                            await toast.Dispatcher.InvokeAsync(() =>
-                                toast.SetCompletionDestination(destination.DisplayName));
-                    }
-                    catch (Exception exception)
-                    {
-                        DiagnosticsService.Log("刷新番茄钟记录归属失败", exception);
-                    }
-                }
-
-                void ContextChanged() => RefreshDestination();
-                _completionService.DestinationChanged += ContextChanged;
-                toast.Closed += (_, _) => _completionService.DestinationChanged -= ContextChanged;
-                toast.Loaded += (_, _) => RefreshDestination();
-            }
+                initialElapsedSeconds: elapsedSeconds);
             toast.Show();
             _ = NotifyFeishuAsync(
                 _viewModel.FeishuEnabled && _viewModel.FeishuNotifyOnWork,

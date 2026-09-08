@@ -1,3 +1,4 @@
+import { taskTitle } from "../taskText";
 import {
   useCallback,
   useEffect,
@@ -184,7 +185,7 @@ export function HistoryPage({
             <span className={`event-label ${item.tone}`}>
               {item.eventLabel}
             </span>
-            <strong>{item.title}</strong>
+            <strong>{taskTitle(item.title)}</strong>
             <span>
               {item.detail}
               {item.isLegacyBackfill && <small className="legacy-badge">历史回填</small>}
@@ -192,13 +193,13 @@ export function HistoryPage({
             {item.canOpenTask && item.taskId != null ? (
               <span className="history-actions">
                 <IconButton
-                  label={`打开 ${item.title}`}
+                  label={`打开 ${taskTitle(item.title)}`}
                   onClick={() => onOpenTask(item.taskId!)}
                 >
                   <CaretRight size={16} />
                 </IconButton>
                 <IconButton
-                  label={`删除当前任务 ${item.title}`}
+                  label={`删除当前任务 ${taskTitle(item.title)}`}
                   onClick={() => setPendingDelete(item)}
                 >
                   <Trash size={15} />
@@ -219,7 +220,7 @@ export function HistoryPage({
             <header>
               <div>
                 <span className="section-kicker">历史记录操作</span>
-                <h2>删除“{pendingDelete.title}”及其子任务？</h2>
+                <h2>删除“{taskTitle(pendingDelete.title)}”及其子任务？</h2>
               </div>
               <IconButton label="关闭" onClick={() => setPendingDelete(null)}>
                 <X size={19} />

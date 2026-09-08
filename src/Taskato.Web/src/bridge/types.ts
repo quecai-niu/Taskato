@@ -149,6 +149,8 @@ export interface SummaryResult {
   highPriorityCompleted: number;
   taskDurationMinutes: number;
   taskDurationDisplay: string;
+  focusDurationMinutes?: number;
+  focusDurationDisplay?: string;
   totalDurationMinutes: number;
   totalDurationDisplay: string;
   progressCount?: number;

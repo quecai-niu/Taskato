@@ -218,6 +218,10 @@ body{font-size:var(--font-control)}
 .subtask-row{grid-template-columns:21px minmax(0,1fr) auto auto;padding:0 12px;cursor:pointer}
 .subtask-row:focus-visible{outline:2px solid color-mix(in srgb,var(--primary) 65%,transparent);outline-offset:-2px}
 .subtask-row.progress-target{border-radius:9px;background:var(--primary-soft);box-shadow:inset 3px 0 0 var(--primary)}
+.subtask-copy{min-width:0;padding:10px 0}
+.subtask-copy>span{display:block;color:var(--text-2);font-size:var(--font-control);line-height:1.55;overflow-wrap:anywhere}
+.subtask-copy>span.done{color:var(--text-3);text-decoration:line-through}
+.subtask-details{margin:4px 0 0;color:var(--text-3);font-size:var(--font-caption);line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere}
 .subtask-row-badges{display:flex;align-items:center;justify-content:flex-end;gap:6px;white-space:nowrap}
 .subtask-priority-badge{justify-self:end;white-space:nowrap}
 .progress-target-badge{padding:3px 7px;border:1px solid color-mix(in srgb,var(--primary) 42%,var(--border));border-radius:999px;background:color-mix(in srgb,var(--primary) 14%,var(--surface));color:var(--primary);font-size:var(--font-caption);font-weight:700;white-space:nowrap}
@@ -383,3 +387,32 @@ body{font-size:var(--font-control)}
 
 /* 左侧导航定位到设置分区时，为顶部吸附操作区预留完整可视空间。 */
 .settings-page .settings-content section{scroll-margin-top:148px}
+
+/* 成果标题和元数据各占一行，长文本不会挤压时长与操作信息。 */
+.achievement-row {
+  width: 100%;
+  margin-left: 0;
+  padding: 16px 18px 16px calc(18px + var(--indent) * 15px);
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: 10px 12px;
+  align-items: start;
+}
+.achievement-row > svg { margin-top: 3px; }
+.achievement-task-heading strong {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.6;
+}
+.achievement-row > .achievement-metadata {
+  grid-column: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  color: var(--text-3);
+}
+.achievement-row .achievement-metadata > * { white-space: nowrap; }
+.achievement-row .achievement-task-path { line-height: 1.6; }
+.summary-stats > div { min-width: 0; grid-template-columns: minmax(0, 1fr); }
+.summary-stats strong { grid-row: auto; grid-column: 1; overflow-wrap: anywhere; }
+.progress-current-task { display: flex; align-items: center; gap: 8px; margin: 12px 0; }
+.progress-current-task input { width: 16px; height: 16px; accent-color: var(--primary); }

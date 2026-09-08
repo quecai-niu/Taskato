@@ -1,3 +1,4 @@
+import { taskTitle as firstLine } from "../taskText";
 import {
   useEffect,
   useLayoutEffect,
@@ -68,10 +69,6 @@ export function calculateTaskPickerPlacement(
         : { top: anchor.bottom + triggerGap }),
     },
   };
-}
-
-function firstLine(value: string): string {
-  return value.split(/\r?\n/, 1)[0]?.trim() || "未命名任务";
 }
 
 export function buildTaskPath(tasks: TaskDto[], taskId: number): string {

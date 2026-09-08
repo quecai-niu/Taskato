@@ -1,3 +1,4 @@
+import { taskDetails, taskTitle } from "../taskText";
 import {
   useCallback,
   useEffect,
@@ -91,7 +92,13 @@ function compareSubtaskDisplayOrder(left: TaskDto, right: TaskDto): number {
   const completionGroupOrder =
     Number(left.isCompleted) - Number(right.isCompleted);
   if (completionGroupOrder !== 0) return completionGroupOrder;
-  if (!left.isCompleted) return 0;
+  if (!left.isCompleted) {
+    return (
+      right.priority - left.priority ||
+      Date.parse(right.createdAt) - Date.parse(left.createdAt) ||
+      right.id - left.id
+    );
+  }
   return taskCompletionTimestamp(right) - taskCompletionTimestamp(left);
 }
 
@@ -262,7 +269,7 @@ function PriorityContextMenu({
       ref={menuRef}
       className="priority-context-menu"
       role="menu"
-      aria-label={`修改“${task.title}”的优先级`}
+      aria-label={`修改“${taskTitle(task.title)}”的优先级`}
       style={{ left, top }}
       onContextMenu={(event) => event.preventDefault()}
       onKeyDown={moveFocus}
@@ -367,7 +374,7 @@ function TaskTreeRow({
           onClick={() => onSelect(task.id)}
           onDoubleClick={() => task.parentId != null && onEditContent(task.id)}
         >
-          {task.title}
+          {taskTitle(task.title)}
         </button>
         {task.priority > 0 && (
           <span className={`priority-badge priority-${task.priority}`}>
@@ -431,7 +438,7 @@ function ParentCandidateRow({
         onClick={() => onSelect(task.id)}
       >
         <span className="parent-option-marker" />
-        <span>{task.title}</span>
+        <span>{taskTitle(task.title)}</span>
         {task.hasChildren && (
           <small>
             {task.completedLeafCount}/{task.totalLeafCount}
@@ -566,7 +573,7 @@ function CompletionDialog({
             <span className="section-kicker">
               {task.hasChildren ? "完成父任务" : "完成叶子任务"}
             </span>
-            <h2>{task.title}</h2>
+            <h2>{taskTitle(task.title)}</h2>
           </div>
           <IconButton label="关闭" onClick={onClose}>
             <X size={19} />
@@ -640,7 +647,7 @@ function ProgressEditorDialog({
   onSaved(): Promise<void>;
 }) {
   const initialDateTime = toDateTimeFields(record?.completedAt ?? new Date());
-  const [taskId, setTaskId] = useState(record?.taskId ?? initialTaskId);
+  const [taskId, setTaskId] = useState(record ? record.taskId : initialTaskId);
   const [note, setNote] = useState(record?.note ?? "");
   const [duration, setDuration] = useState(
     String(record?.durationMinutes ?? 25),
@@ -720,6 +727,16 @@ function ProgressEditorDialog({
             onChange={(event) => setNote(event.target.value)}
           />
         </label>
+        {!record && (
+          <label className="progress-current-task">
+            <input
+              type="checkbox"
+              checked={taskId === initialTaskId}
+              onChange={(event) => setTaskId(event.target.checked ? initialTaskId : null)}
+            />
+            归属当前任务
+          </label>
+        )}
         <span className="field-label">所属任务</span>
         <TaskPicker tasks={tasks} value={taskId} onChange={setTaskId} embedded />
         <div className="modal-fields progress-fields">
@@ -1210,7 +1227,7 @@ export function TaskPage({
         .request("tasks.toggle", { taskId: task.id, completed: false })
         .then(async () => {
           await load();
-          offerUndo(`已取消完成“${task.title}”`, async () => {
+          offerUndo(`已取消完成“${taskTitle(task.title)}”`, async () => {
             await bridge.request("tasks.toggle", {
               taskId: task.id,
               completed: true,
@@ -1229,7 +1246,7 @@ export function TaskPage({
         .then(async (result) => {
           if (result.completed) {
             await load();
-            offerUndo(`已完成“${task.title}”`, async () => {
+            offerUndo(`已完成“${taskTitle(task.title)}”`, async () => {
               await bridge.request("tasks.toggle", {
                 taskId: task.id,
                 completed: false,
@@ -1252,7 +1269,7 @@ export function TaskPage({
       setCompletionTask(null);
       await load();
       const completedTask = completionTask;
-      offerUndo(`已完成“${completedTask.title}”`, async () => {
+      offerUndo(`已完成“${taskTitle(completedTask.title)}”`, async () => {
         await bridge.request("tasks.toggle", {
           taskId: completedTask.id,
           completed: false,
@@ -1279,7 +1296,7 @@ export function TaskPage({
       await bridge.request("tasks.update", { taskId, priority });
       await load();
       offerUndo(
-        `已将“${task.title}”优先级设为“${priorityLabels[priority]}”`,
+        `已将“${taskTitle(task.title)}”优先级设为“${priorityLabels[priority]}”`,
         async () => {
           await bridge.request("tasks.update", {
             taskId,
@@ -1323,7 +1340,7 @@ export function TaskPage({
   const deleteTask = async (mode: "deleteBranch" | "promoteChildren") => {
     if (
       !selected ||
-      !window.confirm(`确定处理“${selected.title}”吗？完成历史会保留。`)
+      !window.confirm(`确定处理“${taskTitle(selected.title)}”吗？完成历史会保留。`)
     )
       return;
     try {
@@ -1340,7 +1357,7 @@ export function TaskPage({
     try {
       await bridge.request("tasks.move", { taskId, parentId });
       await load();
-      offerUndo(`已移动“${selected.title}”`, async () => {
+      offerUndo(`已移动“${taskTitle(selected.title)}”`, async () => {
         await bridge.request("tasks.move", {
           taskId,
           parentId: previousParentId,
@@ -1459,6 +1476,7 @@ export function TaskPage({
 
   const renderSubtaskRow = (item: TaskDto) => {
     const isProgressTarget = item.id === progressTarget?.id;
+    const details = taskDetails(item.title);
     return (
       <div
         className={`subtask-row ${item.isCompleted ? "completed" : ""} ${isProgressTarget ? "progress-target" : ""}`.trim()}
@@ -1466,7 +1484,7 @@ export function TaskPage({
         role="listitem"
         tabIndex={0}
         aria-current={isProgressTarget ? "true" : undefined}
-        aria-label={`${item.title}${isProgressTarget ? "，当前推进目标" : "，单击设为推进目标"}`}
+        aria-label={`${taskTitle(item.title)}${details ? `，${details}` : ""}${isProgressTarget ? "，当前专注目标" : "，单击设为专注目标"}`}
         onClick={() => setProgressTargetTaskId(item.id)}
         onKeyDown={(event) => {
           if (event.target !== event.currentTarget) return;
@@ -1489,13 +1507,16 @@ export function TaskPage({
         >
           {item.isCompleted && <Check size={12} />}
         </button>
-        <span
-          className={item.isCompleted ? "done" : ""}
+        <div
+          className="subtask-copy"
           title="双击编辑任务内容"
           onDoubleClick={() => editTaskContent(item.id)}
         >
-          {item.title}
-        </span>
+          <span className={item.isCompleted ? "done" : ""}>
+            {taskTitle(item.title)}
+          </span>
+          {details && <p className="subtask-details">{details}</p>}
+        </div>
         <span className="subtask-row-badges">
           {item.priority > 0 && (
             <span
@@ -1506,7 +1527,7 @@ export function TaskPage({
             </span>
           )}
           {isProgressTarget && (
-            <span className="progress-target-badge">推进目标</span>
+            <span className="progress-target-badge">专注目标</span>
           )}
         </span>
         <small>
@@ -1624,7 +1645,7 @@ export function TaskPage({
               <div>
                 <span className="section-kicker">新增任务</span>
                 <h2 id="task-create-title">记录接下来要完成的事情</h2>
-                <p>停留在此页面时，番茄钟推进记录默认设为“无所属”。</p>
+                <p>停留在此页面时，番茄钟专注计时不关联任务。</p>
               </div>
               <button
                 type="button"
@@ -1697,14 +1718,14 @@ export function TaskPage({
                     <span className="breadcrumb-part" key={item.id}>
                       <CaretRight size={13} />
                       {isCurrentTask ? (
-                        <span aria-current="page">{item.title}</span>
+                        <span aria-current="page">{taskTitle(item.title)}</span>
                       ) : (
                         <button
                           className="breadcrumb-link"
-                          aria-label={`返回父任务：${item.title}`}
+                          aria-label={`返回父任务：${taskTitle(item.title)}`}
                           onClick={() => selectTask(item.id)}
                         >
-                          {item.title}
+                          {taskTitle(item.title)}
                         </button>
                       )}
                     </span>
@@ -1763,7 +1784,7 @@ export function TaskPage({
                 {selected.isCompleted && <Check size={15} />}
               </button>
               <div>
-                <h2 className="task-title-display">{selected.title}</h2>
+                <h2 className="task-title-display">{taskTitle(selected.title)}</h2>
                 <p>
                   {selected.hasChildren
                     ? "所有叶子任务完成后，由你手动确认父任务完成。"
@@ -1894,7 +1915,7 @@ export function TaskPage({
                 className="task-content-input"
                 aria-label="任务内容"
                 maxLength={5000}
-                placeholder="输入任务内容；停止输入后自动保存。"
+                placeholder="第一行作为标题，其余内容作为详细说明；停止输入后自动保存。"
                 value={contentDraft}
                 onChange={(event) => setContentDraft(event.target.value)}
                 onBlur={() => {
@@ -1907,7 +1928,7 @@ export function TaskPage({
                 <div>
                   <h3>推进记录</h3>
                   <span>
-                    本任务 {progressResult?.ownCount ?? 0} 次 · 全部投入{
+                    本任务 {progressResult?.ownCount ?? 0} 次 · 推进耗时{
                       " "
                     }
                     {formatProgressDuration(progressResult?.allDurationMinutes ?? 0)}
@@ -1992,7 +2013,7 @@ export function TaskPage({
                 ))}
                 {progressResult && progressRecords.length === 0 && (
                   <div className="progress-empty">
-                    还没有推进记录。完成一次番茄钟，或点击“记录推进”手动补录。
+                    还没有推进记录。点击“记录推进”记录本次进展。
                   </div>
                 )}
                 {hasHiddenProgressRecords && (
@@ -2117,10 +2138,8 @@ export function TaskPage({
             </strong>
             <p>
               {taskViewMode === "create"
-                ? "新增任务页面 · 推进记录将设为无所属"
-                : (progressTarget?.title ??
-                  selected?.title ??
-                  "选择任务后开始专注")}
+                ? "新增任务页面 · 专注计时无所属"
+                : taskTitle(progressTarget?.title ?? selected?.title ?? "选择任务后开始专注")}
             </p>
             <div className="timer-progress" aria-label="当前计时进度">
               <span style={{ width: `${(activeTimer?.progress ?? 1) * 100}%` }} />
@@ -2205,7 +2224,7 @@ export function TaskPage({
             <div className="create-context-panel">
               <Plus size={20} />
               <h3>正在新增任务</h3>
-              <p>当前没有打开具体任务，番茄钟推进记录将设为“无所属”。</p>
+              <p>当前没有打开具体任务，番茄钟专注计时不关联任务。</p>
             </div>
           ) : (
             <>
@@ -2237,7 +2256,7 @@ export function TaskPage({
                   <dd>{selected ? `${selected.depth + 1} / 5` : "—"}</dd>
                 </div>
                 <div>
-                  <dt>累计专注</dt>
+                  <dt>累计推进耗时</dt>
                   <dd>
                     {progressResult && progressResult.ownDurationMinutes > 0
                       ? formatProgressDuration(progressResult.ownDurationMinutes)
@@ -2286,7 +2305,7 @@ export function TaskPage({
       {progressEditor && selected && (
         <ProgressEditorDialog
           tasks={detailTasks}
-          initialTaskId={progressTarget?.id ?? selected.id}
+          initialTaskId={selected.id}
           record={progressEditor === "new" ? null : progressEditor}
           reportError={reportError}
           onClose={() => setProgressEditor(null)}

@@ -390,7 +390,7 @@ internal static class Program
                 Assert(contextUpdate.Ok &&
                        bridgeContext.Current == new WorkspaceContextSnapshot(
                            "tasks", "create", root.Id, phase.Id),
-                    "桥接必须只通过白名单方法同步当前页面、任务视图和推进目标上下文。");
+                    "桥接必须只通过白名单方法同步当前页面、任务视图和专注目标上下文。");
 
                 var unknown = await bridge.ProcessRequestAsync(new WebBridgeRequest
                 {
@@ -477,7 +477,10 @@ internal static class Program
                 var totalDuration = summaryJson.GetProperty("totalDurationMinutes").GetInt32();
                 Assert(progressDuration == 17 &&
                        totalDuration == taskDuration + progressDuration,
-                    "每日总结总投入时长必须等于任务耗时与推进耗时之和。");
+                    "兼容字段保持任务与推进记录耗时之和，不混入专注计时。");
+
+                Assert(summaryJson.GetProperty("focusDurationMinutes").GetInt32() == 0,
+                    "手动记录任务或推进不得伪造专注计时。");
 
                 var firstBatchRecord = await database.AddProgressRecordAsync(
                     root.Id,
@@ -763,88 +766,56 @@ internal static class Program
             var existingChild = await database.AddChildTaskAsync(group, "已有子任务")
                 ?? throw new InvalidOperationException("创建完成记录测试子任务失败。");
             var context = new WorkspaceContextService();
-            var completionService = new PomodoroCompletionService(database, context);
             context.Update("tasks", "detail", existingChild.Id);
+            var destination = await context.ResolveDestinationAsync(database);
+            Assert(destination.TaskId == existingChild.Id,
+                "任务上下文应保持当前打开的具体任务。");
+            Assert(TaskItem.FirstLine("标题\r\n详细说明") == "标题" &&
+                   TaskItem.DisplayPath("父任务\n说明 / 子任务\n内容") == "父任务 / 子任务",
+                "标题和每级路径只显示第一行。");
 
-            var destination = await completionService.GetDestinationAsync();
-            Assert(destination.TaskId == existingChild.Id && destination.DisplayName == existingChild.Title,
-                "番茄钟推进应精确归属于当前打开的任意层级任务。");
-
-            var completedAt = new DateTimeOffset(2026, 8, 24, 10, 30, 0, TimeSpan.FromHours(8));
-            var saved = await completionService.SaveAsync(
-                new PomodoroWorkCompletion(completedAt, 380, "completed_early"),
-                "整理番茄钟完成记录");
-            Assert(saved.CreatedRecord.TaskId == existingChild.Id &&
-                   saved.CreatedRecord.DurationMinutes == 6 &&
-                   saved.CreatedRecord.OriginalDurationMinutes == 6 &&
-                   saved.CreatedRecord.Note == "整理番茄钟完成记录",
-                "番茄钟应创建当前任务的推进记录，并按规则取整耗时。");
-            var savedChild = await database.GetTaskByIdAsync(existingChild.Id);
-            Assert(savedChild is { IsCompleted: false, Status: TaskWorkStatus.InProgress },
-                "第一条推进应把未完成任务改为进行中，但不得自动完成任务。");
-
-            var completedChildResult = await database.CompleteTaskWithHierarchyValidationAsync(
-                existingChild,
-                completedAt.LocalDateTime,
-                null,
-                CompletionTrigger.Manual);
-            Assert(completedChildResult.Succeeded,
-                "推进目标测试的直属子任务应能先被标记为完成。");
-            context.Update("tasks", "detail", group.Id, existingChild.Id);
-            var completedTargetSave = await completionService.SaveAsync(
-                new PomodoroWorkCompletion(completedAt, 60, "completed"),
-                "继续推进已完成子任务");
-            Assert(completedTargetSave.CreatedRecord.TaskId == existingChild.Id &&
-                   completedTargetSave.Destination.TaskId == existingChild.Id,
-                "已完成的直属子任务仍应允许作为番茄钟推进目标。");
-
-            context.Update("tasks", "create", existingChild.Id);
-            var blankResult = await completionService.SaveAsync(
-                new PomodoroWorkCompletion(completedAt, 20, "completed"),
-                "   ");
-            Assert(blankResult.CreatedRecord.TaskId is null &&
-                   blankResult.CreatedRecord.Note == string.Empty &&
-                   blankResult.CreatedRecord.DurationMinutes == 1 &&
-                   (await completionService.GetDestinationAsync()).TaskId is null,
-                "新增页面中的空内容仍应保存无所属推进，正数耗时至少记一分钟。");
-
-            var ungrouped = await completionService.SaveAsync(
-                new PomodoroWorkCompletion(completedAt, 20, "completed"),
-                "新增页面完成的记录");
-            Assert(ungrouped.CreatedRecord.TaskId is null &&
-                   ungrouped.CreatedRecord.Note == "新增页面完成的记录" &&
-                   ungrouped.CreatedRecord.DurationMinutes == 1,
-                "新增页面中的非空内容应保存无所属推进，且不创建任务。");
-
-            var taskCount = (await database.GetTaskTreeItemsAsync()).Count;
-            Assert(taskCount == 2,
-                "推进记录不得伪装成已完成子任务或改变任务树数量。");
-            var dayProgress = await database.GetProgressRecordsForDateAsync(completedAt.Date);
-            Assert(dayProgress.Count == 4,
-                "空内容、非空内容、普通目标和已完成目标都必须进入当日推进记录。");
+            var completedAt = DateTimeOffset.Now.AddMinutes(-10);
+            await database.StartPomodoroPhaseAsync("completion-test", "测试计时", existingChild.Id,
+                existingChild.Title, PomodoroFocusPhase.Work, completedAt.AddMinutes(-6), true);
+            await database.EndPomodoroPhaseAsync("completion-test", PomodoroFocusPhase.Work,
+                completedAt, "completed");
+            Assert((await database.GetProgressRecordsForDateAsync(completedAt.LocalDateTime)).Count == 0,
+                "番茄钟完成只保存专注时间，不新增推进。");
+            var focus = await database.GetPomodoroAnalyticsAsync("day", completedAt.LocalDateTime);
+            Assert(focus.WorkSeconds == 360, "没有推进记录时也必须保留专注时长。");
+            var saved = await database.AddProgressRecordAsync(existingChild.Id, "手动记录进展",
+                completedAt.LocalDateTime.AddMinutes(-6), completedAt.LocalDateTime,
+                6, 6, "manual", TaskProgressSource.Manual);
+            Assert(saved.TaskId == existingChild.Id &&
+                   (await database.GetProgressRecordsForDateAsync(completedAt.LocalDateTime)).Count == 1,
+                "手动保存一次才新增一条推进，并保留任务归属。");
+            Assert((await database.GetTaskByIdAsync(existingChild.Id))?.Status == TaskWorkStatus.InProgress,
+                "手动推进将未开始任务变为进行中。");
+            Assert((await database.GetPomodoroAnalyticsAsync("day", completedAt.LocalDateTime)).WorkSeconds == 360,
+                "手动推进不能重复增加专注时长。");
 
             var otherGroup = await AddTaskAsync(database, "另一个任务组");
             var unrelatedChild = await database.AddChildTaskAsync(otherGroup, "其他直属子任务")
-                ?? throw new InvalidOperationException("创建无效推进目标测试任务失败。");
+                ?? throw new InvalidOperationException("创建无效专注目标测试任务失败。");
             context.Update("tasks", "detail", group.Id, int.MaxValue);
-            var missingTargetDestination = await completionService.GetDestinationAsync();
+            var missingTargetDestination = await context.ResolveDestinationAsync(database);
             Assert(missingTargetDestination.TaskId == group.Id,
-                "已删除或失效的推进目标必须回退到当前任务组。");
+                "已删除或失效的专注目标必须回退到当前任务组。");
 
             context.Update("tasks", "detail", group.Id, unrelatedChild.Id);
-            var invalidTargetDestination = await completionService.GetDestinationAsync();
+            var invalidTargetDestination = await context.ResolveDestinationAsync(database);
             Assert(invalidTargetDestination.TaskId == group.Id,
                 "非当前任务组直属子任务的目标必须回退到当前任务组。");
 
             var moveResult = await database.MoveTaskAsync(existingChild.Id, otherGroup.Id);
-            Assert(moveResult.Succeeded, "推进目标移动测试应能移动直属子任务。");
+            Assert(moveResult.Succeeded, "专注目标移动测试应能移动直属子任务。");
             context.Update("tasks", "detail", group.Id, existingChild.Id);
-            var movedTargetDestination = await completionService.GetDestinationAsync();
+            var movedTargetDestination = await context.ResolveDestinationAsync(database);
             Assert(movedTargetDestination.TaskId == group.Id,
-                "推进目标移出当前任务组后必须回退到当前任务组。");
+                "专注目标移出当前任务组后必须回退到当前任务组。");
 
             context.Update("tasks", "detail", int.MaxValue);
-            Assert((await completionService.GetDestinationAsync()).TaskId is null,
+            Assert((await context.ResolveDestinationAsync(database)).TaskId is null,
                 "失效的任务上下文必须安全回退到无所属。");
         }
         finally

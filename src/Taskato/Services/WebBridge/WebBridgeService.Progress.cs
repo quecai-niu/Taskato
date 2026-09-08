@@ -163,10 +163,10 @@ namespace Taskato.Services.WebBridge
                 record.TaskId,
                 string.IsNullOrWhiteSpace(record.TaskTitleSnapshot)
                     ? "无所属"
-                    : record.TaskTitleSnapshot,
+                    : TaskItem.FirstLine(record.TaskTitleSnapshot),
                 string.IsNullOrWhiteSpace(record.TaskPathSnapshot)
                     ? "无所属"
-                    : record.TaskPathSnapshot,
+                    : TaskItem.DisplayPath(record.TaskPathSnapshot),
                 record.Note,
                 record.StartedAt,
                 record.CompletedAt,

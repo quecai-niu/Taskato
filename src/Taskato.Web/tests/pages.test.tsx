@@ -146,6 +146,13 @@ describe("独立业务页面", () => {
       ".task-canvas .subtask-list",
     )!;
     expect(subtaskList.textContent).toContain("重构任务工作区");
+    const details = subtaskList.querySelector<HTMLElement>(".subtask-details");
+    expect(details?.textContent).toBe(
+      "重点检查深层嵌套、选中状态和子任务输入焦点。",
+    );
+    expect(details?.closest(".subtask-row")?.getAttribute("aria-label")).toContain(
+      details?.textContent,
+    );
     expect(subtaskList.textContent).not.toContain("确定新版信息架构");
 
     const toggle = subtaskList.querySelector<HTMLButtonElement>(
@@ -161,7 +168,7 @@ describe("独立业务页面", () => {
     expect(subtaskList.textContent).toContain("确定新版信息架构");
   });
 
-  it("直属子任务可作为推进目标，空白处取消后恢复当前任务组", async () => {
+  it("直属子任务可作为专注目标，手动推进仍默认归属详情任务", async () => {
     const progressTargetChanged = vi.fn();
     await renderAndFlush(
       <TaskPage
@@ -180,7 +187,7 @@ describe("独立业务页面", () => {
 
     expect(activeRow.classList.contains("progress-target")).toBe(true);
     expect(activeRow.getAttribute("aria-current")).toBe("true");
-    expect(activeRow.textContent).toContain("推进目标");
+    expect(activeRow.textContent).toContain("专注目标");
     expect(progressTargetChanged).toHaveBeenLastCalledWith(3);
     expect(host.querySelector(".timer-display-stage p")?.textContent).toContain(
       "重构任务工作区",
@@ -202,7 +209,8 @@ describe("独立业务页面", () => {
     let selectedOption = host.querySelector<HTMLElement>(
       '.progress-editor-modal [role="option"][aria-selected="true"]',
     )!;
-    expect(selectedOption.textContent).toContain("重构任务工作区");
+    expect(selectedOption.textContent).toContain("发布 Taskato 3.0");
+    expect(host.querySelector<HTMLInputElement>(".progress-current-task input")?.checked).toBe(true);
     await act(async () =>
       host
         .querySelector<HTMLButtonElement>(
@@ -228,11 +236,11 @@ describe("独立业务页面", () => {
       host
         .querySelector(".progress-editor-modal .task-picker-completed-filter")
         ?.getAttribute("aria-pressed"),
-    ).toBe("true");
+    ).toBe("false");
     selectedOption = host.querySelector<HTMLElement>(
       '.progress-editor-modal [role="option"][aria-selected="true"]',
     )!;
-    expect(selectedOption.textContent).toContain("确定新版信息架构");
+    expect(selectedOption.textContent).toContain("发布 Taskato 3.0");
     await act(async () =>
       host
         .querySelector<HTMLButtonElement>(
@@ -440,6 +448,13 @@ describe("独立业务页面", () => {
   });
 
   it("任务详情显示精确任务的推进记录并支持手动补录", async () => {
+    const originalRequest = bridge.request.bind(bridge);
+    const requestSpy = vi.spyOn(bridge, "request").mockImplementation(
+      async <T,>(method: string, params?: Record<string, unknown>) => {
+        if (method === "progress.create") return createProgressRecord(99, "测试推进") as T;
+        return originalRequest<T>(method, params);
+      },
+    );
     await renderAndFlush(
       <TaskPage reportError={() => undefined} requestedTaskId={4} />,
     );
@@ -450,6 +465,18 @@ describe("独立业务页面", () => {
     await act(async () => createProgress?.click());
     expect(host.querySelector(".progress-editor-modal")).not.toBeNull();
     expect(host.querySelector('[aria-label="搜索任务"]')).not.toBeNull();
+    const belongsToCurrent = host.querySelector<HTMLInputElement>(".progress-current-task input")!;
+    expect(belongsToCurrent.checked).toBe(true);
+    await act(async () => belongsToCurrent.click());
+    expect(belongsToCurrent.checked).toBe(false);
+    const unassigned = host.querySelector('.progress-editor-modal [role="option"][aria-selected="true"]');
+    expect(unassigned?.textContent).toContain("无所属");
+    await act(async () => belongsToCurrent.click());
+    const saveButton = [...host.querySelectorAll<HTMLButtonElement>(".progress-editor-modal button")]
+      .find((button) => button.textContent === "保存推进")!;
+    await act(async () => saveButton.click());
+    expect(requestSpy.mock.calls.filter(([method]) => method === "progress.create")).toHaveLength(1);
+    expect(requestSpy).toHaveBeenCalledWith("progress.create", expect.objectContaining({ taskId: 4 }));
   });
 
   it("任务详情默认只显示最新三条推进记录并允许展开", async () => {
@@ -663,6 +690,18 @@ describe("独立业务页面", () => {
     ]);
   });
 
+  it("未完成子任务按优先级和创建时间排序，刷新后仍保持一致", () => {
+    const parent = createTask({ id: 9200, title: "父任务" });
+    const older = createTask({ id: 9201, title: "旧任务", parentId: parent.id, priority: 3, createdAt: "2026-09-01T10:00:00Z" });
+    const newest = createTask({ id: 9202, title: "新任务", parentId: parent.id, createdAt: "2026-09-07T10:00:00Z" });
+    const sameTime = createTask({ id: 9203, title: "同时间后创建", parentId: parent.id, createdAt: newest.createdAt });
+    const completed = createTask({ id: 9204, title: "已完成", parentId: parent.id, isCompleted: true });
+    const newestHighPriority = createTask({ id: 9205, title: "较新的高优先级任务", parentId: parent.id, priority: 3, createdAt: "2026-09-07T10:00:00Z" });
+    for (const input of [[parent, older, completed, newest, sameTime, newestHighPriority], [parent, sameTime, newestHighPriority, newest, completed, older]]) {
+      expect(buildTree(input)[0].children.map((task) => task.id)).toEqual([9205, 9201, 9203, 9202, 9204]);
+    }
+  });
+
   it("新增直属子任务使用独立卡片并显示在列表顶部", async () => {
     await renderAndFlush(
       <TaskPage reportError={() => undefined} requestedTaskId={null} />,
@@ -751,7 +790,7 @@ describe("独立业务页面", () => {
     await act(async () =>
       host.querySelector<HTMLButtonElement>(".open-task-create")!.click(),
     );
-    expect(host.textContent).toContain("番茄钟推进记录默认设为“无所属”");
+    expect(host.textContent).toContain("番茄钟专注计时不关联任务");
     const input = host.querySelector<HTMLTextAreaElement>(
       '[aria-label="新任务内容"]',
     )!;
@@ -915,15 +954,19 @@ describe("独立业务页面", () => {
     )!.set!;
 
     await act(async () => {
-      valueSetter.call(editor, "唯一的任务内容");
+      valueSetter.call(editor, "统一标题\n完整详细说明");
       editor.dispatchEvent(new Event("input", { bubbles: true }));
       await new Promise((resolve) => window.setTimeout(resolve, 800));
     });
 
     expect(requestSpy).toHaveBeenCalledWith(
       "tasks.update",
-      expect.objectContaining({ title: "唯一的任务内容" }),
+      expect.objectContaining({ title: "统一标题\n完整详细说明" }),
     );
+    expect(host.querySelector(".task-title-display")?.textContent).toBe("统一标题");
+    expect(host.querySelector(".timer-display-stage p")?.textContent).toBe("统一标题");
+    expect(editor.value).toBe("统一标题\n完整详细说明");
+    expect([...host.querySelectorAll(".tree-title")].some((node) => node.textContent === "统一标题")).toBe(true);
     expect(requestSpy).not.toHaveBeenCalledWith(
       "tasks.update",
       expect.objectContaining({ notes: expect.anything() }),
@@ -1028,9 +1071,9 @@ describe("独立业务页面", () => {
       <SummaryPage reportError={() => undefined} onOpenTask={() => undefined} />,
     );
     expect(host.textContent).toContain("每日总结");
-    expect(host.textContent).toContain("总投入时长");
+    expect(host.textContent).toContain("专注时长");
     expect(host.textContent).toContain("任务 28分钟 · 推进 25分钟");
-    expect(host.textContent).toContain("53分钟");
+    expect(host.querySelector(".summary-stats")?.textContent).not.toContain("53分钟");
 
     await renderAndFlush(
       <HistoryPage reportError={() => undefined} onOpenTask={() => undefined} />,
@@ -1135,12 +1178,12 @@ describe("独立业务页面", () => {
         (row) =>
           row.querySelector<HTMLElement>(".achievement-task-path")?.textContent,
       ),
-    ).toEqual(summaryFixture.groups[0].records.map((record) => record.pathSnapshot));
+    ).toEqual(["任务所属展示", "任务所属展示", "任务所属展示", "长期项目 / 第一阶段 / 第二阶段 / 第三阶段"]);
     expect(
       rows[3]
         .querySelector<HTMLElement>(".achievement-task-path")
         ?.getAttribute("title"),
-    ).toBe(summaryFixture.groups[0].records[3].pathSnapshot);
+    ).toBe("长期项目 / 第一阶段 / 第二阶段 / 第三阶段");
   });
 
   it("补充任务支持按发布时间和优先级排序", () => {

@@ -235,7 +235,7 @@ namespace Taskato.ViewModels
             foreach (var group in CompletionGroups)
             {
                 builder.AppendLine();
-                builder.AppendLine($"[{group.Title}]");
+                builder.AppendLine($"[{TaskItem.FirstLine(group.Title)}]");
                 foreach (var record in group.Records)
                 {
                     var indent = new string(' ', record.DepthSnapshot * 2);
@@ -248,7 +248,7 @@ namespace Taskato.ViewModels
                     };
                     var duration = record.HasDuration ? $"（耗时 {record.DurationDisplay}）" : string.Empty;
                     builder.AppendLine(
-                        $"{indent}{priority}{record.TitleSnapshot} · {record.KindDisplay}{duration}");
+                        $"{indent}{priority}{TaskItem.FirstLine(record.TitleSnapshot)} · {record.KindDisplay}{duration}");
                 }
             }
             return builder.ToString();

@@ -17,6 +17,8 @@ namespace Taskato.Services.WebBridge
             var date = OptionalDate(parameters, "date") ?? DateTime.Today;
             var viewModel = new DailySummaryViewModel(_database) { CurrentDate = date };
             await viewModel.LoadSummaryAsync();
+            var focus = await _database.GetPomodoroAnalyticsAsync("day", date);
+            var focusDurationMinutes = (int)Math.Round(focus.WorkSeconds / 60d, MidpointRounding.AwayFromZero);
             var progressRecords = await _database.GetProgressRecordsForDateAsync(date);
             var existingTaskIds = (await _database.GetTaskTreeItemsAsync())
                 .Select(task => task.Id)
@@ -32,6 +34,8 @@ namespace Taskato.Services.WebBridge
                 viewModel.LeafCompletedCount,
                 viewModel.ParentAchievementCount,
                 viewModel.HighPriorityCompleted,
+                focusDurationMinutes,
+                focusDurationDisplay = FormatDuration(focusDurationMinutes),
                 taskDurationMinutes,
                 taskDurationDisplay = viewModel.TotalDurationDisplay,
                 totalDurationMinutes,
@@ -45,12 +49,12 @@ namespace Taskato.Services.WebBridge
                 groups = viewModel.CompletionGroups.Select(group => new
                 {
                     group.TopLevelTaskId,
-                    group.Title,
+                    Title = TaskItem.FirstLine(group.Title),
                     records = group.Records.Select(record => new
                     {
                         record.TaskId,
-                        record.TitleSnapshot,
-                        record.PathSnapshot,
+                        TitleSnapshot = TaskItem.FirstLine(record.TitleSnapshot),
+                        PathSnapshot = TaskItem.DisplayPath(record.PathSnapshot),
                         record.DepthSnapshot,
                         record.PrioritySnapshot,
                         record.KindDisplay,
@@ -117,9 +121,9 @@ namespace Taskato.Services.WebBridge
             builder.AppendLine($"{date:yyyy-MM-dd} 每日总结");
             builder.AppendLine(summary.GetProperty("summaryLine").GetString());
             builder.AppendLine(
-                $"总投入：{summary.GetProperty("totalDurationDisplay").GetString()}" +
-                $"（任务 {summary.GetProperty("taskDurationDisplay").GetString()}，" +
-                $"推进 {summary.GetProperty("progressDurationDisplay").GetString()}）");
+                $"专注时长：{summary.GetProperty("focusDurationDisplay").GetString()}" +
+                $"；单独记录耗时：任务 {summary.GetProperty("taskDurationDisplay").GetString()}，" +
+                $"推进 {summary.GetProperty("progressDurationDisplay").GetString()}");
             builder.AppendLine();
             builder.AppendLine("[今日推进]");
             foreach (var progress in summary.GetProperty("progressRecords").EnumerateArray())

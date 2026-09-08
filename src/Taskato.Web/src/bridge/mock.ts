@@ -1,3 +1,4 @@
+import { taskTitle } from "../taskText";
 import type {
   BridgeApi,
   FocusAnalyticsResult,
@@ -694,6 +695,9 @@ export class MockBridge implements BridgeApi {
       (sum, record) => sum + record.durationMinutes,
       0,
     );
+    const focusDurationMinutes = Math.round(
+      buildMockFocusAnalytics("day", date).workSeconds / 60,
+    );
     const formatDuration = (minutes: number) => {
       const hours = Math.floor(minutes / 60);
       const remainder = minutes % 60;
@@ -708,6 +712,8 @@ export class MockBridge implements BridgeApi {
       parentAchievementCount: 0,
       highPriorityCompleted: completed.filter((task) => task.priority >= 2)
         .length,
+      focusDurationMinutes,
+      focusDurationDisplay: formatDuration(focusDurationMinutes),
       taskDurationMinutes,
       taskDurationDisplay: formatDuration(taskDurationMinutes),
       totalDurationMinutes: taskDurationMinutes + progressDurationMinutes,
@@ -724,7 +730,7 @@ export class MockBridge implements BridgeApi {
           title: "发布 Taskato 3.0",
           records: completed.map((task) => ({
             taskId: task.id,
-            titleSnapshot: task.title,
+            titleSnapshot: taskTitle(task.title),
             pathSnapshot: buildMockTaskPath(tasks, task.id),
             depthSnapshot: task.depth,
             prioritySnapshot: task.priority,

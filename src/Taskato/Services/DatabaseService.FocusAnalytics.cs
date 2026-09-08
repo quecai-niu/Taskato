@@ -259,7 +259,7 @@ namespace Taskato.Services
                     localStart.ToString("HH:mm"),
                     session.TimerName,
                     session.TaskId,
-                    session.TaskTitleSnapshot));
+                    TaskItem.FirstLine(session.TaskTitleSnapshot)));
             }
 
             var resultCells = cells.Select(cell => new FocusAnalyticsCellBridgeDto(

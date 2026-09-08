@@ -620,8 +620,8 @@ namespace Taskato.Services
             var task = tasks.FirstOrDefault(candidate => candidate.Id == taskId);
             if (task is null) return string.Empty;
             var pathParts = GetAncestorChain(tasks, task)
-                .Select(ancestor => ancestor.Title)
-                .Append(task.Title);
+                .Select(ancestor => TaskItem.FirstLine(ancestor.Title))
+                .Append(TaskItem.FirstLine(task.Title));
             return string.Join(" / ", pathParts);
         }
 

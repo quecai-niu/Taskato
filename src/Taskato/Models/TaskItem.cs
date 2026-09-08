@@ -199,6 +199,15 @@ namespace Taskato.Models
             }
         }
 
+        public static string FirstLine(string? content)
+        {
+            var line = (content ?? string.Empty).Split(new[] { '\r', '\n' }, 2)[0].Trim();
+            return line.Length == 0 ? "未命名任务" : line;
+        }
+
+        public static string DisplayPath(string path) =>
+            string.Join(" / ", path.Split(" / ").Select(FirstLine));
+
         /// <summary>
         /// 剥离标签后的纯净标题
         /// </summary>
@@ -208,7 +217,7 @@ namespace Taskato.Models
             get
             {
                 if (string.IsNullOrEmpty(Title)) return string.Empty;
-                var titles = Title.Split(' ').Where(p => !p.StartsWith("#"));
+                var titles = FirstLine(Title).Split(' ').Where(p => !p.StartsWith("#"));
                 return string.Join(" ", titles);
             }
         }

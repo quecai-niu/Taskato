@@ -415,7 +415,7 @@ namespace Taskato.Services.WebBridge
             return new TaskActivityBridgeDto(
                 $"activity-{record.Id}",
                 record.TaskId,
-                record.TitleSnapshot,
+                TaskItem.FirstLine(record.TitleSnapshot),
                 record.ActivityType.ToString().ToLowerInvariant(),
                 label,
                 record.OccurredAt,

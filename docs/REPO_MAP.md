@@ -1,6 +1,6 @@
 # Taskato 仓库地图
 
-更新时间：2026-08-26
+更新时间：2026-09-07
 
 ## 应用入口
 
@@ -17,6 +17,7 @@
 - `src/Taskato.Web/src/pages/SettingsPage.tsx`：一比一承接旧版主题、番茄钟、系统、总结、提示音和飞书设置，并保留数据保护入口。
 - `src/Taskato.Web/src/pages/SummaryPage.tsx`、`HistoryPage.tsx`：可独立渲染和测试的总结与历史页面。
 - `src/Taskato.Web/src/pages/FocusAnalyticsPage.tsx`：按天、周、月展示番茄钟有效工作/休息时长热力格子与启动标记。
+- `src/Taskato.Web/src/taskText.ts`：统一把任务完整内容的第一行转换为界面标题，并逐级整理任务路径。
 - `src/Taskato.Web/src/ui.tsx`：页面标识、导航元数据、主题和共享按钮/刷新工具。
 - `src/Taskato.Web/src/bridge/`：WebView2 客户端、浏览器 Mock 与 TypeScript 契约。
 - `src/Taskato.Web/tests/`：桥接、应用框架和独立业务页面测试。
@@ -31,10 +32,9 @@
 - `src/Taskato/Models/PomodoroFocusRecords.cs`、`src/Taskato/Services/PomodoroFocusTracker.cs`：阶段记录模型与串行写入队列；只把 Working/Resting 的有效区间计入统计。
 - `src/Taskato/Models/BridgeDtos/FocusAnalyticsBridgeDto.cs`、`src/Taskato/Services/WebBridge/WebBridgeService.FocusAnalytics.cs`：专注统计 DTO 与 Bridge 查询协议。
 - `src/Taskato/Services/WebBridge/WebBridgeService.cs`：协议入口、白名单分发、任务与番茄钟命令。
-- `src/Taskato/Services/WorkspaceContextService.cs`：保存 React 当前页面、任务视图模式和选中任务，并从数据库解析提交时仍有效的具体任务。
-- `src/Taskato/Services/PomodoroCompletionService.cs`：把番茄钟自然结束或提前完成保存为当前任务的推进记录；新增任务页和非任务页保存为无所属。
+- `src/Taskato/Services/WorkspaceContextService.cs`：保存 React 当前页面、任务视图模式、选中任务和专注目标，为计时上下文提供经过数据库验证的具体任务。
 - `src/Taskato/Services/WebBridge/WebBridgeService.Progress.cs`：推进记录查询、新增、编辑和删除协议。
-- `WebBridgeService.Reporting.cs`：每日总结、今日推进记录、历史和导出。
+- `WebBridgeService.Reporting.cs`：每日总结、独立专注时长、今日推进记录、历史和导出。
 - `WebBridgeService.Settings.cs`：完整设置、提示音/飞书测试、原生文件对话框、备份恢复和本地目录能力。
 
 ## 数据安全与稳定性

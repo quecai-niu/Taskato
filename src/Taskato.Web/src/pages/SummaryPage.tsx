@@ -1,3 +1,4 @@
+import { taskTitle, taskPath, parentTaskPath } from "../taskText";
 import {
   useCallback,
   useEffect,
@@ -269,6 +270,7 @@ export function SummaryPage({
       .catch(reportError);
   }, [reportError]);
   useBridgeRefresh("tasks.changed", () => void load());
+  useBridgeRefresh("focus.changed", () => void load());
   useEffect(() => {
     const validRecordIds = new Set(
       (summary?.progressRecords ?? []).map((record) => record.id),
@@ -407,10 +409,10 @@ export function SummaryPage({
               <small>自动汇总达成</small>
             </div>
             <div>
-              <span>总投入时长</span>
-              <strong>{summary?.totalDurationDisplay ?? "0分钟"}</strong>
+              <span>专注时长</span>
+              <strong>{summary?.focusDurationDisplay ?? "0分钟"}</strong>
               <small>
-                任务 {summary?.taskDurationDisplay ?? "0分钟"} · 推进{
+                记录耗时：任务 {summary?.taskDurationDisplay ?? "0分钟"} · 推进{
                   " "
                 }{summary?.progressDurationDisplay ?? "0分钟"}
               </small>
@@ -423,7 +425,7 @@ export function SummaryPage({
                   <div>
                     <CaretDown size={16} />
                     <div>
-                      <h3>{group.title}</h3>
+                      <h3>{taskTitle(group.title)}</h3>
                       <p>{group.records.length} 项成果</p>
                     </div>
                   </div>
@@ -448,31 +450,31 @@ export function SummaryPage({
                       <CheckCircle size={18} weight="fill" />
                       <div className="achievement-task-copy">
                         <div className="achievement-task-heading">
-                          <strong>{item.titleSnapshot}</strong>
-                          <span
-                            className={`priority-badge achievement-priority-badge priority-${priority.value}`}
-                            title={`优先级：${priority.label}`}
-                          >
-                            {priority.label}
-                          </span>
-                          <span className="achievement-kind">
-                            {item.kindDisplay}
-                          </span>
+                          <strong>{taskTitle(item.titleSnapshot)}</strong>
                         </div>
                         <span
                           className="achievement-task-path"
-                          title={item.pathSnapshot || item.titleSnapshot}
+                          title={parentTaskPath(item.pathSnapshot) || "顶级任务"}
                         >
-                          {item.pathSnapshot || item.titleSnapshot}
+                          {parentTaskPath(item.pathSnapshot) || "顶级任务"}
                         </span>
                       </div>
-                      <small>{item.durationDisplay}</small>
-                      <time>
-                        {new Date(item.completedAt).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </time>
+                      <div className="achievement-metadata">
+                        <span
+                          className={`priority-badge achievement-priority-badge priority-${priority.value}`}
+                          title={`优先级：${priority.label}`}
+                        >
+                          {priority.label}
+                        </span>
+                        <span className="achievement-kind">{item.kindDisplay}</span>
+                        <small>{item.durationDisplay}</small>
+                        <time>
+                          {new Date(item.completedAt).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </time>
+                      </div>
                     </button>
                   );
                 })}
@@ -574,7 +576,7 @@ export function SummaryPage({
                   )}
                   <div>
                     <strong>{record.note || "未填写"}</strong>
-                    <span>{record.taskPath}</span>
+                    <span>{taskPath(record.taskPath)}</span>
                   </div>
                   <small>
                     {record.durationMinutes} 分钟
@@ -619,7 +621,7 @@ export function SummaryPage({
           <details className="summary-method">
             <summary>查看统计口径</summary>
             <p>
-              当前仍存在的任务必须保持完成状态且完成时间匹配；已删除任务保留完成快照；取消完成仅进入历史日志。
+              当前仍存在的任务必须保持完成状态且完成时间匹配；已删除任务保留完成快照；取消完成仅进入历史日志。专注时长来自番茄钟有效工作区间，暂停和休息不计入；任务与推进耗时单独展示，不与专注时长相加。推进只在任务详情页手动记录。
             </p>
           </details>
           {operationStatus && (
