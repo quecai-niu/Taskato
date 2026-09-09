@@ -1,7 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { WebViewBridge } from "../src/bridge/client";
 import { MockBridge } from "../src/bridge/mock";
-import type { SummaryResult } from "../src/bridge/types";
+import type {
+  SummaryResult,
+  TaskDto,
+  TaskListResult,
+} from "../src/bridge/types";
 
 describe("MockBridge", () => {
   it("保持主任务与子任务输入状态分离", async () => {
@@ -71,6 +75,52 @@ describe("MockBridge", () => {
       activities: Array<{ id: string }>;
     }>("search.global", { keyword: "浏览器" });
     expect(activityResult.activities.length).toBeGreaterThan(0);
+  });
+
+  it("同级任务顺序可持久化且完成状态切换不会改写排序号", async () => {
+    const bridge = new MockBridge();
+    const first = await bridge.request<TaskDto>("tasks.add", {
+      title: "先新增的排序任务",
+      parentId: 1,
+      priority: 2,
+    });
+    const second = await bridge.request<TaskDto>("tasks.add", {
+      title: "后新增的排序任务",
+      parentId: 1,
+      priority: 2,
+    });
+    expect(second.orderIndex).toBeLessThan(first.orderIndex);
+
+    await bridge.request("tasks.reorder", { taskIds: [first.id, second.id] });
+    let taskList = await bridge.request<TaskListResult>("tasks.list");
+    let firstAfterReorder = taskList.detailTasks.find(
+      (task) => task.id === first.id,
+    )!;
+    const secondAfterReorder = taskList.detailTasks.find(
+      (task) => task.id === second.id,
+    )!;
+    expect(firstAfterReorder.orderIndex).toBeLessThan(
+      secondAfterReorder.orderIndex,
+    );
+
+    const preservedOrderIndex = firstAfterReorder.orderIndex;
+    await bridge.request("tasks.toggle", {
+      taskId: first.id,
+      completed: true,
+    });
+    await bridge.request("tasks.toggle", {
+      taskId: first.id,
+      completed: false,
+    });
+    taskList = await bridge.request<TaskListResult>("tasks.list");
+    firstAfterReorder = taskList.detailTasks.find(
+      (task) => task.id === first.id,
+    )!;
+    expect(firstAfterReorder.orderIndex).toBe(preservedOrderIndex);
+
+    await expect(
+      bridge.request("tasks.reorder", { taskIds: [first.id, 5] }),
+    ).rejects.toThrow("同一优先级");
   });
 });
 

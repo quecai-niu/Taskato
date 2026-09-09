@@ -119,6 +119,7 @@ namespace Taskato.Services.WebBridge
                 "tasks.completeDialog" => await CompleteTaskWithNativeDialogAsync(request.Params),
                 "tasks.delete" => await DeleteTaskAsync(request.Params),
                 "tasks.move" => await MoveTaskAsync(request.Params),
+                "tasks.reorder" => await ReorderTasksAsync(request.Params),
                 "search.global" => await GlobalSearchAsync(request.Params),
                 "summary.get" => await GetSummaryAsync(request.Params),
                 "summary.candidates" => await GetSummaryCandidatesAsync(),
@@ -337,6 +338,29 @@ namespace Taskato.Services.WebBridge
             return new { moved = true };
         }
 
+        private async Task<object> ReorderTasksAsync(JsonElement parameters)
+        {
+            if (parameters.ValueKind != JsonValueKind.Object ||
+                !parameters.TryGetProperty("taskIds", out var taskIdsElement) ||
+                taskIdsElement.ValueKind != JsonValueKind.Array)
+                throw new BridgeRequestException("invalid_params", "taskIds 必须是任务编号数组。");
+
+            var taskIds = new List<int>();
+            foreach (var taskIdElement in taskIdsElement.EnumerateArray())
+            {
+                if (taskIdElement.ValueKind != JsonValueKind.Number ||
+                    !taskIdElement.TryGetInt32(out var taskId) ||
+                    taskId <= 0)
+                    throw new BridgeRequestException("invalid_params", "taskIds 必须只包含有效任务编号。");
+                taskIds.Add(taskId);
+            }
+
+            var result = await _database.ReorderSiblingTasksAsync(taskIds);
+            if (!result.Succeeded)
+                throw new BridgeRequestException("invalid_reorder", result.ErrorMessage);
+            return new { reordered = true };
+        }
+
         private object GetTimers() => new
         {
             activeId = TimerId(_taskWorkspace.CurrentActiveTimer),
@@ -393,7 +417,7 @@ namespace Taskato.Services.WebBridge
                 TaskWorkStatus.InProgress => "inProgress",
                 _ => "notStarted"
             },
-            task.Priority,
+            task.Priority, task.OrderIndex,
             task.HasChildren, task.CanAddChild, task.CompletedLeafCount, task.TotalLeafCount,
             task.CreatedAt, task.CompletedAt, task.CompletionDurationMinutes);
 

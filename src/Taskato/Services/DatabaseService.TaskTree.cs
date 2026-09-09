@@ -60,7 +60,7 @@ namespace Taskato.Services
                     Priority = priority,
                     CreatedAt = DateTime.Now,
                     LastModifiedAt = DateTime.Now,
-                    OrderIndex = GetNextSiblingOrder(connection, storedParent.Id)
+                    OrderIndex = GetPreviousSiblingOrder(connection, storedParent.Id, priority)
                 };
                 connection.Insert(createdTask);
                 InsertActivityRecord(
@@ -227,6 +227,87 @@ namespace Taskato.Services
                     RecalculateAncestorStates(connection, tasks, newParentId);
 
                 result = new TaskMoveResult { Succeeded = true };
+            });
+
+            if (result.Succeeded)
+                OnDataChanged?.Invoke();
+            return result;
+        }
+
+        public async Task<TaskReorderResult> ReorderSiblingTasksAsync(IReadOnlyList<int> orderedTaskIds)
+        {
+            var result = new TaskReorderResult();
+            await _db.RunInTransactionAsync(connection =>
+            {
+                if (orderedTaskIds.Count < 2 || orderedTaskIds.Distinct().Count() != orderedTaskIds.Count)
+                {
+                    result = new TaskReorderResult { ErrorMessage = "排序任务列表无效。" };
+                    return;
+                }
+
+                var tasks = connection.Table<TaskItem>().ToList();
+                var tasksById = tasks.ToDictionary(task => task.Id);
+                var orderedTasks = new List<TaskItem>(orderedTaskIds.Count);
+                foreach (var taskId in orderedTaskIds)
+                {
+                    if (!tasksById.TryGetValue(taskId, out var task))
+                    {
+                        result = new TaskReorderResult { ErrorMessage = "待排序任务不存在。" };
+                        return;
+                    }
+                    orderedTasks.Add(task);
+                }
+
+                var firstTask = orderedTasks[0];
+                var firstIsRootGroup = firstTask.ParentId is null &&
+                                       tasks.Any(task => task.ParentId == firstTask.Id);
+                foreach (var task in orderedTasks.Skip(1))
+                {
+                    var sameRootSection = task.ParentId is not null ||
+                                          tasks.Any(candidate => candidate.ParentId == task.Id) == firstIsRootGroup;
+                    if (task.ParentId != firstTask.ParentId ||
+                        task.Priority != firstTask.Priority ||
+                        task.IsCompleted != firstTask.IsCompleted ||
+                        !sameRootSection)
+                    {
+                        result = new TaskReorderResult
+                        {
+                            ErrorMessage = "只能调整同一父级、同一优先级、同一完成状态和同一任务分区内的顺序。"
+                        };
+                        return;
+                    }
+                }
+
+                var orderedTaskIdSet = orderedTaskIds.ToHashSet();
+                var siblingPriorityGroup = tasks
+                    .Where(task => task.ParentId == firstTask.ParentId && task.Priority == firstTask.Priority)
+                    .OrderBy(task => task.OrderIndex)
+                    .ThenByDescending(task => task.CreatedAt)
+                    .ThenByDescending(task => task.Id)
+                    .ToList();
+                var reorderSlots = siblingPriorityGroup
+                    .Select((task, index) => new { task.Id, Index = index })
+                    .Where(item => orderedTaskIdSet.Contains(item.Id))
+                    .Select(item => item.Index)
+                    .ToList();
+                if (reorderSlots.Count != orderedTasks.Count)
+                {
+                    result = new TaskReorderResult { ErrorMessage = "排序任务列表与当前任务数据不一致。" };
+                    return;
+                }
+
+                for (var index = 0; index < reorderSlots.Count; index++)
+                    siblingPriorityGroup[reorderSlots[index]] = orderedTasks[index];
+
+                for (var index = 0; index < siblingPriorityGroup.Count; index++)
+                {
+                    var task = siblingPriorityGroup[index];
+                    if (task.OrderIndex == index) continue;
+                    task.OrderIndex = index;
+                    connection.Update(task);
+                }
+
+                result = new TaskReorderResult { Succeeded = true };
             });
 
             if (result.Succeeded)
@@ -631,6 +712,17 @@ namespace Taskato.Services
                 .Where(task => task.ParentId == parentId)
                 .ToList();
             return siblings.Count == 0 ? 0 : siblings.Max(task => task.OrderIndex) + 1;
+        }
+
+        private static double GetPreviousSiblingOrder(
+            SQLiteConnection connection,
+            int? parentId,
+            int priority)
+        {
+            var siblings = connection.Table<TaskItem>()
+                .Where(task => task.ParentId == parentId && task.Priority == priority)
+                .ToList();
+            return siblings.Count == 0 ? 0 : siblings.Min(task => task.OrderIndex) - 1;
         }
     }
 }

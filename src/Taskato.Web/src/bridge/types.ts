@@ -6,6 +6,7 @@ export interface TaskDto {
   isCompleted: boolean;
   status?: "notStarted" | "inProgress" | "completed";
   priority: number;
+  orderIndex: number;
   hasChildren: boolean;
   canAddChild: boolean;
   completedLeafCount: number;

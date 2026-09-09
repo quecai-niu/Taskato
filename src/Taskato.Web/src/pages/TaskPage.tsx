@@ -21,6 +21,7 @@ import {
   ClockCounterClockwise,
   Copy,
   DotsThree,
+  DotsSixVertical,
   DownloadSimple,
   GearSix,
   ListChecks,
@@ -54,9 +55,48 @@ import {
 import { TaskPicker } from "../components/TaskPicker";
 
 type TaskNode = TaskDto & { children: TaskNode[] };
+type TaskReorderSection = "groupedRoots" | "ungroupedRoots" | "subtasks";
+type TaskDropPlacement = "before" | "after";
+
+interface TaskReorderConfig {
+  section: TaskReorderSection;
+  orderedTaskIds: number[];
+  disabled: boolean;
+}
+
+interface TaskDragVisual {
+  taskId: number;
+  title: string;
+  clientX: number;
+  clientY: number;
+  targetTaskId: number | null;
+  placement: TaskDropPlacement | null;
+  invalid: boolean;
+}
+
+interface PendingTaskDrag {
+  pointerId: number;
+  task: TaskDto;
+  config: TaskReorderConfig;
+  startX: number;
+  startY: number;
+  clientX: number;
+  clientY: number;
+  active: boolean;
+  activationTimer: number | null;
+  captureElement: HTMLElement;
+  scrollContainer: HTMLElement | null;
+  targetTaskId: number | null;
+  placement: TaskDropPlacement | null;
+  invalid: boolean;
+}
 
 const TASK_EXPANSION_STORAGE_KEY = "taskato.expandedTaskIds";
 const PROGRESS_RECORD_PREVIEW_COUNT = 3;
+const TASK_REORDER_LONG_PRESS_MS = 300;
+const TASK_REORDER_MOVE_TOLERANCE = 6;
+const TASK_REORDER_SCROLL_EDGE = 42;
+const TASK_REORDER_SCROLL_STEP = 10;
 
 function loadStoredTaskExpansion(): {
   hasStoredValue: boolean;
@@ -82,24 +122,49 @@ function loadStoredTaskExpansion(): {
   }
 }
 
-function taskCompletionTimestamp(task: TaskDto): number {
-  const timestamp = task.completedAt ? Date.parse(task.completedAt) : NaN;
-  // 旧数据可能缺少完成时间；放到已完成分组末尾，不能挡住用户刚完成的任务。
-  return Number.isFinite(timestamp) ? timestamp : 0;
-}
-
-function compareSubtaskDisplayOrder(left: TaskDto, right: TaskDto): number {
+export function compareTaskDisplayOrder(left: TaskDto, right: TaskDto): number {
   const completionGroupOrder =
     Number(left.isCompleted) - Number(right.isCompleted);
   if (completionGroupOrder !== 0) return completionGroupOrder;
-  if (!left.isCompleted) {
-    return (
-      right.priority - left.priority ||
-      Date.parse(right.createdAt) - Date.parse(left.createdAt) ||
-      right.id - left.id
-    );
-  }
-  return taskCompletionTimestamp(right) - taskCompletionTimestamp(left);
+  return (
+    right.priority - left.priority ||
+    left.orderIndex - right.orderIndex ||
+    Date.parse(right.createdAt) - Date.parse(left.createdAt) ||
+    right.id - left.id
+  );
+}
+
+export function moveTaskId(
+  orderedTaskIds: number[],
+  taskId: number,
+  targetTaskId: number,
+  placement: TaskDropPlacement,
+): number[] {
+  if (taskId === targetTaskId) return orderedTaskIds;
+  const nextTaskIds = orderedTaskIds.filter((candidateId) => candidateId !== taskId);
+  const targetIndex = nextTaskIds.indexOf(targetTaskId);
+  if (targetIndex < 0) return orderedTaskIds;
+  nextTaskIds.splice(targetIndex + (placement === "after" ? 1 : 0), 0, taskId);
+  return nextTaskIds;
+}
+
+function taskReorderConfig(
+  tasks: TaskDto[],
+  task: TaskDto,
+  section: TaskReorderSection,
+  disabled: boolean,
+): TaskReorderConfig {
+  return {
+    section,
+    disabled,
+    orderedTaskIds: tasks
+      .filter(
+        (candidate) =>
+          candidate.priority === task.priority &&
+          candidate.isCompleted === task.isCompleted,
+      )
+      .map((candidate) => candidate.id),
+  };
 }
 
 export function buildTree(tasks: TaskDto[]): TaskNode[] {
@@ -112,8 +177,8 @@ export function buildTree(tasks: TaskDto[]): TaskNode[] {
     if (parent) parent.children.push(node);
     else roots.push(node);
   });
-  nodes.forEach((node) => node.children.sort(compareSubtaskDisplayOrder));
-  return roots;
+  nodes.forEach((node) => node.children.sort(compareTaskDisplayOrder));
+  return roots.sort(compareTaskDisplayOrder);
 }
 
 export function filterTasksWithAncestors(
@@ -305,6 +370,13 @@ function TaskTreeRow({
   onEditContent,
   onComplete,
   onOpenPriorityMenu,
+  reorder,
+  dragVisual,
+  onReorderPointerDown,
+  onReorderPointerMove,
+  onReorderPointerUp,
+  onReorderPointerCancel,
+  onReorderKeyDown,
 }: {
   task: TaskNode;
   selectedId: number | null;
@@ -314,21 +386,72 @@ function TaskTreeRow({
   onEditContent(id: number): void;
   onComplete(task: TaskDto): void;
   onOpenPriorityMenu(task: TaskDto, clientX: number, clientY: number): void;
+  reorder?: TaskReorderConfig;
+  dragVisual: TaskDragVisual | null;
+  onReorderPointerDown(
+    event: PointerEvent<HTMLDivElement>,
+    task: TaskDto,
+    config: TaskReorderConfig,
+  ): void;
+  onReorderPointerMove(event: PointerEvent<HTMLDivElement>): void;
+  onReorderPointerUp(event: PointerEvent<HTMLDivElement>): void;
+  onReorderPointerCancel(event: PointerEvent<HTMLDivElement>): void;
+  onReorderKeyDown(
+    event: KeyboardEvent<HTMLButtonElement>,
+    task: TaskDto,
+    config: TaskReorderConfig,
+  ): void;
 }) {
   const isParent = task.hasChildren;
   const hasVisibleChildren = task.children.length > 0;
   const isExpanded = expanded.has(task.id);
+  const canReorder = reorder && !reorder.disabled && reorder.orderedTaskIds.length > 1;
+  const dropIndicatorClass =
+    dragVisual?.targetTaskId === task.id && dragVisual.placement
+      ? `task-drop-${dragVisual.placement}`
+      : "";
   return (
     <div className={`tree-branch ${hasVisibleChildren ? "has-children" : ""}`}>
       <div
         className={`tree-row ${isParent ? "parent-node" : "leaf-node"} ${
           selectedId === task.id ? "selected" : ""
-        }`}
+        } ${dragVisual?.taskId === task.id ? "task-reorder-source" : ""} ${dropIndicatorClass}`.trim()}
+        data-reorder-task-id={reorder ? task.id : undefined}
+        data-reorder-section={reorder?.section}
+        onPointerDown={(event) =>
+          reorder && onReorderPointerDown(event, task, reorder)
+        }
+        onPointerMove={onReorderPointerMove}
+        onPointerUp={onReorderPointerUp}
+        onPointerCancel={onReorderPointerCancel}
+        onLostPointerCapture={onReorderPointerCancel}
         onContextMenu={(event) => {
           event.preventDefault();
           onOpenPriorityMenu(task, event.clientX, event.clientY);
         }}
       >
+        {reorder ? (
+          <button
+            type="button"
+            className="task-drag-handle"
+            data-task-drag-handle
+            disabled={!canReorder}
+            aria-label={`调整“${taskTitle(task.title)}”的顺序`}
+            title={
+              reorder.disabled
+                ? "清除任务筛选后可调整顺序"
+                : canReorder
+                  ? "拖动调整顺序，或使用上下方向键"
+                  : "当前分组没有其他可排序任务"
+            }
+            onClick={(event) => event.stopPropagation()}
+            onKeyDown={(event) => onReorderKeyDown(event, task, reorder)}
+          >
+            <DotsSixVertical size={15} weight="bold" />
+          </button>
+        ) : (
+          <span className="task-drag-handle-placeholder" />
+        )}
         <button
           className="tree-expand"
           aria-label={
@@ -409,6 +532,12 @@ function TaskTreeRow({
               onEditContent={onEditContent}
               onComplete={onComplete}
               onOpenPriorityMenu={onOpenPriorityMenu}
+              dragVisual={dragVisual}
+              onReorderPointerDown={onReorderPointerDown}
+              onReorderPointerMove={onReorderPointerMove}
+              onReorderPointerUp={onReorderPointerUp}
+              onReorderPointerCancel={onReorderPointerCancel}
+              onReorderKeyDown={onReorderKeyDown}
             />
           ))}
         </div>
@@ -873,6 +1002,11 @@ export function TaskPage({
   >(null);
   const [progressRecordsExpanded, setProgressRecordsExpanded] = useState(false);
   const [prioritySaving, setPrioritySaving] = useState(false);
+  const [reorderSaving, setReorderSaving] = useState(false);
+  const [taskDragVisual, setTaskDragVisual] = useState<TaskDragVisual | null>(null);
+  const pendingTaskDrag = useRef<PendingTaskDrag | null>(null);
+  const taskDragScrollFrame = useRef<number | null>(null);
+  const suppressTaskClick = useRef(false);
   const [completedChildrenExpanded, setCompletedChildrenExpanded] =
     useState(false);
   const [parentCandidates, setParentCandidates] = useState<TaskDto[]>([]);
@@ -965,6 +1099,22 @@ export function TaskPage({
       reportError(error);
     }
   }, [reportError, storedTaskExpansion]);
+  const persistTaskOrder = useCallback(
+    async (orderedTaskIds: number[]) => {
+      if (reorderSaving) return;
+      setReorderSaving(true);
+      try {
+        await bridge.request("tasks.reorder", { taskIds: orderedTaskIds });
+        await load();
+      } catch (error) {
+        await load();
+        reportError(error);
+      } finally {
+        setReorderSaving(false);
+      }
+    },
+    [load, reorderSaving, reportError],
+  );
   const loadTimers = useCallback(async () => {
     try {
       setTimerState(await bridge.request<TimerListResult>("pomodoro.list"));
@@ -1067,7 +1217,7 @@ export function TaskPage({
     () =>
       detailTasks
         .filter((task) => task.parentId === selectedId)
-        .sort(compareSubtaskDisplayOrder),
+        .sort(compareTaskDisplayOrder),
     [detailTasks, selectedId],
   );
   const progressTarget =
@@ -1396,6 +1546,267 @@ export function TaskPage({
     }
   };
 
+  const stopTaskDragAutoScroll = () => {
+    if (taskDragScrollFrame.current == null) return;
+    window.cancelAnimationFrame(taskDragScrollFrame.current);
+    taskDragScrollFrame.current = null;
+  };
+
+  const updateTaskDropTarget = (drag: PendingTaskDrag) => {
+    const pointedElement =
+      typeof document.elementFromPoint === "function"
+        ? document.elementFromPoint(drag.clientX, drag.clientY)
+        : null;
+    const targetRow = pointedElement?.closest<HTMLElement>(
+      "[data-reorder-task-id]",
+    );
+    const targetTaskId = Number(targetRow?.dataset.reorderTaskId);
+    const targetIsValid =
+      targetRow?.dataset.reorderSection === drag.config.section &&
+      drag.config.orderedTaskIds.includes(targetTaskId);
+
+    drag.invalid = targetRow != null && !targetIsValid;
+    if (!targetIsValid || targetTaskId === drag.task.id) {
+      drag.targetTaskId = null;
+      drag.placement = null;
+    } else {
+      const targetBounds = targetRow.getBoundingClientRect();
+      drag.targetTaskId = targetTaskId;
+      drag.placement =
+        drag.clientY < targetBounds.top + targetBounds.height / 2
+          ? "before"
+          : "after";
+    }
+
+    setTaskDragVisual({
+      taskId: drag.task.id,
+      title: taskTitle(drag.task.title),
+      clientX: drag.clientX,
+      clientY: drag.clientY,
+      targetTaskId: drag.targetTaskId,
+      placement: drag.placement,
+      invalid: drag.invalid,
+    });
+  };
+
+  const continueTaskDragAutoScroll = () => {
+    taskDragScrollFrame.current = null;
+    const drag = pendingTaskDrag.current;
+    const scrollContainer = drag?.scrollContainer;
+    if (!drag?.active || !scrollContainer) return;
+
+    const bounds = scrollContainer.getBoundingClientRect();
+    let scrollDelta = 0;
+    if (drag.clientY < bounds.top + TASK_REORDER_SCROLL_EDGE)
+      scrollDelta = -TASK_REORDER_SCROLL_STEP;
+    else if (drag.clientY > bounds.bottom - TASK_REORDER_SCROLL_EDGE)
+      scrollDelta = TASK_REORDER_SCROLL_STEP;
+
+    if (scrollDelta === 0) return;
+    scrollContainer.scrollTop += scrollDelta;
+    updateTaskDropTarget(drag);
+    taskDragScrollFrame.current = window.requestAnimationFrame(
+      continueTaskDragAutoScroll,
+    );
+  };
+
+  const startTaskDragAutoScroll = () => {
+    if (taskDragScrollFrame.current != null) return;
+    taskDragScrollFrame.current = window.requestAnimationFrame(
+      continueTaskDragAutoScroll,
+    );
+  };
+
+  const activatePendingTaskDrag = (drag: PendingTaskDrag) => {
+    if (pendingTaskDrag.current !== drag || drag.active) return;
+    drag.active = true;
+    drag.activationTimer = null;
+    suppressTaskClick.current = true;
+    document.body.classList.add("task-reorder-active");
+    updateTaskDropTarget(drag);
+    startTaskDragAutoScroll();
+  };
+
+  const beginTaskReorder = (
+    event: PointerEvent<HTMLDivElement>,
+    task: TaskDto,
+    config: TaskReorderConfig,
+  ) => {
+    if (
+      event.button !== 0 ||
+      !event.isPrimary ||
+      config.disabled ||
+      config.orderedTaskIds.length < 2 ||
+      reorderSaving
+    )
+      return;
+
+    const eventTarget = event.target instanceof Element ? event.target : null;
+    const handle = eventTarget?.closest("[data-task-drag-handle]");
+    const interactiveElement = eventTarget?.closest(
+      "button,input,textarea,select,a,[contenteditable='true'],[data-task-reorder-ignore]",
+    );
+    if (interactiveElement && !handle) return;
+
+    const captureElement = event.currentTarget;
+    const scrollContainer = captureElement.closest<HTMLElement>(
+      config.section === "subtasks" ? ".task-canvas" : ".task-tree",
+    );
+    const drag: PendingTaskDrag = {
+      pointerId: event.pointerId,
+      task,
+      config,
+      startX: event.clientX,
+      startY: event.clientY,
+      clientX: event.clientX,
+      clientY: event.clientY,
+      active: false,
+      activationTimer: null,
+      captureElement,
+      scrollContainer,
+      targetTaskId: null,
+      placement: null,
+      invalid: false,
+    };
+
+    pendingTaskDrag.current = drag;
+    captureElement.setPointerCapture(event.pointerId);
+    if (handle) {
+      event.preventDefault();
+      activatePendingTaskDrag(drag);
+    } else {
+      drag.activationTimer = window.setTimeout(
+        () => activatePendingTaskDrag(drag),
+        TASK_REORDER_LONG_PRESS_MS,
+      );
+    }
+  };
+
+  const moveTaskReorder = (event: PointerEvent<HTMLDivElement>) => {
+    const drag = pendingTaskDrag.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    drag.clientX = event.clientX;
+    drag.clientY = event.clientY;
+
+    if (!drag.active) {
+      const distance = Math.hypot(
+        drag.clientX - drag.startX,
+        drag.clientY - drag.startY,
+      );
+      if (distance <= TASK_REORDER_MOVE_TOLERANCE) return;
+      if (drag.activationTimer != null)
+        window.clearTimeout(drag.activationTimer);
+      pendingTaskDrag.current = null;
+      if (drag.captureElement.hasPointerCapture(drag.pointerId))
+        drag.captureElement.releasePointerCapture(drag.pointerId);
+      return;
+    }
+
+    event.preventDefault();
+    updateTaskDropTarget(drag);
+    startTaskDragAutoScroll();
+  };
+
+  const finishTaskReorder = (
+    event: PointerEvent<HTMLDivElement>,
+    persist: boolean,
+  ) => {
+    const drag = pendingTaskDrag.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    if (drag.activationTimer != null)
+      window.clearTimeout(drag.activationTimer);
+    pendingTaskDrag.current = null;
+    stopTaskDragAutoScroll();
+    document.body.classList.remove("task-reorder-active");
+    setTaskDragVisual(null);
+    if (drag.captureElement.hasPointerCapture(drag.pointerId))
+      drag.captureElement.releasePointerCapture(drag.pointerId);
+
+    if (!drag.active) return;
+    event.preventDefault();
+    window.setTimeout(() => {
+      suppressTaskClick.current = false;
+    }, 0);
+    if (!persist || drag.targetTaskId == null || drag.placement == null) return;
+
+    const nextTaskIds = moveTaskId(
+      drag.config.orderedTaskIds,
+      drag.task.id,
+      drag.targetTaskId,
+      drag.placement,
+    );
+    if (
+      nextTaskIds.some(
+        (taskId, index) => taskId !== drag.config.orderedTaskIds[index],
+      )
+    )
+      void persistTaskOrder(nextTaskIds);
+  };
+
+  const finishTaskReorderWithDrop = (event: PointerEvent<HTMLDivElement>) =>
+    finishTaskReorder(event, true);
+  const cancelTaskReorder = (event: PointerEvent<HTMLDivElement>) =>
+    finishTaskReorder(event, false);
+
+  const reorderTaskByKeyboard = (
+    event: KeyboardEvent<HTMLButtonElement>,
+    task: TaskDto,
+    config: TaskReorderConfig,
+  ) => {
+    if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (config.disabled || reorderSaving) return;
+    const taskIndex = config.orderedTaskIds.indexOf(task.id);
+    const targetIndex = taskIndex + (event.key === "ArrowUp" ? -1 : 1);
+    if (taskIndex < 0 || targetIndex < 0 || targetIndex >= config.orderedTaskIds.length)
+      return;
+    const nextTaskIds = [...config.orderedTaskIds];
+    [nextTaskIds[taskIndex], nextTaskIds[targetIndex]] = [
+      nextTaskIds[targetIndex],
+      nextTaskIds[taskIndex],
+    ];
+    void persistTaskOrder(nextTaskIds);
+  };
+
+  const consumeSuppressedTaskClick = (event: MouseEvent<HTMLElement>) => {
+    if (!suppressTaskClick.current) return false;
+    suppressTaskClick.current = false;
+    event.preventDefault();
+    event.stopPropagation();
+    return true;
+  };
+
+  useEffect(
+    () => {
+      const cancelOnEscape = (event: globalThis.KeyboardEvent) => {
+        if (event.key !== "Escape") return;
+        const drag = pendingTaskDrag.current;
+        if (!drag) return;
+        event.preventDefault();
+        if (drag.activationTimer != null)
+          window.clearTimeout(drag.activationTimer);
+        pendingTaskDrag.current = null;
+        stopTaskDragAutoScroll();
+        document.body.classList.remove("task-reorder-active");
+        setTaskDragVisual(null);
+        suppressTaskClick.current = false;
+        if (drag.captureElement.hasPointerCapture(drag.pointerId))
+          drag.captureElement.releasePointerCapture(drag.pointerId);
+      };
+      window.addEventListener("keydown", cancelOnEscape);
+      return () => {
+        window.removeEventListener("keydown", cancelOnEscape);
+        const drag = pendingTaskDrag.current;
+        if (drag?.activationTimer != null)
+          window.clearTimeout(drag.activationTimer);
+        stopTaskDragAutoScroll();
+        document.body.classList.remove("task-reorder-active");
+      };
+    },
+    [],
+  );
+
   const availableWidth = () =>
     workspaceRef.current?.getBoundingClientRect().width ?? window.innerWidth;
   const resizePane = (side: "tree" | "inspector", width: number) => {
@@ -1477,15 +1888,36 @@ export function TaskPage({
   const renderSubtaskRow = (item: TaskDto) => {
     const isProgressTarget = item.id === progressTarget?.id;
     const details = taskDetails(item.title);
+    const reorder = taskReorderConfig(
+      children,
+      item,
+      "subtasks",
+      reorderSaving,
+    );
+    const canReorder = !reorder.disabled && reorder.orderedTaskIds.length > 1;
+    const dropIndicatorClass =
+      taskDragVisual?.targetTaskId === item.id && taskDragVisual.placement
+        ? `task-drop-${taskDragVisual.placement}`
+        : "";
     return (
       <div
-        className={`subtask-row ${item.isCompleted ? "completed" : ""} ${isProgressTarget ? "progress-target" : ""}`.trim()}
+        className={`subtask-row ${item.isCompleted ? "completed" : ""} ${isProgressTarget ? "progress-target" : ""} ${taskDragVisual?.taskId === item.id ? "task-reorder-source" : ""} ${dropIndicatorClass}`.trim()}
         key={item.id}
         role="listitem"
         tabIndex={0}
+        data-reorder-task-id={item.id}
+        data-reorder-section="subtasks"
         aria-current={isProgressTarget ? "true" : undefined}
         aria-label={`${taskTitle(item.title)}${details ? `，${details}` : ""}${isProgressTarget ? "，当前专注目标" : "，单击设为专注目标"}`}
-        onClick={() => setProgressTargetTaskId(item.id)}
+        onPointerDown={(event) => beginTaskReorder(event, item, reorder)}
+        onPointerMove={moveTaskReorder}
+        onPointerUp={finishTaskReorderWithDrop}
+        onPointerCancel={cancelTaskReorder}
+        onLostPointerCapture={cancelTaskReorder}
+        onClick={(event) => {
+          if (consumeSuppressedTaskClick(event)) return;
+          setProgressTargetTaskId(item.id);
+        }}
         onKeyDown={(event) => {
           if (event.target !== event.currentTarget) return;
           if (event.key !== "Enter" && event.key !== " ") return;
@@ -1498,6 +1930,22 @@ export function TaskPage({
         }}
       >
         <button
+          type="button"
+          className="task-drag-handle"
+          data-task-drag-handle
+          disabled={!canReorder}
+          aria-label={`调整“${taskTitle(item.title)}”的顺序`}
+          title={
+            canReorder
+              ? "拖动调整顺序，或使用上下方向键"
+              : "当前分组没有其他可排序任务"
+          }
+          onClick={(event) => event.stopPropagation()}
+          onKeyDown={(event) => reorderTaskByKeyboard(event, item, reorder)}
+        >
+          <DotsSixVertical size={15} weight="bold" />
+        </button>
+        <button
           className={`task-check ${item.isCompleted ? "checked" : ""}`}
           aria-label={item.isCompleted ? "取消完成" : "标记完成"}
           onClick={(event) => {
@@ -1509,6 +1957,7 @@ export function TaskPage({
         </button>
         <div
           className="subtask-copy"
+          data-task-reorder-ignore
           title="双击编辑任务内容"
           onDoubleClick={() => editTaskContent(item.id)}
         >
@@ -1605,6 +2054,18 @@ export function TaskPage({
               onEditContent={editTaskContent}
               onComplete={toggleComplete}
               onOpenPriorityMenu={openPriorityContextMenu}
+              reorder={taskReorderConfig(
+                groupedRoots,
+                task,
+                "groupedRoots",
+                Boolean(filter.trim()) || reorderSaving,
+              )}
+              dragVisual={taskDragVisual}
+              onReorderPointerDown={beginTaskReorder}
+              onReorderPointerMove={moveTaskReorder}
+              onReorderPointerUp={finishTaskReorderWithDrop}
+              onReorderPointerCancel={cancelTaskReorder}
+              onReorderKeyDown={reorderTaskByKeyboard}
             />
           ))}
           <div className="tree-section-label ungrouped">
@@ -1622,6 +2083,18 @@ export function TaskPage({
               onEditContent={editTaskContent}
               onComplete={toggleComplete}
               onOpenPriorityMenu={openPriorityContextMenu}
+              reorder={taskReorderConfig(
+                ungroupedRoots,
+                task,
+                "ungroupedRoots",
+                Boolean(filter.trim()) || reorderSaving,
+              )}
+              dragVisual={taskDragVisual}
+              onReorderPointerDown={beginTaskReorder}
+              onReorderPointerMove={moveTaskReorder}
+              onReorderPointerUp={finishTaskReorderWithDrop}
+              onReorderPointerCancel={cancelTaskReorder}
+              onReorderKeyDown={reorderTaskByKeyboard}
             />
           ))}
         </div>
@@ -2281,6 +2754,19 @@ export function TaskPage({
           )}
         </section>
       </aside>
+      {taskDragVisual && (
+        <div
+          className={`task-drag-preview ${taskDragVisual.invalid ? "invalid" : ""}`}
+          style={{
+            left: taskDragVisual.clientX + 14,
+            top: taskDragVisual.clientY + 14,
+          }}
+          aria-hidden="true"
+        >
+          <DotsSixVertical size={15} weight="bold" />
+          <span>{taskDragVisual.title}</span>
+        </div>
+      )}
       {priorityContextMenu && (
         <PriorityContextMenu
           task={priorityContextMenu.task}

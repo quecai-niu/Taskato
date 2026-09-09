@@ -373,6 +373,25 @@ body{font-size:var(--font-control)}
 .completed-subtasks-toggle small{color:var(--text-3);font-size:var(--font-caption);font-weight:500}
 .completed-subtasks-toggle strong{color:var(--primary);font-size:var(--font-caption)}
 
+/* 同优先级任务支持手柄立即拖动或从非交互区域长按拖动。 */
+.tree-row{grid-template-columns:18px 18px 20px minmax(0,1fr) auto auto}
+.subtask-row{position:relative;grid-template-columns:20px 21px minmax(0,1fr) auto auto}
+.task-drag-handle,.task-drag-handle-placeholder{width:18px;height:24px;display:grid;place-items:center;align-self:center;padding:0;border-radius:5px;background:transparent;color:var(--text-3)}
+.task-drag-handle{opacity:.28;cursor:grab;touch-action:none;transition:opacity .14s,color .14s,background .14s}
+.tree-row:hover .task-drag-handle,.tree-row:focus-within .task-drag-handle,.subtask-row:hover .task-drag-handle,.subtask-row:focus-within .task-drag-handle{opacity:1}
+.task-drag-handle:hover,.task-drag-handle:focus-visible{background:var(--surface-3);color:var(--text)}
+.task-drag-handle:active{cursor:grabbing}
+.task-drag-handle:disabled{opacity:.08;cursor:default}
+.task-reorder-active{cursor:grabbing;user-select:none}
+.task-reorder-active *{cursor:grabbing!important}
+.task-reorder-source{opacity:.48;background:var(--primary-soft)}
+.tree-row.task-drop-before::before,.tree-row.task-drop-after::after,.subtask-row.task-drop-before::before,.subtask-row.task-drop-after::after{content:"";position:absolute;z-index:3;left:5px;right:5px;height:2px;border-radius:2px;background:var(--primary);box-shadow:0 0 0 2px var(--primary-soft)}
+.tree-row.task-drop-before::before,.subtask-row.task-drop-before::before{top:-1px}
+.tree-row.task-drop-after::after,.subtask-row.task-drop-after::after{bottom:-1px}
+.task-drag-preview{position:fixed;z-index:90;max-width:300px;display:flex;align-items:center;gap:8px;padding:8px 11px;border:1px solid color-mix(in srgb,var(--primary) 54%,var(--border));border-radius:8px;background:var(--surface-3);box-shadow:var(--shadow);color:var(--text);font-size:var(--font-body);pointer-events:none}
+.task-drag-preview span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.task-drag-preview.invalid{border-color:color-mix(in srgb,var(--red) 64%,var(--border));color:var(--red)}
+
 .parent-task-operation{min-height:0;align-items:flex-start;justify-content:flex-start;flex-direction:column;gap:13px;margin-top:14px;padding:19px 0 10px}
 .parent-task-operation>.task-picker{width:min(100%,440px);min-width:0}
 

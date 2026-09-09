@@ -9,6 +9,7 @@ namespace Taskato.Models.BridgeDtos
         bool IsCompleted,
         string Status,
         int Priority,
+        double OrderIndex,
         bool HasChildren,
         bool CanAddChild,
         int CompletedLeafCount,

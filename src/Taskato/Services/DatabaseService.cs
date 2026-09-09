@@ -134,6 +134,7 @@ namespace Taskato.Services
             var result = 0;
             await _db.RunInTransactionAsync(connection =>
             {
+                task.OrderIndex = GetPreviousSiblingOrder(connection, task.ParentId, task.Priority);
                 result = connection.Insert(task);
                 if (result > 0)
                 {

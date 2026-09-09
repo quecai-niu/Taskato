@@ -42,6 +42,7 @@ internal static class Program
             await RunFeishuNotificationCountTestsAsync(testDirectory);
             await RunPomodoroCompletionCaptureTestsAsync(testDirectory);
             await RunLegacyPomodoroProgressMigrationTestsAsync(testDirectory);
+            await RunTaskReorderTestsAsync(testDirectory);
             database = new DatabaseService(databasePath);
             await database.InitializeAsync();
             await RunFocusAnalyticsTestsAsync(database);
@@ -1301,6 +1302,85 @@ internal static class Program
         }
 
         await Task.CompletedTask;
+    }
+
+    private static async Task RunTaskReorderTestsAsync(string testDirectory)
+    {
+        var databasePath = Path.Combine(
+            testDirectory,
+            $"task-reorder-{Guid.NewGuid():N}.db");
+        var database = new DatabaseService(databasePath);
+        try
+        {
+            await database.InitializeAsync();
+
+            var olderRoot = await AddTaskAsync(database, "较早的顶级任务");
+            var newerRoot = await AddTaskAsync(database, "较新的顶级任务");
+            Assert(newerRoot.OrderIndex < olderRoot.OrderIndex,
+                "同优先级新建顶级任务必须位于顶部。");
+
+            var rootReorder = await database.ReorderSiblingTasksAsync(
+                new[] { olderRoot.Id, newerRoot.Id });
+            Assert(rootReorder.Succeeded, "同分区顶级任务应允许手动排序。");
+            var rootsAfterReorder = await database.GetTaskTreeItemsAsync();
+            Assert(rootsAfterReorder.Single(task => task.Id == olderRoot.Id).OrderIndex <
+                   rootsAfterReorder.Single(task => task.Id == newerRoot.Id).OrderIndex,
+                "顶级任务手动顺序必须写入数据库。");
+
+            var parent = await AddTaskAsync(database, "排序测试父任务");
+            var firstChild = await database.AddChildTaskAsync(parent, "先新增的子任务", 2)
+                ?? throw new InvalidOperationException("创建第一个排序测试子任务失败。");
+            var secondChild = await database.AddChildTaskAsync(parent, "后新增的子任务", 2)
+                ?? throw new InvalidOperationException("创建第二个排序测试子任务失败。");
+            Assert(secondChild.OrderIndex < firstChild.OrderIndex,
+                "同优先级新建子任务必须位于顶部。");
+
+            var childReorder = await database.ReorderSiblingTasksAsync(
+                new[] { firstChild.Id, secondChild.Id });
+            Assert(childReorder.Succeeded, "同父级同优先级子任务应允许手动排序。");
+            var reorderedChildren = await database.GetTaskTreeItemsAsync();
+            var firstOrderIndex = reorderedChildren.Single(task => task.Id == firstChild.Id).OrderIndex;
+            Assert(firstOrderIndex <
+                   reorderedChildren.Single(task => task.Id == secondChild.Id).OrderIndex,
+                "子任务手动顺序必须写入数据库。");
+
+            var invalidRootSectionReorder = await database.ReorderSiblingTasksAsync(
+                new[] { parent.Id, newerRoot.Id });
+            Assert(!invalidRootSectionReorder.Succeeded,
+                "顶级任务组与未归类任务之间不得通过排序互相穿越。");
+
+            var completion = await database.CompleteTaskWithHierarchyValidationAsync(
+                firstChild,
+                DateTime.Now,
+                null,
+                CompletionTrigger.Manual);
+            Assert(completion.Succeeded, "排序测试子任务应能完成。");
+            var completedTask = await database.GetTaskByIdAsync(firstChild.Id)
+                ?? throw new InvalidOperationException("找不到已完成排序测试任务。");
+            Assert(completedTask.OrderIndex == firstOrderIndex,
+                "完成任务不得改写手动排序号。");
+            var invalidCompletionStateReorder = await database.ReorderSiblingTasksAsync(
+                new[] { completedTask.Id, secondChild.Id });
+            Assert(!invalidCompletionStateReorder.Succeeded,
+                "已完成与未完成任务之间不得通过排序互相穿越。");
+            await database.ReopenTaskWithHierarchyRulesAsync(completedTask);
+            var reopenedTask = await database.GetTaskByIdAsync(firstChild.Id)
+                ?? throw new InvalidOperationException("找不到重新打开的排序测试任务。");
+            Assert(reopenedTask.OrderIndex == firstOrderIndex,
+                "重新打开任务不得改写手动排序号。");
+
+            var otherPriority = await database.AddChildTaskAsync(parent, "其他优先级子任务", 1)
+                ?? throw new InvalidOperationException("创建其他优先级子任务失败。");
+            var invalidReorder = await database.ReorderSiblingTasksAsync(
+                new[] { firstChild.Id, otherPriority.Id });
+            Assert(!invalidReorder.Succeeded,
+                "跨优先级排序必须由数据层拒绝。");
+        }
+        finally
+        {
+            await database.CloseAsync();
+            if (File.Exists(databasePath)) File.Delete(databasePath);
+        }
     }
 
     private static async Task<TaskItem> AddTaskAsync(DatabaseService database, string title)

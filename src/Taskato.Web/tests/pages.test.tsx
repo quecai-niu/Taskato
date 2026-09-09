@@ -8,7 +8,11 @@ import {
   SummaryPage,
   TaskPage,
 } from "../src/pages/WorkspacePages";
-import { buildTree, filterTasksWithAncestors } from "../src/pages/TaskPage";
+import {
+  buildTree,
+  filterTasksWithAncestors,
+  moveTaskId,
+} from "../src/pages/TaskPage";
 import { sortBackfillTasks } from "../src/pages/SummaryPage";
 import {
   calculateTaskPickerPlacement,
@@ -24,6 +28,8 @@ import {
   type TaskProgressResult,
 } from "../src/bridge";
 
+const TASK_REORDER_LONG_PRESS_TEST_MS = 320;
+
 function createTask(overrides: Partial<TaskDto> & Pick<TaskDto, "id" | "title">): TaskDto {
   return {
     parentId: null,
@@ -31,6 +37,7 @@ function createTask(overrides: Partial<TaskDto> & Pick<TaskDto, "id" | "title">)
     isCompleted: false,
     status: "notStarted",
     priority: 0,
+    orderIndex: 0,
     hasChildren: false,
     canAddChild: true,
     completedLeafCount: 0,
@@ -82,6 +89,10 @@ describe("独立业务页面", () => {
   afterEach(async () => {
     await act(async () => root.unmount());
     vi.restoreAllMocks();
+    Reflect.deleteProperty(document, "elementFromPoint");
+    Reflect.deleteProperty(HTMLElement.prototype, "setPointerCapture");
+    Reflect.deleteProperty(HTMLElement.prototype, "hasPointerCapture");
+    Reflect.deleteProperty(HTMLElement.prototype, "releasePointerCapture");
     host.remove();
   });
 
@@ -109,6 +120,22 @@ describe("独立业务页面", () => {
       await new Promise((resolve) => window.setTimeout(resolve, 0));
     });
     return event;
+  }
+
+  function dispatchPointer(
+    element: Element,
+    type: "pointerdown" | "pointermove" | "pointerup",
+    clientY: number,
+  ): void {
+    const event = new Event(type, { bubbles: true, cancelable: true });
+    Object.defineProperties(event, {
+      button: { value: 0 },
+      clientX: { value: 120 },
+      clientY: { value: clientY },
+      isPrimary: { value: true },
+      pointerId: { value: 7 },
+    });
+    element.dispatchEvent(event);
   }
 
   it("任务页可独立加载任务树、详情与计时器", async () => {
@@ -639,40 +666,39 @@ describe("独立业务页面", () => {
     expect(roots[0].children[0].id).toBe(2);
   });
 
-  it("同级子任务先显示未完成任务，已完成任务按完成时间倒序排列", () => {
-    const rootTask = {
-      id: 9100,
-      title: "父任务",
-      parentId: null,
-      isCompleted: false,
-    } as TaskDto;
-    const completedChild = {
+  it("同级子任务按完成状态、优先级和手动顺序稳定排列", () => {
+    const rootTask = createTask({ id: 9100, title: "父任务" });
+    const completedChild = createTask({
       id: 9101,
       title: "较早完成的子任务",
       parentId: rootTask.id,
       isCompleted: true,
+      orderIndex: 2,
       completedAt: "2026-08-05T10:00:00+08:00",
-    } as TaskDto;
-    const openChild = {
+    });
+    const openChild = createTask({
       id: 9102,
       title: "未完成子任务",
       parentId: rootTask.id,
       isCompleted: false,
-    } as TaskDto;
-    const newlyCompletedChild = {
+      orderIndex: 4,
+    });
+    const newlyCompletedChild = createTask({
       id: 9103,
       title: "刚完成的子任务",
       parentId: rootTask.id,
       isCompleted: true,
+      orderIndex: 0,
       completedAt: "2026-08-05T11:00:00+08:00",
-    } as TaskDto;
-    const legacyCompletedChild = {
+    });
+    const legacyCompletedChild = createTask({
       id: 9104,
       title: "缺少完成时间的旧子任务",
       parentId: rootTask.id,
       isCompleted: true,
+      orderIndex: 1,
       completedAt: null,
-    } as TaskDto;
+    });
 
     const roots = buildTree([
       rootTask,
@@ -685,21 +711,154 @@ describe("独立业务页面", () => {
     expect(roots[0].children.map((task) => task.id)).toEqual([
       9102,
       9103,
-      9101,
       9104,
+      9101,
     ]);
   });
 
-  it("未完成子任务按优先级和创建时间排序，刷新后仍保持一致", () => {
+  it("未完成子任务按优先级和手动顺序排序，刷新后仍保持一致", () => {
     const parent = createTask({ id: 9200, title: "父任务" });
-    const older = createTask({ id: 9201, title: "旧任务", parentId: parent.id, priority: 3, createdAt: "2026-09-01T10:00:00Z" });
-    const newest = createTask({ id: 9202, title: "新任务", parentId: parent.id, createdAt: "2026-09-07T10:00:00Z" });
-    const sameTime = createTask({ id: 9203, title: "同时间后创建", parentId: parent.id, createdAt: newest.createdAt });
+    const older = createTask({ id: 9201, title: "旧任务", parentId: parent.id, priority: 3, orderIndex: 1, createdAt: "2026-09-01T10:00:00Z" });
+    const newest = createTask({ id: 9202, title: "新任务", parentId: parent.id, orderIndex: 1, createdAt: "2026-09-07T10:00:00Z" });
+    const sameTime = createTask({ id: 9203, title: "同时间后创建", parentId: parent.id, orderIndex: 0, createdAt: newest.createdAt });
     const completed = createTask({ id: 9204, title: "已完成", parentId: parent.id, isCompleted: true });
-    const newestHighPriority = createTask({ id: 9205, title: "较新的高优先级任务", parentId: parent.id, priority: 3, createdAt: "2026-09-07T10:00:00Z" });
+    const newestHighPriority = createTask({ id: 9205, title: "较新的高优先级任务", parentId: parent.id, priority: 3, orderIndex: 0, createdAt: "2026-09-07T10:00:00Z" });
     for (const input of [[parent, older, completed, newest, sameTime, newestHighPriority], [parent, sameTime, newestHighPriority, newest, completed, older]]) {
       expect(buildTree(input)[0].children.map((task) => task.id)).toEqual([9205, 9201, 9203, 9202, 9204]);
     }
+  });
+
+  it("拖拽顺序计算支持插入目标前后且不改变原数组", () => {
+    const original = [1, 2, 3, 4];
+    expect(moveTaskId(original, 1, 3, "after")).toEqual([2, 3, 1, 4]);
+    expect(moveTaskId(original, 4, 2, "before")).toEqual([1, 4, 2, 3]);
+    expect(original).toEqual([1, 2, 3, 4]);
+  });
+
+  it("任务手柄立即拖动，任务行空白区域长按后也可拖动", async () => {
+    const parent = createTask({
+      id: 9300,
+      title: "拖拽测试父任务",
+      hasChildren: true,
+      totalLeafCount: 2,
+    });
+    const first = createTask({
+      id: 9301,
+      title: "第一个同优先级任务",
+      parentId: parent.id,
+      depth: 1,
+      priority: 2,
+      orderIndex: 0,
+    });
+    const second = createTask({
+      id: 9302,
+      title: "第二个同优先级任务",
+      parentId: parent.id,
+      depth: 1,
+      priority: 2,
+      orderIndex: 1,
+    });
+    const originalRequest = bridge.request.bind(bridge);
+    const requestSpy = vi
+      .spyOn(bridge, "request")
+      .mockImplementation((method, params) => {
+        if (method === "tasks.list")
+          return Promise.resolve({
+            tasks: [parent, first, second],
+            detailTasks: [parent, first, second],
+            selectedTaskId: parent.id,
+            maximumDepth: 5,
+          }) as ReturnType<typeof bridge.request>;
+        if (method === "tasks.reorder")
+          return Promise.resolve({ reordered: true }) as ReturnType<
+            typeof bridge.request
+          >;
+        return originalRequest(method, params);
+      });
+
+    Object.defineProperties(HTMLElement.prototype, {
+      setPointerCapture: { configurable: true, value: vi.fn() },
+      hasPointerCapture: { configurable: true, value: () => true },
+      releasePointerCapture: { configurable: true, value: vi.fn() },
+    });
+    await renderAndFlush(
+      <TaskPage reportError={() => undefined} requestedTaskId={null} />,
+    );
+    const firstRow = host
+      .querySelector('[aria-label="调整“第一个同优先级任务”的顺序"]')!
+      .closest<HTMLElement>(".subtask-row")!;
+    const secondHandle = host.querySelector(
+      '[aria-label="调整“第二个同优先级任务”的顺序"]',
+    )!;
+    const secondRow = secondHandle.closest<HTMLElement>(".subtask-row")!;
+    const elementFromPoint = vi.fn<() => Element | null>(() => firstRow);
+    Object.defineProperty(document, "elementFromPoint", {
+      configurable: true,
+      value: elementFromPoint,
+    });
+    vi.spyOn(firstRow, "getBoundingClientRect").mockReturnValue({
+      top: 100,
+      bottom: 140,
+      height: 40,
+      left: 0,
+      right: 400,
+      width: 400,
+      x: 0,
+      y: 100,
+      toJSON: () => ({}),
+    });
+    vi.spyOn(
+      host.querySelector<HTMLElement>(".task-canvas")!,
+      "getBoundingClientRect",
+    ).mockReturnValue({
+      top: 0,
+      bottom: 800,
+      height: 800,
+      left: 0,
+      right: 800,
+      width: 800,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    });
+
+    await act(async () => {
+      dispatchPointer(secondHandle, "pointerdown", 105);
+      dispatchPointer(secondRow, "pointerup", 105);
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
+    expect(requestSpy).toHaveBeenCalledWith("tasks.reorder", {
+      taskIds: [second.id, first.id],
+    });
+
+    requestSpy.mockClear();
+    elementFromPoint.mockReturnValue(secondRow);
+    vi.spyOn(secondRow, "getBoundingClientRect").mockReturnValue({
+      top: 140,
+      bottom: 180,
+      height: 40,
+      left: 0,
+      right: 400,
+      width: 400,
+      x: 0,
+      y: 140,
+      toJSON: () => ({}),
+    });
+    await act(async () => {
+      dispatchPointer(
+        firstRow,
+        "pointerdown",
+        175,
+      );
+      await new Promise((resolve) =>
+        window.setTimeout(resolve, TASK_REORDER_LONG_PRESS_TEST_MS),
+      );
+      dispatchPointer(firstRow, "pointerup", 175);
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
+    expect(requestSpy).toHaveBeenCalledWith("tasks.reorder", {
+      taskIds: [second.id, first.id],
+    });
   });
 
   it("新增直属子任务使用独立卡片并显示在列表顶部", async () => {
@@ -732,6 +891,7 @@ describe("独立业务页面", () => {
       depth: 0,
       isCompleted: true,
       priority: 3,
+      orderIndex: 0,
       hasChildren: true,
       canAddChild: true,
       completedLeafCount: 1,
@@ -935,6 +1095,40 @@ describe("独立业务页面", () => {
     expect(
       host.querySelector<HTMLTextAreaElement>('[aria-label="任务内容"]')?.value,
     ).toBe("确定新版信息架构");
+    expect(document.activeElement).toBe(
+      host.querySelector<HTMLTextAreaElement>('[aria-label="任务内容"]'),
+    );
+  });
+
+  it("详情页任务标题保持双击编辑且不会启动长按拖拽", async () => {
+    const setPointerCapture = vi.fn();
+    Object.defineProperties(HTMLElement.prototype, {
+      setPointerCapture: { configurable: true, value: setPointerCapture },
+      hasPointerCapture: { configurable: true, value: () => false },
+      releasePointerCapture: { configurable: true, value: vi.fn() },
+    });
+    await renderAndFlush(
+      <TaskPage reportError={() => undefined} requestedTaskId={null} />,
+    );
+
+    const subtaskCopy = host.querySelector<HTMLElement>(".subtask-copy")!;
+    expect(subtaskCopy).not.toBeNull();
+
+    await act(async () => {
+      dispatchPointer(subtaskCopy, "pointerdown", 120);
+      dispatchPointer(subtaskCopy, "pointerup", 120);
+      subtaskCopy.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      dispatchPointer(subtaskCopy, "pointerdown", 120);
+      dispatchPointer(subtaskCopy, "pointerup", 120);
+      subtaskCopy.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      subtaskCopy.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+      await new Promise((resolve) => window.setTimeout(resolve, 20));
+    });
+
+    expect(setPointerCapture).not.toHaveBeenCalled();
+    expect(
+      host.querySelector<HTMLTextAreaElement>('[aria-label="任务内容"]')?.value,
+    ).toContain(subtaskCopy.querySelector("span")?.textContent ?? "");
     expect(document.activeElement).toBe(
       host.querySelector<HTMLTextAreaElement>('[aria-label="任务内容"]'),
     );

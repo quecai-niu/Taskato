@@ -18,4 +18,10 @@ namespace Taskato.Models
         public bool Succeeded { get; init; }
         public string ErrorMessage { get; init; } = string.Empty;
     }
+
+    public sealed class TaskReorderResult
+    {
+        public bool Succeeded { get; init; }
+        public string ErrorMessage { get; init; } = string.Empty;
+    }
 }

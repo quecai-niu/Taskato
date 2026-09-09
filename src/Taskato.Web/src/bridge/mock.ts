@@ -100,6 +100,7 @@ let tasks: TaskDto[] = [
     isCompleted: false,
     status: "inProgress",
     priority: 2,
+    orderIndex: 0,
     hasChildren: true,
     canAddChild: true,
     completedLeafCount: 1,
@@ -116,6 +117,7 @@ let tasks: TaskDto[] = [
     isCompleted: true,
     status: "completed",
     priority: 2,
+    orderIndex: 0,
     hasChildren: false,
     canAddChild: true,
     completedLeafCount: 1,
@@ -132,6 +134,7 @@ let tasks: TaskDto[] = [
     isCompleted: false,
     status: "inProgress",
     priority: 2,
+    orderIndex: 1,
     hasChildren: true,
     canAddChild: true,
     completedLeafCount: 0,
@@ -148,6 +151,7 @@ let tasks: TaskDto[] = [
     isCompleted: false,
     status: "inProgress",
     priority: 2,
+    orderIndex: 0,
     hasChildren: false,
     canAddChild: true,
     completedLeafCount: 0,
@@ -164,6 +168,7 @@ let tasks: TaskDto[] = [
     isCompleted: false,
     status: "notStarted",
     priority: 1,
+    orderIndex: 0,
     hasChildren: false,
     canAddChild: true,
     completedLeafCount: 0,
@@ -284,6 +289,13 @@ export class MockBridge implements BridgeApi {
         const parentId =
           typeof params.parentId === "number" ? params.parentId : null;
         const parent = tasks.find((task) => task.id === parentId);
+        const priority = Number(params.priority ?? 0);
+        const matchingSiblings = tasks.filter(
+          (task) => task.parentId === parentId && task.priority === priority,
+        );
+        const orderIndex = matchingSiblings.length
+          ? Math.min(...matchingSiblings.map((task) => task.orderIndex)) - 1
+          : 0;
         const created: TaskDto = {
           id: Math.max(0, ...tasks.map((task) => task.id)) + 1,
           title: String(params.title),
@@ -291,7 +303,8 @@ export class MockBridge implements BridgeApi {
           depth: parent ? parent.depth + 1 : 0,
           isCompleted: false,
           status: "notStarted",
-          priority: Number(params.priority ?? 0),
+          priority,
+          orderIndex,
           hasChildren: false,
           canAddChild: true,
           completedLeafCount: 0,
@@ -388,6 +401,71 @@ export class MockBridge implements BridgeApi {
         if (parentId != null) tasks = reopenTaskAndAncestors(tasks, parentId);
         tasks = recalculateTaskStats(tasks);
         result = { moved: true };
+        this.emit("tasks.changed", {});
+        break;
+      }
+      case "tasks.reorder": {
+        const orderedTaskIds = Array.isArray(params.taskIds)
+          ? params.taskIds.map(Number)
+          : [];
+        const uniqueTaskIds = new Set(orderedTaskIds);
+        const orderedTasks = orderedTaskIds
+          .map((taskId) => tasks.find((task) => task.id === taskId))
+          .filter((task): task is TaskDto => task != null);
+        if (
+          orderedTasks.length < 2 ||
+          uniqueTaskIds.size !== orderedTaskIds.length ||
+          orderedTasks.length !== orderedTaskIds.length
+        ) {
+          throw new Error("排序任务列表无效。");
+        }
+
+        const firstTask = orderedTasks[0];
+        const sameSection = orderedTasks.every((task) => {
+          const firstIsRootGroup =
+            firstTask.parentId == null && firstTask.hasChildren;
+          const taskIsRootGroup = task.parentId == null && task.hasChildren;
+          return (
+            task.parentId === firstTask.parentId &&
+            task.priority === firstTask.priority &&
+            task.isCompleted === firstTask.isCompleted &&
+            (task.parentId != null || taskIsRootGroup === firstIsRootGroup)
+          );
+        });
+        if (!sameSection) {
+          throw new Error(
+            "只能调整同一父级、同一优先级、同一完成状态和同一任务分区内的顺序。",
+          );
+        }
+
+        const siblingPriorityGroup = tasks
+          .filter(
+            (task) =>
+              task.parentId === firstTask.parentId &&
+              task.priority === firstTask.priority,
+          )
+          .sort(
+            (left, right) =>
+              left.orderIndex - right.orderIndex ||
+              Date.parse(right.createdAt) - Date.parse(left.createdAt) ||
+              right.id - left.id,
+          );
+        const reorderSlots = siblingPriorityGroup
+          .map((task, index) => ({ task, index }))
+          .filter(({ task }) => uniqueTaskIds.has(task.id))
+          .map(({ index }) => index);
+        reorderSlots.forEach((slot, index) => {
+          siblingPriorityGroup[slot] = orderedTasks[index];
+        });
+        const orderByTaskId = new Map(
+          siblingPriorityGroup.map((task, index) => [task.id, index]),
+        );
+        tasks = tasks.map((task) =>
+          orderByTaskId.has(task.id)
+            ? { ...task, orderIndex: orderByTaskId.get(task.id)! }
+            : task,
+        );
+        result = { reordered: true };
         this.emit("tasks.changed", {});
         break;
       }
