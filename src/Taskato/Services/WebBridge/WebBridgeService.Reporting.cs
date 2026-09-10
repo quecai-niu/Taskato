@@ -18,7 +18,7 @@ namespace Taskato.Services.WebBridge
             var viewModel = new DailySummaryViewModel(_database) { CurrentDate = date };
             await viewModel.LoadSummaryAsync();
             var focus = await _database.GetPomodoroAnalyticsAsync("day", date);
-            var focusDurationMinutes = (int)Math.Round(focus.WorkSeconds / 60d, MidpointRounding.AwayFromZero);
+            var focusDurationMinutes = (int)Math.Round(focus.TotalSeconds / 60d, MidpointRounding.AwayFromZero);
             var progressRecords = await _database.GetProgressRecordsForDateAsync(date);
             var existingTaskIds = (await _database.GetTaskTreeItemsAsync())
                 .Select(task => task.Id)

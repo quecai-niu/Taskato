@@ -452,6 +452,34 @@ internal static class Program
                     17,
                     "manual",
                     TaskProgressSource.Manual);
+                var summaryFocusStartedAt = AtLocal(DateTime.Today.AddHours(8));
+                const string summaryFocusSlotId = "summary-focus-duration";
+                await database.StartPomodoroPhaseAsync(
+                    summaryFocusSlotId,
+                    "每日总结统计测试",
+                    root.Id,
+                    root.Title,
+                    PomodoroFocusPhase.Work,
+                    summaryFocusStartedAt,
+                    true);
+                await database.EndPomodoroPhaseAsync(
+                    summaryFocusSlotId,
+                    PomodoroFocusPhase.Work,
+                    summaryFocusStartedAt.AddMinutes(2),
+                    "completed");
+                await database.StartPomodoroPhaseAsync(
+                    summaryFocusSlotId,
+                    "每日总结统计测试",
+                    root.Id,
+                    root.Title,
+                    PomodoroFocusPhase.Rest,
+                    summaryFocusStartedAt.AddMinutes(2),
+                    false);
+                await database.EndPomodoroPhaseAsync(
+                    summaryFocusSlotId,
+                    PomodoroFocusPhase.Rest,
+                    summaryFocusStartedAt.AddMinutes(5),
+                    "completed");
                 var summaryResponse = await bridge.ProcessRequestAsync(new WebBridgeRequest
                 {
                     Id = "summary-duration-total",
@@ -480,8 +508,13 @@ internal static class Program
                        totalDuration == taskDuration + progressDuration,
                     "兼容字段保持任务与推进记录耗时之和，不混入专注计时。");
 
-                Assert(summaryJson.GetProperty("focusDurationMinutes").GetInt32() == 0,
-                    "手动记录任务或推进不得伪造专注计时。");
+                var summaryFocus = await database.GetPomodoroAnalyticsAsync("day", DateTime.Today);
+                var expectedFocusDurationMinutes = (int)Math.Round(
+                    summaryFocus.TotalSeconds / 60d,
+                    MidpointRounding.AwayFromZero);
+                Assert(summaryFocus.RestSeconds > 0 &&
+                       summaryJson.GetProperty("focusDurationMinutes").GetInt32() == expectedFocusDurationMinutes,
+                    "每日总结专注时长必须与专注统计有效总时长一致，并包含有效休息时长。");
 
                 var firstBatchRecord = await database.AddProgressRecordAsync(
                     root.Id,
