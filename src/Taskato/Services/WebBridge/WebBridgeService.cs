@@ -381,6 +381,15 @@ namespace Taskato.Services.WebBridge
                 case "rest": ExecuteTimerCommand(timer.EarlyRestCommand, "只有工作计时中才能提前完成。"); break;
                 case "increase": ExecuteTimerCommand(timer.IncreaseTimeCommand, "只能在计时器空闲时调整时长。"); break;
                 case "decrease": ExecuteTimerCommand(timer.DecreaseTimeCommand, "只能在计时器空闲时调整时长。"); break;
+                case "adjustRemaining":
+                    var remainingSeconds = RequiredInt(parameters, "remainingSeconds");
+                    if (!timer.CanAdjustRemaining)
+                        throw new BridgeRequestException("invalid_timer_state", "只能在专注或休息倒计时运行时调整剩余时间。");
+                    if (!timer.IsValidRemainingAdjustment(remainingSeconds))
+                        throw new BridgeRequestException("invalid_duration", "剩余时间必须是允许的分钟档位或当前阶段的精确上限。");
+                    if (!timer.TryAdjustRemainingSeconds(remainingSeconds))
+                        throw new BridgeRequestException("invalid_timer_state", "计时阶段已经结束，无法继续调整剩余时间。");
+                    break;
                 case "add":
                     if (!_settings.Config.EnableMultiplePomodoros)
                         throw new BridgeRequestException("feature_disabled", "请先在设置中开启多组番茄钟。");
@@ -483,7 +492,9 @@ namespace Taskato.Services.WebBridge
 
         private TimerBridgeDto ToTimerDto(PomodoroTimerViewModel timer) => new(
             TimerId(timer), timer.TimerName, timer.TimerDisplay, timer.StatusText, timer.Progress,
-            timer.WorkMinutes, timer.RestMinutes, timer.IsStarted,
+            timer.WorkMinutes, timer.RestMinutes, timer.TimerPhase, timer.RemainingSeconds,
+            timer.MinimumAdjustableSeconds, timer.MaximumAdjustableSeconds,
+            timer.AdjustmentStepSeconds, timer.CanAdjustRemaining, timer.IsStarted,
             timer.StartWorkCommand.CanExecute(null), timer.PauseCommand.CanExecute(null),
             timer.StopCommand.CanExecute(null), timer.EarlyRestCommand.CanExecute(null));
 

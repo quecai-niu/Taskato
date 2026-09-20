@@ -616,6 +616,67 @@ internal static class Program
                        settings.Config.WorkMinutes == initialWorkMinutes + 5,
                     "网页番茄钟增时命令必须更新运行时并持久化主计时器时长。");
 
+                var startTimer = await bridge.ProcessRequestAsync(new WebBridgeRequest
+                {
+                    Id = "pomodoro-start-adjustment",
+                    Method = "pomodoro.command",
+                    Params = JsonSerializer.SerializeToElement(new { command = "start", timerId = "timer-0" })
+                });
+                Assert(startTimer.Ok && mainViewModel.AllTimers[0].CanAdjustRemaining &&
+                       mainViewModel.AllTimers[0].TimerPhase == "work" &&
+                       mainViewModel.AllTimers[0].MaximumAdjustableSeconds == pomodoro.WorkMinutes * 90,
+                    "计时器 DTO 来源必须暴露当前阶段、上限和可调整状态。");
+
+                var maximumRemaining = mainViewModel.AllTimers[0].MaximumAdjustableSeconds;
+                var adjustTimer = await bridge.ProcessRequestAsync(new WebBridgeRequest
+                {
+                    Id = "pomodoro-adjust-remaining",
+                    Method = "pomodoro.command",
+                    Params = JsonSerializer.SerializeToElement(new
+                    {
+                        command = "adjustRemaining",
+                        timerId = "timer-0",
+                        remainingSeconds = maximumRemaining
+                    })
+                });
+                Assert(adjustTimer.Ok &&
+                       pomodoro.CreateSnapshot("timer-0").RemainingSeconds == maximumRemaining,
+                    "网页番茄钟应允许把运行中的剩余时间调整到阶段精确上限。");
+
+                var invalidAdjustment = await bridge.ProcessRequestAsync(new WebBridgeRequest
+                {
+                    Id = "pomodoro-adjust-invalid",
+                    Method = "pomodoro.command",
+                    Params = JsonSerializer.SerializeToElement(new
+                    {
+                        command = "adjustRemaining",
+                        timerId = "timer-0",
+                        remainingSeconds = maximumRemaining + 1
+                    })
+                });
+                Assert(!invalidAdjustment.Ok && invalidAdjustment.Error?.Code == "invalid_duration",
+                    "桥接必须拒绝超过 1.5 倍上限的剩余时间。");
+
+                _ = await bridge.ProcessRequestAsync(new WebBridgeRequest
+                {
+                    Id = "pomodoro-pause-adjustment",
+                    Method = "pomodoro.command",
+                    Params = JsonSerializer.SerializeToElement(new { command = "pause", timerId = "timer-0" })
+                });
+                var pausedAdjustment = await bridge.ProcessRequestAsync(new WebBridgeRequest
+                {
+                    Id = "pomodoro-adjust-paused",
+                    Method = "pomodoro.command",
+                    Params = JsonSerializer.SerializeToElement(new
+                    {
+                        command = "adjustRemaining",
+                        timerId = "timer-0",
+                        remainingSeconds = 60
+                    })
+                });
+                Assert(!pausedAdjustment.Ok && pausedAdjustment.Error?.Code == "invalid_timer_state",
+                    "桥接必须拒绝暂停状态下的剩余时间调整。");
+
                 var globalSearch = await bridge.ProcessRequestAsync(new WebBridgeRequest
                 {
                     Id = "search-1",
@@ -802,6 +863,60 @@ internal static class Program
         Assert(stoppedCompletionCount == 0 &&
                stoppedService.CurrentState == PomodoroService.PomodoroState.Idle,
             "停止应放弃本轮，不得进入完成记录流程。");
+
+        var adjustmentClock = new DateTimeOffset(2026, 7, 29, 15, 0, 0, TimeSpan.Zero);
+        var adjustmentService = new PomodoroService(1, 5, () => adjustmentClock);
+        PomodoroWorkCompletion? adjustedCompletion = null;
+        adjustmentService.WorkCompletionRequested += completion => adjustedCompletion = completion;
+        Assert(adjustmentService.DisplayPhase == PomodoroService.PomodoroState.Working &&
+               adjustmentService.DisplayRemainingSeconds == 60 &&
+               adjustmentService.MaximumAdjustableSeconds == 90 &&
+               !adjustmentService.CanAdjustRemaining,
+            "空闲计时器应展示下轮专注满时长，但不能调整剩余时间。");
+        Assert(adjustmentService.IsValidRemainingAdjustment(60) &&
+               adjustmentService.IsValidRemainingAdjustment(90) &&
+               !adjustmentService.IsValidRemainingAdjustment(59) &&
+               !adjustmentService.IsValidRemainingAdjustment(75) &&
+               !adjustmentService.IsValidRemainingAdjustment(91),
+            "剩余时间只允许整分钟档位和精确的 1.5 倍末档。");
+
+        adjustmentService.StartWork();
+        adjustmentClock = adjustmentClock.AddSeconds(30);
+        adjustmentService.RefreshElapsedTime();
+        Assert(adjustmentService.TryAdjustRemainingSeconds(90),
+            "运行中的专注倒计时应允许调整到精确上限。");
+        var adjustedSnapshot = adjustmentService.CreateSnapshot("adjusted-work");
+        Assert(adjustedSnapshot.RemainingSeconds == 90 &&
+               adjustedSnapshot.TotalSeconds == 120 &&
+               adjustedSnapshot.DeadlineUtc == adjustmentClock.AddSeconds(90),
+            "调整后应保留已经运行的 30 秒，并按新剩余时间重建截止时间。");
+        adjustmentService.TogglePause();
+        adjustmentClock = adjustmentClock.AddMinutes(5);
+        adjustmentService.TogglePause();
+        adjustmentClock = adjustmentClock.AddSeconds(90);
+        adjustmentService.RefreshElapsedTime();
+        Assert(adjustedCompletion is { FocusedSeconds: 120, EndReason: "completed" },
+            "延长后的自然完成应记录本轮实际运行的全部专注时间。");
+
+        var restAdjustmentClock = new DateTimeOffset(2026, 7, 29, 16, 0, 0, TimeSpan.Zero);
+        var restAdjustmentService = new PomodoroService(25, 5, () => restAdjustmentClock);
+        var adjustedHalfwayCount = 0;
+        restAdjustmentService.RestHalfway += () => adjustedHalfwayCount++;
+        restAdjustmentService.StartRest();
+        restAdjustmentClock = restAdjustmentClock.AddMinutes(1);
+        restAdjustmentService.RefreshElapsedTime();
+        Assert(restAdjustmentService.DisplayPhase == PomodoroService.PomodoroState.Resting &&
+               restAdjustmentService.MaximumAdjustableSeconds == 450 &&
+               restAdjustmentService.TryAdjustRemainingSeconds(60) &&
+               adjustedHalfwayCount == 1,
+            "休息倒计时缩短并跨过中点时应立即且只触发一次过半事件。");
+        Assert(restAdjustmentService.TryAdjustRemainingSeconds(450) && adjustedHalfwayCount == 1,
+            "休息过半事件触发后，即使再次延长也不能重复发送。");
+        restAdjustmentService.TogglePause();
+        Assert(!restAdjustmentService.CanAdjustRemaining &&
+               !restAdjustmentService.TryAdjustRemainingSeconds(60) &&
+               restAdjustmentService.DisplayPhase == PomodoroService.PomodoroState.Resting,
+            "暂停时应保留休息阶段展示，但拒绝调整剩余时间。");
     }
 
     private static async Task RunPomodoroCompletionCaptureTestsAsync(string testDirectory)
@@ -1084,6 +1199,24 @@ internal static class Program
             });
             Assert(legacyPaused.PauseElapsedSeconds == 0,
                 "旧快照缺少暂停起点时应从本次恢复时间安全起算。");
+
+            var adjustedClock = new DateTimeOffset(2026, 7, 29, 9, 0, 0, TimeSpan.Zero);
+            var adjusted = new PomodoroService(1, 5, () => adjustedClock);
+            adjusted.StartWork();
+            adjustedClock = adjustedClock.AddSeconds(10);
+            adjusted.RefreshElapsedTime();
+            Assert(adjusted.TryAdjustRemainingSeconds(90),
+                "持久化测试应先成功调整到精确上限。");
+            store.Save(new[] { adjusted.CreateSnapshot("timer-adjusted") });
+            adjustedClock = adjustedClock.AddSeconds(20);
+            var adjustedRestore = new PomodoroService(25, 5, () => adjustedClock);
+            adjustedRestore.Restore(store.Load().Single());
+            var adjustedRestoredSnapshot = adjustedRestore.CreateSnapshot("timer-adjusted");
+            Assert(adjustedRestore.CurrentState == PomodoroService.PomodoroState.Working &&
+                   adjustedRestoredSnapshot.RemainingSeconds == 70 &&
+                   adjustedRestoredSnapshot.TotalSeconds == 100 &&
+                   adjustedRestore.MaximumAdjustableSeconds == 90,
+                "调整后的总时长和绝对截止时间必须随快照恢复，并继续消耗关闭期间时间。");
 
             var expiredClock = new DateTimeOffset(2026, 7, 29, 10, 0, 0, TimeSpan.Zero);
             var expiring = new PomodoroService(1, 5, () => expiredClock);

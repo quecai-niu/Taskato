@@ -258,6 +258,14 @@ body{font-size:var(--font-control)}
 .timer-display-stage .timer-value{margin-top:10px;font-size:clamp(45px,4vw,54px);font-weight:720;line-height:1;font-variant-numeric:tabular-nums}
 .timer-display-stage p{overflow:hidden;margin:12px 0 0;color:var(--text-2);font-size:var(--font-body);text-overflow:ellipsis;white-space:nowrap}
 .timer-display-stage .timer-progress{height:6px;margin:17px 0 0;background:var(--border)}
+.timer-progress-slider{--timer-slider-progress:0%;display:block;width:100%;height:18px;margin:11px 0 -1px;padding:0;appearance:none;background:transparent;cursor:pointer}
+.timer-progress-slider::-webkit-slider-runnable-track{height:6px;border-radius:999px;background:linear-gradient(to right,var(--primary) 0 var(--timer-slider-progress),var(--border) var(--timer-slider-progress) 100%)}
+.timer-progress-slider::-webkit-slider-thumb{width:16px;height:16px;margin-top:-5px;appearance:none;border:2px solid var(--surface);border-radius:50%;background:var(--primary);box-shadow:0 2px 8px color-mix(in srgb,var(--primary) 42%,transparent);transition:transform .12s,box-shadow .12s}
+.timer-progress-slider:not(:disabled):hover::-webkit-slider-thumb{transform:scale(1.08);box-shadow:0 0 0 4px var(--primary-soft)}
+.timer-progress-slider:focus-visible{outline:0}
+.timer-progress-slider:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 4px color-mix(in srgb,var(--primary) 25%,transparent)}
+.timer-progress-slider:disabled{cursor:default}
+.timer-progress-slider:disabled::-webkit-slider-thumb{opacity:0}
 .timer-duration-controls{gap:4px;margin-top:10px;padding:4px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2)}
 .timer-duration-controls span{font-size:var(--font-caption);font-weight:650}
 .timer-duration-controls button{min-height:30px;border:0;background:transparent;font-size:var(--font-caption)}

@@ -5,6 +5,7 @@ import type {
   SummaryResult,
   TaskDto,
   TaskListResult,
+  TimerListResult,
 } from "../src/bridge/types";
 
 describe("MockBridge", () => {
@@ -60,6 +61,43 @@ describe("MockBridge", () => {
     await expect(bridge.request("app.restoreData")).resolves.toEqual(
       expect.objectContaining({ staged: true, restartRequired: true }),
     );
+  });
+
+  it("番茄钟 Mock 仅在运行中按分钟档位调整剩余时间", async () => {
+    const bridge = new MockBridge();
+    await bridge.request("pomodoro.command", {
+      command: "start",
+      timerId: "timer-0",
+    });
+    let timers = await bridge.request<TimerListResult>("pomodoro.list");
+    expect(timers.timers[0]).toEqual(
+      expect.objectContaining({
+        phase: "work",
+        canAdjustRemaining: true,
+        maximumAdjustableSeconds: 2250,
+      }),
+    );
+
+    await bridge.request("pomodoro.command", {
+      command: "adjustRemaining",
+      timerId: "timer-0",
+      remainingSeconds: 2250,
+    });
+    timers = await bridge.request<TimerListResult>("pomodoro.list");
+    expect(timers.timers[0].display).toBe("37:30");
+    expect(timers.timers[0].remainingSeconds).toBe(2250);
+
+    await bridge.request("pomodoro.command", {
+      command: "pause",
+      timerId: "timer-0",
+    });
+    await expect(
+      bridge.request("pomodoro.command", {
+        command: "adjustRemaining",
+        timerId: "timer-0",
+        remainingSeconds: 60,
+      }),
+    ).rejects.toThrow("只能在专注或休息倒计时运行时调整剩余时间");
   });
 
   it("全局搜索同时覆盖任务笔记和活动日志", async () => {

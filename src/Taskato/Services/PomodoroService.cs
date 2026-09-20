@@ -74,6 +74,32 @@ namespace Taskato.Services
         /// </summary>
         public PomodoroState CurrentState { get; private set; } = PomodoroState.Idle;
         public bool IsRecoveredCompletion { get; private set; }
+        public const int MinimumAdjustableSeconds = 60;
+        public const int AdjustmentStepSeconds = 60;
+
+        /// <summary>用于界面展示的阶段；暂停和等待处理时仍保留原阶段。</summary>
+        public PomodoroState DisplayPhase => CurrentState switch
+        {
+            PomodoroState.Resting => PomodoroState.Resting,
+            PomodoroState.Paused when _pausedState == PomodoroState.Resting => PomodoroState.Resting,
+            PomodoroState.CompletionPending when _completedPhase == PomodoroState.Resting => PomodoroState.Resting,
+            _ => PomodoroState.Working
+        };
+
+        /// <summary>界面当前展示的剩余秒数；空闲时展示下一轮专注满时长。</summary>
+        public int DisplayRemainingSeconds => CurrentState switch
+        {
+            PomodoroState.Idle => WorkMinutes * 60,
+            PomodoroState.CompletionPending => 0,
+            _ => _remainingSeconds
+        };
+
+        /// <summary>当前展示阶段允许设置的最大剩余秒数，为配置满时长的 1.5 倍。</summary>
+        public int MaximumAdjustableSeconds =>
+            (DisplayPhase == PomodoroState.Resting ? RestMinutes : WorkMinutes) * 90;
+
+        public bool CanAdjustRemaining =>
+            CurrentState is PomodoroState.Working or PomodoroState.Resting;
 
         // ==================== 事件回调 ====================
 
@@ -306,6 +332,47 @@ namespace Taskato.Services
             var completedAt = _clock();
             var focusedSeconds = Math.Clamp(_totalSeconds - _remainingSeconds, 0, _totalSeconds);
             EnterCompletionPending(PomodoroState.Working, completedAt, "completed_early", focusedSeconds);
+        }
+
+        /// <summary>
+        /// 调整当前运行阶段的剩余时间。普通档位按整分钟递增；当 1.5 倍上限包含半分钟时，
+        /// 精确上限仍作为最后一档保留。
+        /// </summary>
+        public bool TryAdjustRemainingSeconds(int remainingSeconds)
+        {
+            if (!CanAdjustRemaining || !IsValidRemainingAdjustment(remainingSeconds)) return false;
+
+            // 先按绝对截止时间结算，避免把界面看到的旧值当成本轮已运行时长。
+            RefreshElapsedTime();
+            if (!CanAdjustRemaining || !IsValidRemainingAdjustment(remainingSeconds)) return false;
+
+            var adjustedAt = _clock();
+            var elapsedSeconds = Math.Max(0, _totalSeconds - _remainingSeconds);
+            _remainingSeconds = remainingSeconds;
+            _totalSeconds = (int)Math.Min(int.MaxValue, (long)elapsedSeconds + remainingSeconds);
+            _deadline = adjustedAt.AddSeconds(remainingSeconds);
+            PublishTick();
+
+            if (CurrentState == PomodoroState.Resting &&
+                !_restHalfwayRaised &&
+                _remainingSeconds <= _totalSeconds / 2)
+            {
+                _restHalfwayRaised = true;
+                RestHalfway?.Invoke();
+            }
+
+            PersistenceRequested?.Invoke();
+            return true;
+        }
+
+        public bool IsValidRemainingAdjustment(int remainingSeconds)
+        {
+            if (remainingSeconds < MinimumAdjustableSeconds ||
+                remainingSeconds > MaximumAdjustableSeconds)
+                return false;
+
+            return remainingSeconds % AdjustmentStepSeconds == 0 ||
+                   remainingSeconds == MaximumAdjustableSeconds;
         }
 
         /// <summary>

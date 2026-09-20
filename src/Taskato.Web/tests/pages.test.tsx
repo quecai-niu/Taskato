@@ -11,7 +11,10 @@ import {
 import {
   buildTree,
   filterTasksWithAncestors,
+  formatTimerSeconds,
   moveTaskId,
+  normalizeTimerAdjustment,
+  timerAdjustmentValues,
 } from "../src/pages/TaskPage";
 import { sortBackfillTasks } from "../src/pages/SummaryPage";
 import {
@@ -26,6 +29,7 @@ import {
   type TaskDto,
   type TaskListResult,
   type TaskProgressResult,
+  type TimerListResult,
 } from "../src/bridge";
 
 const TASK_REORDER_LONG_PRESS_TEST_MS = 320;
@@ -154,6 +158,11 @@ describe("独立业务页面", () => {
     expect(host.querySelector('[aria-label="减少五分钟"]')).not.toBeNull();
     expect(host.querySelector('[aria-label="增加五分钟"]')).not.toBeNull();
     expect(host.querySelector(".timer-display-stage")).not.toBeNull();
+    expect(host.textContent).toContain("专注倒计时");
+    expect(
+      host.querySelector<HTMLInputElement>('[aria-label="调整专注剩余时长"]')
+        ?.disabled,
+    ).toBe(true);
     expect(host.querySelectorAll('[role="separator"]')).toHaveLength(2);
     expect(host.querySelector('[aria-label="所属父任务"]')).not.toBeNull();
     expect(host.querySelector("#task-operations select")).toBeNull();
@@ -162,6 +171,158 @@ describe("独立业务页面", () => {
     ).not.toBeNull();
     expect(host.textContent).toContain("仅可选择有效父任务，最多支持 5 层");
     expect(host.textContent).not.toContain("移动后由 C# 校验");
+  });
+
+  it("倒计时调整保留精确半分钟上限", () => {
+    const values = timerAdjustmentValues(60, 37 * 60 + 30, 60);
+    expect(values.at(-2)).toBe(37 * 60);
+    expect(values.at(-1)).toBe(37 * 60 + 30);
+    expect(normalizeTimerAdjustment(37 * 60 + 29, 60, 37 * 60 + 30, 60)).toBe(
+      37 * 60 + 30,
+    );
+    expect(formatTimerSeconds(values.at(-1)!)).toBe("37:30");
+  });
+
+  it("运行中的休息倒计时支持拖动预览和键盘提交", async () => {
+    const reportError = vi.fn();
+    let rejectNextAdjustment = false;
+    let timerResult: TimerListResult = {
+      activeId: "timer-rest",
+      multipleEnabled: false,
+      timers: [
+        {
+          id: "timer-rest",
+          name: "休息测试",
+          display: "03:00",
+          status: "休息中",
+          progress: 0.6,
+          workMinutes: 25,
+          restMinutes: 5,
+          phase: "rest",
+          remainingSeconds: 180,
+          minimumAdjustableSeconds: 60,
+          maximumAdjustableSeconds: 450,
+          adjustmentStepSeconds: 60,
+          canAdjustRemaining: true,
+          isStarted: true,
+          canStart: false,
+          canPause: true,
+          canStop: true,
+          canRest: false,
+        },
+      ],
+    };
+    const originalRequest = bridge.request.bind(bridge);
+    const requestSpy = vi.spyOn(bridge, "request").mockImplementation(
+      async <T,>(method: string, params?: Record<string, unknown>) => {
+        if (method === "pomodoro.list") return timerResult as T;
+        if (
+          method === "pomodoro.command" &&
+          params?.command === "adjustRemaining"
+        ) {
+          if (rejectNextAdjustment) {
+            rejectNextAdjustment = false;
+            throw new Error("模拟调整失败");
+          }
+          const remainingSeconds = Number(params.remainingSeconds);
+          timerResult = {
+            ...timerResult,
+            timers: timerResult.timers.map((timer) =>
+              timer.id === params.timerId
+                ? {
+                    ...timer,
+                    display: formatTimerSeconds(remainingSeconds),
+                    remainingSeconds,
+                  }
+                : timer,
+            ),
+          };
+          return timerResult as T;
+        }
+        return originalRequest<T>(method, params);
+      },
+    );
+
+    await renderAndFlush(
+      <TaskPage reportError={reportError} requestedTaskId={null} />,
+    );
+    expect(host.textContent).toContain("休息倒计时");
+    let slider = host.querySelector<HTMLInputElement>(
+      '[aria-label="调整休息剩余时长"]',
+    )!;
+    expect(slider.disabled).toBe(false);
+
+    await act(async () => {
+      const valueSetter = Object.getOwnPropertyDescriptor(
+        HTMLInputElement.prototype,
+        "value",
+      )!.set!;
+      valueSetter.call(slider, "450");
+      slider.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    expect(host.querySelector(".timer-value")?.textContent).toBe("07:30");
+    expect(
+      requestSpy.mock.calls.filter(
+        ([method, params]) =>
+          method === "pomodoro.command" &&
+          params?.command === "adjustRemaining",
+      ),
+    ).toHaveLength(0);
+
+    await act(async () => {
+      slider.dispatchEvent(new Event("pointerup", { bubbles: true }));
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
+    let adjustmentCalls = requestSpy.mock.calls.filter(
+      ([method, params]) =>
+        method === "pomodoro.command" && params?.command === "adjustRemaining",
+    );
+    expect(adjustmentCalls).toHaveLength(1);
+    expect(adjustmentCalls[0][1]?.remainingSeconds).toBe(450);
+
+    slider = host.querySelector<HTMLInputElement>(
+      '[aria-label="调整休息剩余时长"]',
+    )!;
+    await act(async () => {
+      slider.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "Home",
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+      slider.dispatchEvent(
+        new KeyboardEvent("keyup", { key: "Home", bubbles: true }),
+      );
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
+    adjustmentCalls = requestSpy.mock.calls.filter(
+      ([method, params]) =>
+        method === "pomodoro.command" && params?.command === "adjustRemaining",
+    );
+    expect(adjustmentCalls).toHaveLength(2);
+    expect(adjustmentCalls[1][1]?.remainingSeconds).toBe(60);
+    expect(slider.getAttribute("aria-valuetext")).toContain("休息剩余");
+
+    rejectNextAdjustment = true;
+    slider = host.querySelector<HTMLInputElement>(
+      '[aria-label="调整休息剩余时长"]',
+    )!;
+    await act(async () => {
+      slider.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "End",
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+      slider.dispatchEvent(
+        new KeyboardEvent("keyup", { key: "End", bubbles: true }),
+      );
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
+    expect(reportError).toHaveBeenCalledWith(expect.any(Error));
+    expect(host.querySelector(".timer-value")?.textContent).toBe("01:00");
   });
 
   it("顶级任务组默认折叠已完成的直属任务并允许展开", async () => {

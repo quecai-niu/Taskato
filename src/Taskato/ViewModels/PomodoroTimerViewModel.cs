@@ -55,6 +55,14 @@ namespace Taskato.ViewModels
         public bool IsPaused => _pomodoroService.CurrentState == PomodoroService.PomodoroState.Paused;
         public int CompletionElapsedSeconds => _pomodoroService.CompletionElapsedSeconds;
         public bool IsRecoveredCompletion => _pomodoroService.IsRecoveredCompletion;
+        public string TimerPhase => _pomodoroService.DisplayPhase == PomodoroService.PomodoroState.Resting
+            ? "rest"
+            : "work";
+        public int RemainingSeconds => _pomodoroService.DisplayRemainingSeconds;
+        public int MinimumAdjustableSeconds => PomodoroService.MinimumAdjustableSeconds;
+        public int MaximumAdjustableSeconds => _pomodoroService.MaximumAdjustableSeconds;
+        public int AdjustmentStepSeconds => PomodoroService.AdjustmentStepSeconds;
+        public bool CanAdjustRemaining => _pomodoroService.CanAdjustRemaining;
 
         public int WorkMinutes
         {
@@ -111,6 +119,7 @@ namespace Taskato.ViewModels
                     ? $"+{m:D2}:{s:D2}"
                     : $"{m:D2}:{s:D2}";
                 Progress = p;
+                OnPropertyChanged(nameof(RemainingSeconds));
                 OnPropertyChanged(nameof(CompletionElapsedSeconds));
             };
 
@@ -131,6 +140,10 @@ namespace Taskato.ViewModels
                 OnPropertyChanged(nameof(IsRestingState));
                 OnPropertyChanged(nameof(IsPaused));
                 OnPropertyChanged(nameof(CompletionElapsedSeconds));
+                OnPropertyChanged(nameof(TimerPhase));
+                OnPropertyChanged(nameof(RemainingSeconds));
+                OnPropertyChanged(nameof(MaximumAdjustableSeconds));
+                OnPropertyChanged(nameof(CanAdjustRemaining));
             };
 
             _pomodoroService.WorkCompleted += () => WorkCompleted?.Invoke();
@@ -174,6 +187,10 @@ namespace Taskato.ViewModels
 
         public void StartRest() => _pomodoroService.StartRest();
         public void StartWork() => _pomodoroService.StartWork();
+        public bool TryAdjustRemainingSeconds(int remainingSeconds) =>
+            _pomodoroService.TryAdjustRemainingSeconds(remainingSeconds);
+        public bool IsValidRemainingAdjustment(int remainingSeconds) =>
+            _pomodoroService.IsValidRemainingAdjustment(remainingSeconds);
 
         /// <summary>
         /// 在系统恢复或宿主重新激活时按绝对截止时间同步，避免休眠期间倒计时停滞。

@@ -239,6 +239,12 @@ export class MockBridge implements BridgeApi {
       progress: 1,
       workMinutes: 25,
       restMinutes: 5,
+      phase: "work",
+      remainingSeconds: 25 * 60,
+      minimumAdjustableSeconds: 60,
+      maximumAdjustableSeconds: 25 * 90,
+      adjustmentStepSeconds: 60,
+      canAdjustRemaining: false,
       isStarted: false,
       canStart: true,
       canPause: false,
@@ -696,7 +702,12 @@ export class MockBridge implements BridgeApi {
             if (command === "start")
               return {
                 ...timer,
+                display: `${String(timer.workMinutes).padStart(2, "0")}:00`,
                 status: "专注中",
+                phase: "work" as const,
+                remainingSeconds: timer.workMinutes * 60,
+                maximumAdjustableSeconds: timer.workMinutes * 90,
+                canAdjustRemaining: true,
                 isStarted: true,
                 canStart: false,
                 canPause: true,
@@ -706,20 +717,33 @@ export class MockBridge implements BridgeApi {
             if (command === "pause")
               return {
                 ...timer,
-                status: timer.status === "已暂停" ? "专注中" : "已暂停",
+                status:
+                  timer.status === "已暂停"
+                    ? timer.phase === "rest"
+                      ? "休息中"
+                      : "专注中"
+                    : "已暂停",
+                canAdjustRemaining: timer.status === "已暂停",
               };
             if (command === "rest")
               return {
                 ...timer,
                 status: "等待处理",
                 display: "+00:00",
+                remainingSeconds: 0,
+                canAdjustRemaining: false,
                 canRest: false,
               };
             if (command === "stop")
               return {
                 ...timer,
                 status: "空闲",
-                display: "25:00",
+                display: `${String(timer.workMinutes).padStart(2, "0")}:00`,
+                phase: "work" as const,
+                progress: 1,
+                remainingSeconds: timer.workMinutes * 60,
+                maximumAdjustableSeconds: timer.workMinutes * 90,
+                canAdjustRemaining: false,
                 isStarted: false,
                 canStart: true,
                 canPause: false,
@@ -735,6 +759,31 @@ export class MockBridge implements BridgeApi {
                 ...timer,
                 workMinutes,
                 display: `${String(workMinutes).padStart(2, "0")}:00`,
+                remainingSeconds: workMinutes * 60,
+                maximumAdjustableSeconds: workMinutes * 90,
+              };
+            }
+            if (command === "adjustRemaining") {
+              const remainingSeconds = Number(params.remainingSeconds);
+              const isAllowedStep =
+                remainingSeconds % timer.adjustmentStepSeconds === 0 ||
+                remainingSeconds === timer.maximumAdjustableSeconds;
+              if (!timer.canAdjustRemaining)
+                throw new Error("只能在专注或休息倒计时运行时调整剩余时间。");
+              if (
+                !Number.isInteger(remainingSeconds) ||
+                remainingSeconds < timer.minimumAdjustableSeconds ||
+                remainingSeconds > timer.maximumAdjustableSeconds ||
+                !isAllowedStep
+              )
+                throw new Error("剩余时间不在允许的调整范围内。");
+              const minutes = Math.floor(remainingSeconds / 60);
+              const seconds = remainingSeconds % 60;
+              return {
+                ...timer,
+                display: `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`,
+                remainingSeconds,
+                progress: remainingSeconds / timer.maximumAdjustableSeconds,
               };
             }
             return timer;

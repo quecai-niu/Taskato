@@ -83,6 +83,12 @@ export interface TimerDto {
   progress: number;
   workMinutes: number;
   restMinutes: number;
+  phase: "work" | "rest";
+  remainingSeconds: number;
+  minimumAdjustableSeconds: number;
+  maximumAdjustableSeconds: number;
+  adjustmentStepSeconds: number;
+  canAdjustRemaining: boolean;
   isStarted: boolean;
   canStart: boolean;
   canPause: boolean;

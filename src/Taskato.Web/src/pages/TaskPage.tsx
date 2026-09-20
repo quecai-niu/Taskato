@@ -5,6 +5,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type FormEvent,
   type KeyboardEvent,
   type MouseEvent,
@@ -220,6 +221,42 @@ function storedPaneWidth(key: string, fallback: number): number {
 
 function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(Math.max(value, minimum), Math.max(minimum, maximum));
+}
+
+export function formatTimerSeconds(totalSeconds: number): string {
+  const safeSeconds = Math.max(0, Math.round(totalSeconds));
+  const minutes = Math.floor(safeSeconds / 60);
+  const seconds = safeSeconds % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
+export function timerAdjustmentValues(
+  minimum: number,
+  maximum: number,
+  step: number,
+): number[] {
+  const safeStep = Math.max(1, step);
+  const safeMaximum = Math.max(minimum, maximum);
+  const values: number[] = [];
+  for (let value = minimum; value <= safeMaximum; value += safeStep)
+    values.push(value);
+  if (values.at(-1) !== safeMaximum) values.push(safeMaximum);
+  return values;
+}
+
+export function normalizeTimerAdjustment(
+  value: number,
+  minimum: number,
+  maximum: number,
+  step: number,
+): number {
+  const values = timerAdjustmentValues(minimum, maximum, step);
+  const target = clamp(value, minimum, maximum);
+  return values.reduce((closest, candidate) =>
+    Math.abs(candidate - target) < Math.abs(closest - target)
+      ? candidate
+      : closest,
+  );
 }
 
 const priorityLabels = ["无", "低", "中", "高"] as const;
@@ -1060,6 +1097,12 @@ export function TaskPage({
     multipleEnabled: false,
     timers: [],
   });
+  const [timerAdjustmentDraft, setTimerAdjustmentDraft] = useState<{
+    timerId: string;
+    seconds: number;
+  } | null>(null);
+  const timerAdjustmentDraftRef = useRef<typeof timerAdjustmentDraft>(null);
+  const [timerAdjustmentSaving, setTimerAdjustmentSaving] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -1327,6 +1370,36 @@ export function TaskPage({
     timerState.timers.find((timer) => timer.id === timerState.activeId) ??
     timerState.timers[0];
   const isCompletionPending = activeTimer?.status === "等待处理";
+  const activeTimerDraft =
+    timerAdjustmentDraft?.timerId === activeTimer?.id
+      ? timerAdjustmentDraft
+      : null;
+  const timerPhaseLabel = activeTimer?.phase === "rest" ? "休息" : "专注";
+  const timerDisplay = activeTimerDraft
+    ? formatTimerSeconds(activeTimerDraft.seconds)
+    : (activeTimer?.display ?? "25:00");
+  const timerMinimum = activeTimer?.minimumAdjustableSeconds ?? 60;
+  const timerMaximum = Math.max(
+    timerMinimum,
+    activeTimer?.maximumAdjustableSeconds ?? 25 * 90,
+  );
+  const timerSliderSeconds = clamp(
+    activeTimerDraft?.seconds ?? activeTimer?.remainingSeconds ?? 25 * 60,
+    timerMinimum,
+    timerMaximum,
+  );
+  const timerSliderProgress =
+    ((timerSliderSeconds - timerMinimum) / (timerMaximum - timerMinimum || 1)) *
+    100;
+
+  useEffect(() => {
+    const draft = timerAdjustmentDraftRef.current;
+    if (!draft) return;
+    if (draft.timerId === activeTimer?.id && activeTimer.canAdjustRemaining)
+      return;
+    timerAdjustmentDraftRef.current = null;
+    setTimerAdjustmentDraft(null);
+  }, [activeTimer?.canAdjustRemaining, activeTimer?.id]);
 
   const add = async (
     event: FormEvent,
@@ -1544,6 +1617,74 @@ export function TaskPage({
     ) {
       setProgressTargetTaskId(null);
     }
+  };
+
+  const previewTimerAdjustment = (value: number) => {
+    if (!activeTimer?.canAdjustRemaining || timerAdjustmentSaving) return;
+    const seconds = normalizeTimerAdjustment(
+      value,
+      activeTimer.minimumAdjustableSeconds,
+      activeTimer.maximumAdjustableSeconds,
+      activeTimer.adjustmentStepSeconds,
+    );
+    const draft = { timerId: activeTimer.id, seconds };
+    timerAdjustmentDraftRef.current = draft;
+    setTimerAdjustmentDraft(draft);
+  };
+
+  const commitTimerAdjustment = async () => {
+    const draft = timerAdjustmentDraftRef.current;
+    if (!draft || timerAdjustmentSaving) return;
+    timerAdjustmentDraftRef.current = null;
+    setTimerAdjustmentSaving(true);
+    try {
+      setTimerState(
+        await bridge.request<TimerListResult>("pomodoro.command", {
+          command: "adjustRemaining",
+          timerId: draft.timerId,
+          remainingSeconds: draft.seconds,
+        }),
+      );
+    } catch (error) {
+      await loadTimers();
+      reportError(error);
+    } finally {
+      setTimerAdjustmentDraft((current) =>
+        current?.timerId === draft.timerId && current.seconds === draft.seconds
+          ? null
+          : current,
+      );
+      setTimerAdjustmentSaving(false);
+    }
+  };
+
+  const cancelTimerAdjustment = () => {
+    timerAdjustmentDraftRef.current = null;
+    setTimerAdjustmentDraft(null);
+  };
+
+  const adjustTimerByKeyboard = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (!activeTimer?.canAdjustRemaining || timerAdjustmentSaving) return;
+    const values = timerAdjustmentValues(
+      activeTimer.minimumAdjustableSeconds,
+      activeTimer.maximumAdjustableSeconds,
+      activeTimer.adjustmentStepSeconds,
+    );
+    const pendingDraft = timerAdjustmentDraftRef.current;
+    const current =
+      pendingDraft?.timerId === activeTimer.id
+        ? pendingDraft.seconds
+        : activeTimer.remainingSeconds;
+    let next: number | undefined;
+    if (event.key === "Home") next = values[0];
+    else if (event.key === "End") next = values.at(-1);
+    else if (event.key === "ArrowLeft" || event.key === "ArrowDown")
+      next = [...values].reverse().find((value) => value < current) ?? values[0];
+    else if (event.key === "ArrowRight" || event.key === "ArrowUp")
+      next = values.find((value) => value > current) ?? values.at(-1);
+    if (next == null) return;
+    event.preventDefault();
+    previewTimerAdjustment(next);
   };
 
   const stopTaskDragAutoScroll = () => {
@@ -2605,18 +2746,52 @@ export function TaskPage({
             </select>
           </label>
           <div className="timer-display-stage">
-            <span>专注倒计时</span>
+            <span>{timerPhaseLabel}倒计时</span>
             <strong className="timer-value">
-              {activeTimer?.display ?? "25:00"}
+              {timerDisplay}
             </strong>
             <p>
               {taskViewMode === "create"
                 ? "新增任务页面 · 专注计时无所属"
                 : taskTitle(progressTarget?.title ?? selected?.title ?? "选择任务后开始专注")}
             </p>
-            <div className="timer-progress" aria-label="当前计时进度">
-              <span style={{ width: `${(activeTimer?.progress ?? 1) * 100}%` }} />
-            </div>
+            {isCompletionPending ? (
+              <div className="timer-progress" aria-label="当前阶段已经结束">
+                <span />
+              </div>
+            ) : (
+              <input
+                className="timer-progress-slider"
+                type="range"
+                min={timerMinimum}
+                max={timerMaximum}
+                step="any"
+                value={timerSliderSeconds}
+                disabled={
+                  !activeTimer?.canAdjustRemaining || timerAdjustmentSaving
+                }
+                aria-label={`调整${timerPhaseLabel}剩余时长`}
+                aria-valuetext={`${timerPhaseLabel}剩余 ${timerDisplay}`}
+                title={
+                  activeTimer?.canAdjustRemaining
+                    ? `拖动调整剩余时间，最大 ${formatTimerSeconds(timerMaximum)}`
+                    : "仅在倒计时运行时可以调整"
+                }
+                style={
+                  {
+                    "--timer-slider-progress": `${timerSliderProgress}%`,
+                  } as CSSProperties
+                }
+                onChange={(event) =>
+                  previewTimerAdjustment(event.currentTarget.valueAsNumber)
+                }
+                onPointerUp={() => void commitTimerAdjustment()}
+                onPointerCancel={cancelTimerAdjustment}
+                onKeyDown={adjustTimerByKeyboard}
+                onKeyUp={() => void commitTimerAdjustment()}
+                onBlur={() => void commitTimerAdjustment()}
+              />
+            )}
           </div>
           <div className="timer-duration-controls" aria-label="调整番茄钟时长">
             <button
