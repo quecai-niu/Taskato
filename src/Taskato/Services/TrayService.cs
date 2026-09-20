@@ -252,7 +252,8 @@ namespace Taskato.Services
                 {
                     PomodoroService.PomodoroState.Working => $"专注小统计: {timeDisplay} · 暂停",
                     PomodoroService.PomodoroState.Resting => $"专注小统计: {timeDisplay} · 暂停",
-                    PomodoroService.PomodoroState.Paused => $"专注小统计: {timeDisplay} · 继续",
+                    PomodoroService.PomodoroState.Paused =>
+                        $"专注小统计: 已暂停 {GetPauseElapsedDisplay()} · 继续",
                     PomodoroService.PomodoroState.CompletionPending =>
                         $"专注小统计: +{GetCompletionElapsedDisplay(minutes, seconds)}",
                     _ => "专注小统计: 空闲"
@@ -261,6 +262,12 @@ namespace Taskato.Services
 
             _pomodoroMenuItem.IsEnabled = canTogglePause;
             _pomodoroMenuItem.Header = CreateCuteHeader("🍅", text, "#FFA502");
+        }
+
+        private string GetPauseElapsedDisplay()
+        {
+            var elapsedSeconds = _pomodoroService.PauseElapsedSeconds;
+            return $"{elapsedSeconds / 60:D2}:{elapsedSeconds % 60:D2}";
         }
 
         private string GetCompletionElapsedDisplay(int? minutes, int? seconds)

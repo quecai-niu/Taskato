@@ -111,6 +111,7 @@ export interface FocusAnalyticsCellDto {
   endsAt: string;
   workSeconds: number;
   restSeconds: number;
+  pauseSeconds: number;
   workStarts: FocusStartDto[];
 }
 
@@ -122,6 +123,7 @@ export interface FocusAnalyticsResult {
   rangeEndExclusive: string;
   workSeconds: number;
   restSeconds: number;
+  pauseSeconds: number;
   totalSeconds: number;
   workStartCount: number;
   longestSessionSeconds: number;

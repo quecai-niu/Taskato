@@ -5,6 +5,7 @@ import {
   CaretRight,
   Clock,
   Coffee,
+  Pause,
   Play,
   Timer,
 } from "@phosphor-icons/react";
@@ -67,7 +68,7 @@ export function FocusAnalyticsPage({
         <div>
           <span className="section-kicker">看见你的专注节律</span>
           <h2>专注统计</h2>
-          <p>统计番茄钟真实运行的专注与休息时长，暂停和弹窗等待不会计入。</p>
+          <p>统计番茄钟的专注、休息与暂停时长；暂停计入有效总时长，完成等待不计入。</p>
         </div>
         <div className="focus-period-tabs" role="tablist" aria-label="统计周期">
           {(Object.keys(periodLabels) as FocusPeriod[]).map((value) => (
@@ -104,6 +105,7 @@ export function FocusAnalyticsPage({
         <Stat icon={<Timer size={18} />} label="有效总时长" value={formatDuration(analytics?.totalSeconds ?? 0)} />
         <Stat icon={<Play size={18} />} label="专注时长" value={formatDuration(analytics?.workSeconds ?? 0)} />
         <Stat icon={<Coffee size={18} />} label="休息时长" value={formatDuration(analytics?.restSeconds ?? 0)} />
+        <Stat icon={<Pause size={18} />} label="暂停时长" value={formatDuration(analytics?.pauseSeconds ?? 0)} />
         <Stat icon={<Clock size={18} />} label="启动次数" value={`${analytics?.workStartCount ?? 0} 次`} />
         <Stat label="最长单次" value={formatDuration(analytics?.longestSessionSeconds ?? 0)} />
         <Stat label="活跃天数" value={`${analytics?.activeDays ?? 0} 天`} />
@@ -127,7 +129,9 @@ export function FocusAnalyticsPage({
         {analytics && period === "day" && <DayHeatmap cells={analytics.cells} />}
         {analytics && period === "week" && <WeekHeatmap cells={analytics.cells} />}
         {analytics && period === "month" && <MonthHeatmap cells={analytics.cells} />}
-        {!loading && analytics?.cells.every((cell) => cell.workSeconds + cell.restSeconds === 0) && (
+        {!loading && analytics?.cells.every(
+          (cell) => cell.workSeconds + cell.restSeconds + cell.pauseSeconds === 0,
+        ) && (
           <p className="focus-empty-hint">这个周期还没有新的番茄钟记录。</p>
         )}
       </section>
@@ -211,14 +215,14 @@ function TimeAxis() {
 }
 
 function HeatCell({ cell, period }: { cell: FocusAnalyticsCellDto; period: FocusPeriod }) {
-  const total = cell.workSeconds + cell.restSeconds;
+  const total = cell.workSeconds + cell.restSeconds + cell.pauseSeconds;
   const level = heatLevel(total, period);
   const date = new Date(`${cell.date}T12:00:00`);
   const label = period === "month" ? String(date.getDate()) : cell.label;
   return (
     <button
       className={`focus-heat-cell heat-level-${level} ${period === "month" ? "month-cell" : ""}`}
-      aria-label={`${cell.date} ${cell.label}，专注 ${formatDuration(cell.workSeconds)}，休息 ${formatDuration(cell.restSeconds)}`}
+      aria-label={`${cell.date} ${cell.label}，专注 ${formatDuration(cell.workSeconds)}，休息 ${formatDuration(cell.restSeconds)}，暂停 ${formatDuration(cell.pauseSeconds)}`}
     >
       {period === "month" && <span>{label}</span>}
       {cell.workStarts.length > 0 && <i className="focus-start-marker" />}
@@ -226,6 +230,7 @@ function HeatCell({ cell, period }: { cell: FocusAnalyticsCellDto; period: Focus
         <strong>{period === "month" ? cell.date : `${cell.date} ${cell.label}`}</strong>
         <em>专注 {formatDuration(cell.workSeconds)}</em>
         <em>休息 {formatDuration(cell.restSeconds)}</em>
+        <em>暂停 {formatDuration(cell.pauseSeconds)}</em>
         <em>合计 {formatDuration(total)}</em>
         {cell.workStarts.length > 0 && (
           <small>

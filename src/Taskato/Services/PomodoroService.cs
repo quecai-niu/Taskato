@@ -39,6 +39,7 @@ namespace Taskato.Services
         private int _completedFocusSeconds;
         private string _completionEndReason = string.Empty;
         private PomodoroState _pausedState = PomodoroState.Working;
+        private DateTimeOffset? _pausedAt;
         private bool _restHalfwayRaised;
 
         // ==================== 可配置的时间参数 ====================
@@ -127,6 +128,19 @@ namespace Taskato.Services
             }
         }
 
+        public int PauseElapsedSeconds
+        {
+            get
+            {
+                if (CurrentState != PomodoroState.Paused || _pausedAt is null) return 0;
+                var elapsedSeconds = (_clock().ToUniversalTime() - _pausedAt.Value).TotalSeconds;
+                if (elapsedSeconds <= 0) return 0;
+                return elapsedSeconds >= int.MaxValue
+                    ? int.MaxValue
+                    : (int)Math.Floor(elapsedSeconds);
+            }
+        }
+
         // ==================== 构造与方法 ====================
 
         /// <summary>
@@ -162,6 +176,7 @@ namespace Taskato.Services
             _completedPhase = null;
             _completedFocusSeconds = 0;
             _completionEndReason = string.Empty;
+            _pausedAt = null;
             IsRecoveredCompletion = false;
             _restHalfwayRaised = false;
             CurrentState = PomodoroState.Working;
@@ -189,6 +204,7 @@ namespace Taskato.Services
             _completedPhase = null;
             _completedFocusSeconds = 0;
             _completionEndReason = string.Empty;
+            _pausedAt = null;
             IsRecoveredCompletion = false;
             _restHalfwayRaised = false;
             CurrentState = PomodoroState.Resting;
@@ -211,6 +227,7 @@ namespace Taskato.Services
             {
                 var resumedAt = _clock();
                 CurrentState = _pausedState;
+                _pausedAt = null;
                 _deadline = resumedAt.AddSeconds(_remainingSeconds);
                 _timer.Start();
                 StateChanged?.Invoke(CurrentState);
@@ -228,10 +245,10 @@ namespace Taskato.Services
                 if (CurrentState is not (PomodoroState.Working or PomodoroState.Resting)) return;
                 _pausedState = CurrentState;
                 var pausedAt = _clock();
+                _pausedAt = pausedAt.ToUniversalTime();
                 var phase = PhaseForState(CurrentState)!.Value;
                 CurrentState = PomodoroState.Paused;
                 _deadline = null;
-                _timer.Stop();
                 StateChanged?.Invoke(CurrentState);
                 PhaseTransitioned?.Invoke(new PomodoroPhaseTransition(
                     PomodoroPhaseTransitionKind.Paused,
@@ -257,6 +274,7 @@ namespace Taskato.Services
             _completedPhase = null;
             _completedFocusSeconds = 0;
             _completionEndReason = string.Empty;
+            _pausedAt = null;
             IsRecoveredCompletion = false;
             _restHalfwayRaised = false;
             CurrentState = PomodoroState.Idle;
@@ -310,6 +328,13 @@ namespace Taskato.Services
                 return;
             }
 
+            if (CurrentState == PomodoroState.Paused)
+            {
+                // 暂停时剩余时间保持不变，但继续发布 Tick 让托盘中的暂停时长逐秒刷新。
+                PublishTick();
+                return;
+            }
+
             if (CurrentState is not (PomodoroState.Working or PomodoroState.Resting) || _deadline is null)
                 return;
 
@@ -345,6 +370,7 @@ namespace Taskato.Services
             RemainingSeconds = _remainingSeconds,
             TotalSeconds = _totalSeconds,
             DeadlineUtc = _deadline?.ToUniversalTime(),
+            PausedAtUtc = _pausedAt?.ToUniversalTime(),
             CompletedAtUtc = _completedAt?.ToUniversalTime(),
             CompletedFocusSeconds = _completedFocusSeconds,
             RestHalfwayRaised = _restHalfwayRaised,
@@ -364,6 +390,9 @@ namespace Taskato.Services
             _remainingSeconds = Math.Max(0, snapshot.RemainingSeconds);
             _totalSeconds = Math.Max(0, snapshot.TotalSeconds);
             _deadline = snapshot.DeadlineUtc?.ToUniversalTime();
+            _pausedAt = snapshot.State == PomodoroState.Paused
+                ? snapshot.PausedAtUtc?.ToUniversalTime()
+                : null;
             _completedAt = snapshot.CompletedAtUtc?.ToUniversalTime();
             _completedPhase = snapshot.CompletedPhase;
             _completedFocusSeconds = Math.Max(0, snapshot.CompletedFocusSeconds);
@@ -393,8 +422,12 @@ namespace Taskato.Services
             if (CurrentState == PomodoroState.Paused)
             {
                 _deadline = null;
+                var restoredAt = _clock().ToUniversalTime();
+                if (_pausedAt is null || _pausedAt.Value > restoredAt)
+                    _pausedAt = restoredAt;
                 StateChanged?.Invoke(CurrentState);
                 PublishTick();
+                _timer.Start();
                 return;
             }
 
@@ -449,6 +482,7 @@ namespace Taskato.Services
                 ? Math.Max(0, focusedSeconds)
                 : 0;
             _completionEndReason = endReason;
+            _pausedAt = null;
             CurrentState = PomodoroState.CompletionPending;
             StateChanged?.Invoke(CurrentState);
             PhaseTransitioned?.Invoke(new PomodoroPhaseTransition(

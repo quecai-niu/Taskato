@@ -462,10 +462,21 @@ internal static class Program
                     PomodoroFocusPhase.Work,
                     summaryFocusStartedAt,
                     true);
+                await database.PausePomodoroPhaseAsync(
+                    summaryFocusSlotId,
+                    PomodoroFocusPhase.Work,
+                    summaryFocusStartedAt.AddMinutes(1));
+                await database.ResumePomodoroPhaseAsync(
+                    summaryFocusSlotId,
+                    "每日总结统计测试",
+                    root.Id,
+                    root.Title,
+                    PomodoroFocusPhase.Work,
+                    summaryFocusStartedAt.AddMinutes(3));
                 await database.EndPomodoroPhaseAsync(
                     summaryFocusSlotId,
                     PomodoroFocusPhase.Work,
-                    summaryFocusStartedAt.AddMinutes(2),
+                    summaryFocusStartedAt.AddMinutes(4),
                     "completed");
                 await database.StartPomodoroPhaseAsync(
                     summaryFocusSlotId,
@@ -473,12 +484,12 @@ internal static class Program
                     root.Id,
                     root.Title,
                     PomodoroFocusPhase.Rest,
-                    summaryFocusStartedAt.AddMinutes(2),
+                    summaryFocusStartedAt.AddMinutes(4),
                     false);
                 await database.EndPomodoroPhaseAsync(
                     summaryFocusSlotId,
                     PomodoroFocusPhase.Rest,
-                    summaryFocusStartedAt.AddMinutes(5),
+                    summaryFocusStartedAt.AddMinutes(7),
                     "completed");
                 var summaryResponse = await bridge.ProcessRequestAsync(new WebBridgeRequest
                 {
@@ -513,8 +524,9 @@ internal static class Program
                     summaryFocus.TotalSeconds / 60d,
                     MidpointRounding.AwayFromZero);
                 Assert(summaryFocus.RestSeconds > 0 &&
+                       summaryFocus.PauseSeconds >= 120 &&
                        summaryJson.GetProperty("focusDurationMinutes").GetInt32() == expectedFocusDurationMinutes,
-                    "每日总结专注时长必须与专注统计有效总时长一致，并包含有效休息时长。");
+                    "每日总结专注时长必须与专注统计有效总时长一致，并包含休息与暂停时长。");
 
                 var firstBatchRecord = await database.AddProgressRecordAsync(
                     root.Id,
@@ -737,10 +749,15 @@ internal static class Program
         service.RefreshElapsedTime();
         Assert(halfway == 1, "跨过休息中点时应发送一次过半事件。");
         service.TogglePause();
+        var pausedRemainingSeconds = service.CreateSnapshot("pause-test").RemainingSeconds;
         now = now.AddMinutes(10);
         service.RefreshElapsedTime();
-        Assert(restCompleted == 0, "暂停期间不应消耗剩余时间。");
+        Assert(restCompleted == 0 &&
+               service.PauseElapsedSeconds == 600 &&
+               service.CreateSnapshot("pause-test").RemainingSeconds == pausedRemainingSeconds,
+            "暂停期间应累计暂停时长，但不应消耗剩余时间。");
         service.TogglePause();
+        Assert(service.PauseElapsedSeconds == 0, "恢复计时后应清除本次暂停时长。");
         now = now.AddSeconds(60);
         service.RefreshElapsedTime();
         Assert(restCompleted == 1, "恢复后应延续休息状态并按剩余时间完成。");
@@ -1047,12 +1064,26 @@ internal static class Program
 
             resumed.TogglePause();
             var pausedSnapshot = resumed.CreateSnapshot("timer-0");
+            Assert(pausedSnapshot.PausedAtUtc == now,
+                "暂停快照必须保存本次暂停的绝对起点。");
             now = now.AddHours(3);
             var pausedRestore = new PomodoroService(25, 5, () => now);
             pausedRestore.Restore(pausedSnapshot);
             Assert(pausedRestore.CurrentState == PomodoroService.PomodoroState.Paused &&
-                   pausedRestore.CreateSnapshot("timer-0").RemainingSeconds == 40,
-                "暂停后关闭软件不应继续消耗剩余时间。");
+                   pausedRestore.CreateSnapshot("timer-0").RemainingSeconds == 40 &&
+                   pausedRestore.PauseElapsedSeconds == 3 * 60 * 60,
+                "暂停后关闭软件不应继续消耗剩余时间，并应连续累计暂停时长。");
+
+            var legacyPaused = new PomodoroService(25, 5, () => now);
+            legacyPaused.Restore(new PomodoroRuntimeSnapshot
+            {
+                State = PomodoroService.PomodoroState.Paused,
+                PausedState = PomodoroService.PomodoroState.Working,
+                RemainingSeconds = 40,
+                TotalSeconds = 60
+            });
+            Assert(legacyPaused.PauseElapsedSeconds == 0,
+                "旧快照缺少暂停起点时应从本次恢复时间安全起算。");
 
             var expiredClock = new DateTimeOffset(2026, 7, 29, 10, 0, 0, TimeSpan.Zero);
             var expiring = new PomodoroService(1, 5, () => expiredClock);
@@ -1450,10 +1481,18 @@ internal static class Program
             "统计测试任务",
             PomodoroFocusPhase.Work,
             workStart.AddMinutes(20));
+        await database.PausePomodoroPhaseAsync(slotId, PomodoroFocusPhase.Work, workStart.AddMinutes(25));
+        await database.ResumePomodoroPhaseAsync(
+            slotId,
+            "统计测试计时器",
+            1001,
+            "统计测试任务",
+            PomodoroFocusPhase.Work,
+            workStart.AddMinutes(30));
         await database.EndPomodoroPhaseAsync(
             slotId,
             PomodoroFocusPhase.Work,
-            workStart.AddMinutes(35),
+            workStart.AddMinutes(40),
             "stopped");
         await database.StartPomodoroPhaseAsync(
             slotId,
@@ -1461,12 +1500,12 @@ internal static class Program
             1001,
             "统计测试任务",
             PomodoroFocusPhase.Rest,
-            workStart.AddMinutes(35),
+            workStart.AddMinutes(40),
             hasStartMarker: false);
         await database.EndPomodoroPhaseAsync(
             slotId,
             PomodoroFocusPhase.Rest,
-            workStart.AddMinutes(40),
+            workStart.AddMinutes(45),
             "completed");
 
         var pendingSlotId = $"analytics-pending-{Guid.NewGuid():N}";
@@ -1494,16 +1533,20 @@ internal static class Program
 
         var result = await database.GetPomodoroAnalyticsAsync("day", day, AtLocal(day.AddDays(1)));
         Assert(result.Cells.Count == 48, "日统计必须拆成 48 个半小时格子。");
-        Assert(result.WorkSeconds == 2_100 && result.RestSeconds == 300 && result.TotalSeconds == 2_400,
-            "统计必须包含有效工作与休息时长，但不包含暂停和完成等待。");
+        Assert(result.WorkSeconds == 2_100 &&
+               result.RestSeconds == 300 &&
+               result.PauseSeconds == 900 &&
+               result.TotalSeconds == 3_300,
+            "统计必须把暂停计入有效总时长，同时排除完成等待。");
         Assert(result.WorkStartCount == 2, "启动标记只能统计工作阶段的真实启动。");
         Assert(result.ActiveDays == 1 && result.LongestSessionSeconds == 1_500,
             "统计摘要应按有效运行区间计算活跃天数和最长单次。");
         var workCells = result.Cells.Where(cell => cell.Label is "09:00" or "09:30").ToList();
         Assert(workCells.Sum(cell => cell.WorkSeconds) == 1_500 &&
                workCells.Sum(cell => cell.RestSeconds) == 300 &&
+               workCells.Sum(cell => cell.PauseSeconds) == 900 &&
                workCells.Sum(cell => cell.WorkStarts.Count) == 1,
-            "暂停后的恢复必须按半小时格切分有效工作时长，并保留一次启动标记。");
+            "多次暂停和恢复必须按半小时格切分，并保留一次启动标记。");
 
         var weekResult = await database.GetPomodoroAnalyticsAsync("week", day, AtLocal(day.AddDays(7)));
         Assert(weekResult.Cells.Count == 7 * 48 && weekResult.TotalSeconds == result.TotalSeconds,
@@ -1511,6 +1554,37 @@ internal static class Program
         var monthResult = await database.GetPomodoroAnalyticsAsync("month", day, AtLocal(day.AddDays(31)));
         Assert(monthResult.Cells.Count == DateTime.DaysInMonth(day.Year, day.Month),
             "月统计必须按当月实际天数生成日格子。");
+
+        var openPauseDay = day.AddDays(-8);
+        var openPauseStart = AtLocal(openPauseDay.AddHours(12));
+        var openPauseSlotId = $"analytics-open-pause-{Guid.NewGuid():N}";
+        await database.StartPomodoroPhaseAsync(
+            openPauseSlotId,
+            "当前暂停测试计时器",
+            null,
+            string.Empty,
+            PomodoroFocusPhase.Rest,
+            openPauseStart,
+            hasStartMarker: false);
+        await database.PausePomodoroPhaseAsync(
+            openPauseSlotId,
+            PomodoroFocusPhase.Rest,
+            openPauseStart.AddMinutes(5));
+        var openPauseResult = await database.GetPomodoroAnalyticsAsync(
+            "day",
+            openPauseDay,
+            openPauseStart.AddMinutes(20));
+        Assert(openPauseResult.RestSeconds == 300 &&
+               openPauseResult.PauseSeconds == 900 &&
+               openPauseResult.TotalSeconds == 1_200 &&
+               openPauseResult.ActiveDays == 1 &&
+               openPauseResult.LongestSessionSeconds == 300,
+            "尚未恢复的暂停应实时计入总时长和活跃天数，但不计入最长单次。");
+        await database.EndPomodoroPhaseAsync(
+            openPauseSlotId,
+            PomodoroFocusPhase.Rest,
+            openPauseStart.AddMinutes(20),
+            "stopped");
 
         var boundaryDay = day.AddDays(-5);
         var boundarySlotId = $"analytics-boundary-{Guid.NewGuid():N}";
@@ -1528,10 +1602,39 @@ internal static class Program
             PomodoroFocusPhase.Work,
             boundaryStart.AddMinutes(20),
             "completed");
+        var boundaryPauseSlotId = $"analytics-boundary-pause-{Guid.NewGuid():N}";
+        var boundaryPauseStart = AtLocal(boundaryDay.AddDays(1).AddMinutes(-20));
+        await database.StartPomodoroPhaseAsync(
+            boundaryPauseSlotId,
+            "跨天暂停测试计时器",
+            null,
+            string.Empty,
+            PomodoroFocusPhase.Work,
+            boundaryPauseStart,
+            hasStartMarker: true);
+        await database.PausePomodoroPhaseAsync(
+            boundaryPauseSlotId,
+            PomodoroFocusPhase.Work,
+            boundaryPauseStart.AddMinutes(10));
+        await database.ResumePomodoroPhaseAsync(
+            boundaryPauseSlotId,
+            "跨天暂停测试计时器",
+            null,
+            string.Empty,
+            PomodoroFocusPhase.Work,
+            boundaryPauseStart.AddMinutes(30));
+        await database.EndPomodoroPhaseAsync(
+            boundaryPauseSlotId,
+            PomodoroFocusPhase.Work,
+            boundaryPauseStart.AddMinutes(40),
+            "completed");
         var beforeMidnight = await database.GetPomodoroAnalyticsAsync("day", boundaryDay, AtLocal(boundaryDay.AddDays(2)));
         var afterMidnight = await database.GetPomodoroAnalyticsAsync("day", boundaryDay.AddDays(1), AtLocal(boundaryDay.AddDays(2)));
-        Assert(beforeMidnight.WorkSeconds == 600 && afterMidnight.WorkSeconds == 600,
-            "跨午夜运行区间必须准确切分到前后两个日期。");
+        Assert(beforeMidnight.WorkSeconds == 1_200 &&
+               beforeMidnight.PauseSeconds == 600 &&
+               afterMidnight.WorkSeconds == 1_200 &&
+               afterMidnight.PauseSeconds == 600,
+            "跨午夜运行与暂停区间必须准确切分到前后两个日期。");
     }
 
     private static DateTimeOffset AtLocal(DateTime value)

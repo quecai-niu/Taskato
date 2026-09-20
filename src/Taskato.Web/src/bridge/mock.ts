@@ -891,6 +891,9 @@ function buildMockFocusAnalytics(
     const restSeconds = active && index % 3 === 0
       ? period === "month" ? 18 * 60 : 5 * 60
       : 0;
+    const pauseSeconds = active && index % 4 === 0
+      ? period === "month" ? 12 * 60 : 3 * 60
+      : 0;
     cells.push({
       key: period === "month"
         ? toMockDate(cellStart)
@@ -903,6 +906,7 @@ function buildMockFocusAnalytics(
       endsAt: cursor.toISOString(),
       workSeconds,
       restSeconds,
+      pauseSeconds,
       workStarts: active && index % 2 === 0
         ? [{
             time: toMockTime(cellStart),
@@ -915,9 +919,10 @@ function buildMockFocusAnalytics(
   }
   const workSeconds = cells.reduce((sum, cell) => sum + cell.workSeconds, 0);
   const restSeconds = cells.reduce((sum, cell) => sum + cell.restSeconds, 0);
+  const pauseSeconds = cells.reduce((sum, cell) => sum + cell.pauseSeconds, 0);
   const activeDays = new Set(
     cells
-      .filter((cell) => cell.workSeconds + cell.restSeconds > 0)
+      .filter((cell) => cell.workSeconds + cell.restSeconds + cell.pauseSeconds > 0)
       .map((cell) => cell.date),
   ).size;
   return {
@@ -932,7 +937,8 @@ function buildMockFocusAnalytics(
     rangeEndExclusive: toMockDate(end),
     workSeconds,
     restSeconds,
-    totalSeconds: workSeconds + restSeconds,
+    pauseSeconds,
+    totalSeconds: workSeconds + restSeconds + pauseSeconds,
     workStartCount: cells.reduce((sum, cell) => sum + cell.workStarts.length, 0),
     longestSessionSeconds: 48 * 60,
     activeDays,

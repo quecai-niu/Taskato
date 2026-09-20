@@ -453,7 +453,13 @@ describe("独立业务页面", () => {
   it("专注统计页支持天、周、月热力图切换", async () => {
     await renderAndFlush(<FocusAnalyticsPage reportError={() => undefined} />);
     expect(host.textContent).toContain("专注统计");
+    expect(host.textContent).toContain("暂停时长");
     expect(host.querySelectorAll(".focus-day-chart .focus-heat-cell")).toHaveLength(48);
+    expect(
+      host.querySelector<HTMLButtonElement>(".focus-day-chart .focus-heat-cell")
+        ?.getAttribute("aria-label"),
+    ).toContain("暂停");
+    expect(host.querySelector(".focus-cell-tooltip")?.textContent).toContain("暂停");
 
     const weekTab = host.querySelector<HTMLButtonElement>('[role="tab"]:not([aria-selected="true"])');
     expect(weekTab).not.toBeNull();

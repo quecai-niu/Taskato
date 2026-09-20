@@ -16,7 +16,7 @@
 - `src/Taskato.Web/src/components/TaskPicker.tsx`：统一的任务筛选与搜索选择器，供父任务、移动任务、总结补录和推进记录编辑复用。
 - `src/Taskato.Web/src/pages/SettingsPage.tsx`：一比一承接旧版主题、番茄钟、系统、总结、提示音和飞书设置，并保留数据保护入口。
 - `src/Taskato.Web/src/pages/SummaryPage.tsx`、`HistoryPage.tsx`：可独立渲染和测试的总结与历史页面。
-- `src/Taskato.Web/src/pages/FocusAnalyticsPage.tsx`：按天、周、月展示番茄钟有效工作/休息时长热力格子与启动标记。
+- `src/Taskato.Web/src/pages/FocusAnalyticsPage.tsx`：按天、周、月展示番茄钟专注/休息/暂停时长热力格子与启动标记。
 - `src/Taskato.Web/src/taskText.ts`：统一把任务完整内容的第一行转换为界面标题，并逐级整理任务路径。
 - `src/Taskato.Web/src/ui.tsx`：页面标识、导航元数据、主题和共享按钮/刷新工具。
 - `src/Taskato.Web/src/bridge/`：WebView2 客户端、浏览器 Mock 与 TypeScript 契约。
@@ -28,8 +28,8 @@
 - `src/Taskato/Services/DatabaseService.TaskTree.cs`：层级任务、三态状态、级联完成、移动与删除。
 - `src/Taskato/Models/TaskProgressRecord.cs`、`src/Taskato/Services/DatabaseService.ProgressRecords.cs`：推进记录模型、查询、事务写入、旧番茄钟任务迁移和任务状态联动。
 - `src/Taskato/Services/DatabaseService.Activity.cs`：只追加活动日志、旧数据幂等回填和查询。
-- `src/Taskato/Services/DatabaseService.FocusAnalytics.cs`：番茄钟会话/连续区间持久化、恢复校正与天周月聚合查询。
-- `src/Taskato/Models/PomodoroFocusRecords.cs`、`src/Taskato/Services/PomodoroFocusTracker.cs`：阶段记录模型与串行写入队列；只把 Working/Resting 的有效区间计入统计。
+- `src/Taskato/Services/DatabaseService.FocusAnalytics.cs`：番茄钟会话/连续区间持久化、恢复校正，以及专注、休息和区间空档暂停的天周月聚合查询。
+- `src/Taskato/Models/PomodoroFocusRecords.cs`、`src/Taskato/Services/PomodoroFocusTracker.cs`：阶段记录模型与串行写入队列；连续运行区间记录 Working/Resting，会话内区间空档表示暂停。
 - `src/Taskato/Models/BridgeDtos/FocusAnalyticsBridgeDto.cs`、`src/Taskato/Services/WebBridge/WebBridgeService.FocusAnalytics.cs`：专注统计 DTO 与 Bridge 查询协议。
 - `src/Taskato/Services/WebBridge/WebBridgeService.cs`：协议入口、白名单分发、任务与番茄钟命令。
 - `src/Taskato/Services/WorkspaceContextService.cs`：保存 React 当前页面、任务视图模式、选中任务和专注目标，为计时上下文提供经过数据库验证的具体任务。

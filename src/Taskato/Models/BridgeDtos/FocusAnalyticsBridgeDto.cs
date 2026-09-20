@@ -14,6 +14,7 @@ namespace Taskato.Models.BridgeDtos
         string EndsAt,
         int WorkSeconds,
         int RestSeconds,
+        int PauseSeconds,
         IReadOnlyList<FocusStartBridgeDto> WorkStarts);
 
     public sealed record FocusAnalyticsBridgeDto(
@@ -24,6 +25,7 @@ namespace Taskato.Models.BridgeDtos
         string RangeEndExclusive,
         int WorkSeconds,
         int RestSeconds,
+        int PauseSeconds,
         int TotalSeconds,
         int WorkStartCount,
         int LongestSessionSeconds,

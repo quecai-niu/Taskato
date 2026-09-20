@@ -155,6 +155,13 @@ namespace Taskato.Services
                 if (session is null)
                 {
                     CloseOpenSession(connection, timerSlotId, observedAtUtc, "recovered");
+                    var recoveredStartedAtUtc = observedAtUtc;
+                    if (snapshot.State == PomodoroService.PomodoroState.Paused &&
+                        snapshot.PausedAtUtc is { } pausedAt &&
+                        pausedAt.UtcDateTime <= observedAtUtc)
+                    {
+                        recoveredStartedAtUtc = pausedAt.UtcDateTime;
+                    }
                     session = new PomodoroFocusSessionRecord
                     {
                         TimerSlotId = timerSlotId,
@@ -162,7 +169,7 @@ namespace Taskato.Services
                         TaskId = taskId,
                         TaskTitleSnapshot = taskTitle,
                         Phase = phase,
-                        StartedAtUtc = observedAtUtc,
+                        StartedAtUtc = recoveredStartedAtUtc,
                         HasStartMarker = false
                     };
                     connection.Insert(session);
@@ -214,12 +221,23 @@ namespace Taskato.Services
                 .Where(session => session.StartedAtUtc < rangeEndUtc &&
                                   (session.EndedAtUtc == null || session.EndedAtUtc > rangeStartUtc))
                 .ToListAsync();
-            var segments = await _db.Table<PomodoroFocusSegmentRecord>()
-                .Where(segment => segment.StartedAtUtc < rangeEndUtc &&
-                                  (segment.EndedAtUtc == null || segment.EndedAtUtc > rangeStartUtc))
-                .ToListAsync();
+            var segments = await _db.QueryAsync<PomodoroFocusSegmentRecord>(
+                "SELECT segment.Id, segment.SessionId, segment.StartedAtUtc, segment.EndedAtUtc " +
+                "FROM PomodoroFocusSegments AS segment " +
+                "INNER JOIN PomodoroFocusSessions AS session ON session.Id = segment.SessionId " +
+                "WHERE session.StartedAtUtc < ? " +
+                "AND (session.EndedAtUtc IS NULL OR session.EndedAtUtc > ?) " +
+                "AND segment.StartedAtUtc < ?",
+                rangeEndUtc,
+                rangeStartUtc,
+                rangeEndUtc);
             var sessionById = sessions.ToDictionary(session => session.Id);
             segments = segments.Where(segment => sessionById.ContainsKey(segment.SessionId)).ToList();
+            var segmentsBySession = segments
+                .GroupBy(segment => segment.SessionId)
+                .ToDictionary(
+                    group => group.Key,
+                    group => group.OrderBy(segment => segment.StartedAtUtc).ToList());
 
             var cells = CreateCells(normalizedPeriod, rangeStartLocal, rangeEndLocal);
             var sessionDurations = new Dictionary<int, double>();
@@ -248,6 +266,32 @@ namespace Taskato.Services
                 }
             }
 
+            foreach (var session in sessions)
+            {
+                var sessionEndUtc = session.EndedAtUtc ?? nowUtc;
+                if (sessionEndUtc <= session.StartedAtUtc) continue;
+
+                var pauseCursorUtc = session.StartedAtUtc;
+                if (segmentsBySession.TryGetValue(session.Id, out var sessionSegments))
+                {
+                    foreach (var segment in sessionSegments)
+                    {
+                        var segmentStartUtc = segment.StartedAtUtc < session.StartedAtUtc
+                            ? session.StartedAtUtc
+                            : segment.StartedAtUtc;
+                        if (segmentStartUtc > sessionEndUtc) break;
+
+                        AddPauseIntervalToCells(pauseCursorUtc, segmentStartUtc, cells, rangeStartUtc, rangeEndUtc);
+
+                        var segmentEndUtc = segment.EndedAtUtc ?? nowUtc;
+                        if (segmentEndUtc > sessionEndUtc) segmentEndUtc = sessionEndUtc;
+                        if (segmentEndUtc > pauseCursorUtc) pauseCursorUtc = segmentEndUtc;
+                    }
+                }
+
+                AddPauseIntervalToCells(pauseCursorUtc, sessionEndUtc, cells, rangeStartUtc, rangeEndUtc);
+            }
+
             foreach (var session in sessions.Where(session =>
                          session.Phase == PomodoroFocusPhase.Work && session.HasStartMarker))
             {
@@ -270,11 +314,13 @@ namespace Taskato.Services
                 ToLocalIso(cell.LocalEnd),
                 RoundSeconds(cell.WorkSeconds),
                 RoundSeconds(cell.RestSeconds),
+                RoundSeconds(cell.PauseSeconds),
                 cell.WorkStarts)).ToList();
             var workSeconds = resultCells.Sum(cell => cell.WorkSeconds);
             var restSeconds = resultCells.Sum(cell => cell.RestSeconds);
+            var pauseSeconds = resultCells.Sum(cell => cell.PauseSeconds);
             var activeDays = resultCells
-                .Where(cell => cell.WorkSeconds + cell.RestSeconds > 0)
+                .Where(cell => cell.WorkSeconds + cell.RestSeconds + cell.PauseSeconds > 0)
                 .Select(cell => cell.Date)
                 .Distinct(StringComparer.Ordinal)
                 .Count();
@@ -287,11 +333,32 @@ namespace Taskato.Services
                 rangeEndLocal.ToString("yyyy-MM-dd"),
                 workSeconds,
                 restSeconds,
-                workSeconds + restSeconds,
+                pauseSeconds,
+                workSeconds + restSeconds + pauseSeconds,
                 resultCells.Sum(cell => cell.WorkStarts.Count),
                 RoundSeconds(sessionDurations.Values.DefaultIfEmpty(0).Max()),
                 activeDays,
                 resultCells);
+        }
+
+        private static void AddPauseIntervalToCells(
+            DateTime pauseStartUtc,
+            DateTime pauseEndUtc,
+            IReadOnlyList<FocusCellAccumulator> cells,
+            DateTime rangeStartUtc,
+            DateTime rangeEndUtc)
+        {
+            var clippedStartUtc = pauseStartUtc > rangeStartUtc ? pauseStartUtc : rangeStartUtc;
+            var clippedEndUtc = pauseEndUtc < rangeEndUtc ? pauseEndUtc : rangeEndUtc;
+            if (clippedEndUtc <= clippedStartUtc) return;
+
+            foreach (var cell in cells)
+            {
+                var overlapStart = clippedStartUtc > cell.StartsAtUtc ? clippedStartUtc : cell.StartsAtUtc;
+                var overlapEnd = clippedEndUtc < cell.EndsAtUtc ? clippedEndUtc : cell.EndsAtUtc;
+                if (overlapEnd <= overlapStart) continue;
+                cell.PauseSeconds += (overlapEnd - overlapStart).TotalSeconds;
+            }
         }
 
         private static PomodoroFocusSessionRecord? FindOpenSession(
@@ -417,6 +484,7 @@ namespace Taskato.Services
             public string Label { get; }
             public double WorkSeconds { get; set; }
             public double RestSeconds { get; set; }
+            public double PauseSeconds { get; set; }
             public List<FocusStartBridgeDto> WorkStarts { get; } = new();
         }
     }
