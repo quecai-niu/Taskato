@@ -159,6 +159,18 @@ namespace Taskato
 
             // ---- 5. 设置托盘事件回调 ----
 
+            // 双击托盘图标 → 主窗口显示时隐藏，隐藏或最小化时恢复并激活
+            _trayService.ToggleWindowRequested += () =>
+            {
+                if (activeWindow.IsVisible && activeWindow.WindowState != WindowState.Minimized)
+                {
+                    activeWindow.Hide();
+                    return;
+                }
+
+                ShowAndActivateWindow(activeWindow);
+            };
+
             // 托盘菜单"显示主窗口" → 显示并激活窗口
             _trayService.ShowWindowRequested += () =>
             {

@@ -28,11 +28,16 @@ namespace Taskato.Services
         private readonly PomodoroService _pomodoroService;
 
         /// <summary>
-        /// 托盘菜单中"番茄钟状态"的菜单项引用，需要动态更新文本
+        /// 托盘菜单中的番茄钟状态与暂停/继续入口，需要动态更新文本和可用状态
         /// </summary>
         private System.Windows.Controls.MenuItem? _pomodoroMenuItem;
 
         // ==================== 事件 ====================
+
+        /// <summary>
+        /// 用户双击托盘图标，请求切换主界面显示状态时触发
+        /// </summary>
+        public event Action? ToggleWindowRequested;
 
         /// <summary>
         /// 用户点击"显示主界面"时触发
@@ -72,8 +77,8 @@ namespace Taskato.Services
                 Visible = true
             };
 
-            // 2. 双击托盘图标 → 显示主窗口
-            _notifyIcon.DoubleClick += (s, e) => ShowWindowRequested?.Invoke();
+            // 2. 双击托盘图标 → 切换主窗口显示状态
+            _notifyIcon.DoubleClick += (s, e) => ToggleWindowRequested?.Invoke();
 
             // 3. 构建 WPF 版气泡风右键菜单
             var contextMenu = CreateWpfContextMenu();
@@ -125,9 +130,11 @@ namespace Taskato.Services
             {
                 Header = CreateCuteHeader("🍅", "专注小统计: 空闲", "#FFA502"),
                 Style = (Style)Application.Current.Resources["BubbleTrayMenuItem"],
-                IsEnabled = false // 状态展示，不可点击
+                StaysOpenOnClick = true
             };
+            _pomodoroMenuItem.Click += (s, e) => _pomodoroService.TogglePause();
             menu.Items.Add(_pomodoroMenuItem);
+            UpdatePomodoroMenuItem(_pomodoroService.CurrentState);
 
             // 菜单项 3: 设置 (绿色)
             var item3 = new System.Windows.Controls.MenuItem
@@ -205,13 +212,7 @@ namespace Taskato.Services
         /// </summary>
         private void OnPomodoroTick(int minutes, int seconds, double progress)
         {
-            if (_pomodoroMenuItem != null)
-            {
-                var prefix = _pomodoroService.CurrentState == PomodoroService.PomodoroState.CompletionPending
-                    ? "+"
-                    : string.Empty;
-                _pomodoroMenuItem.Header = CreateCuteHeader("🍅", $"专注小统计: {prefix}{minutes:D2}:{seconds:D2}", "#FFA502");
-            }
+            UpdatePomodoroMenuItem(_pomodoroService.CurrentState, minutes, seconds);
         }
 
         /// <summary>
@@ -219,18 +220,56 @@ namespace Taskato.Services
         /// </summary>
         private void OnPomodoroStateChanged(PomodoroService.PomodoroState state)
         {
-            if (_pomodoroMenuItem != null)
+            UpdatePomodoroMenuItem(state);
+        }
+
+        /// <summary>
+        /// 根据计时状态统一更新托盘中的倒计时、操作文案和可用状态。
+        /// </summary>
+        private void UpdatePomodoroMenuItem(
+            PomodoroService.PomodoroState state,
+            int? minutes = null,
+            int? seconds = null)
+        {
+            if (_pomodoroMenuItem == null) return;
+
+            var canTogglePause = state is PomodoroService.PomodoroState.Working or
+                PomodoroService.PomodoroState.Resting or
+                PomodoroService.PomodoroState.Paused;
+
+            string text;
+            if (state == PomodoroService.PomodoroState.Idle)
             {
-                var stateText = state switch
-                {
-                    PomodoroService.PomodoroState.Working => "专注中",
-                    PomodoroService.PomodoroState.Paused => "已暂停",
-                    PomodoroService.PomodoroState.Resting => "休息中",
-                    PomodoroService.PomodoroState.CompletionPending => "等待处理",
-                    _ => "空闲"
-                };
-                _pomodoroMenuItem.Header = CreateCuteHeader("🍅", $"专注小统计: {stateText}", "#FFA502");
+                text = "专注小统计: 空闲";
             }
+            else
+            {
+                var timeDisplay = minutes.HasValue && seconds.HasValue
+                    ? $"{minutes.Value:D2}:{seconds.Value:D2}"
+                    : _pomodoroService.GetTimeDisplay();
+
+                text = state switch
+                {
+                    PomodoroService.PomodoroState.Working => $"专注小统计: {timeDisplay} · 暂停",
+                    PomodoroService.PomodoroState.Resting => $"专注小统计: {timeDisplay} · 暂停",
+                    PomodoroService.PomodoroState.Paused => $"专注小统计: {timeDisplay} · 继续",
+                    PomodoroService.PomodoroState.CompletionPending =>
+                        $"专注小统计: +{GetCompletionElapsedDisplay(minutes, seconds)}",
+                    _ => "专注小统计: 空闲"
+                };
+            }
+
+            _pomodoroMenuItem.IsEnabled = canTogglePause;
+            _pomodoroMenuItem.Header = CreateCuteHeader("🍅", text, "#FFA502");
+        }
+
+        private string GetCompletionElapsedDisplay(int? minutes, int? seconds)
+        {
+            if (minutes.HasValue && seconds.HasValue)
+                return $"{minutes.Value:D2}:{seconds.Value:D2}";
+
+            var elapsedSeconds = _pomodoroService.CompletionElapsedSeconds;
+            return $"{elapsedSeconds / 60:D2}:{elapsedSeconds % 60:D2}";
         }
 
         /// <summary>
