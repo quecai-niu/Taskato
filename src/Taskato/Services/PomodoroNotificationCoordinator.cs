@@ -95,13 +95,25 @@ namespace Taskato.Services
             ToastWindow? toast = null;
             toast = new ToastWindow(
                 $"{timer.TimerName} 时间到！", "你已完成专注工作，要休息一下吗？",
-                () => timer.StartRest(), () => timer.StartWork(),
+                () =>
+                {
+                    timer.RecordTimelineEvent("choice", "选择：休息一下");
+                    timer.StartRest();
+                },
+                () =>
+                {
+                    timer.RecordTimelineEvent("choice", "选择：继续工作");
+                    timer.StartWork();
+                },
                 _viewModel.EnableToastTimer || timer.IsRecoveredCompletion,
                 actionDelaySeconds: _viewModel.ToastActionDelaySeconds,
                 soundChoice: _viewModel.NotificationSoundChoice,
                 customSoundPath: _viewModel.CustomSoundPath,
-                initialElapsedSeconds: elapsedSeconds);
+                initialElapsedSeconds: elapsedSeconds,
+                onMinimize: () => timer.RecordTimelineEvent("choice", "选择：收起休息提醒", "提醒已最小化，继续等待选择"));
             toast.Show();
+            timer.RecordTimelineEvent("reminder", "提示：该休息了",
+                timer.IsRecoveredCompletion ? "重新打开软件后恢复提醒" : "专注已完成，请选择休息一下或继续工作");
             _ = NotifyFeishuAsync(
                 _viewModel.FeishuEnabled && _viewModel.FeishuNotifyOnWork,
                 $"{timer.TimerName} 时间到！", "你已完成专注工作，要休息一下吗？",
@@ -113,12 +125,19 @@ namespace Taskato.Services
             var elapsedSeconds = timer.CompletionElapsedSeconds;
             new ToastWindow(
                 $"{timer.TimerName} 休息结束！", "精力充沛了吗？开始新一轮专注吧！",
-                null, () => timer.StartWork(), _viewModel.EnableToastTimer || timer.IsRecoveredCompletion,
+                null, () =>
+                {
+                    timer.RecordTimelineEvent("choice", "选择：开始工作");
+                    timer.StartWork();
+                }, _viewModel.EnableToastTimer || timer.IsRecoveredCompletion,
                 isRestComplete: true,
                 actionDelaySeconds: _viewModel.ToastActionDelaySeconds,
                 soundChoice: _viewModel.NotificationSoundChoice,
                 customSoundPath: _viewModel.CustomSoundPath,
-                initialElapsedSeconds: elapsedSeconds).Show();
+                initialElapsedSeconds: elapsedSeconds,
+                onMinimize: () => timer.RecordTimelineEvent("choice", "选择：收起工作提醒", "提醒已最小化，继续等待选择")).Show();
+            timer.RecordTimelineEvent("reminder", "提示：开始工作",
+                timer.IsRecoveredCompletion ? "重新打开软件后恢复提醒" : "休息已结束，请开始新一轮专注");
             _ = NotifyFeishuAsync(
                 _viewModel.FeishuEnabled && _viewModel.FeishuNotifyOnRest,
                 $"{timer.TimerName} 休息结束！", "精力充沛了吗？开始新一轮专注吧！",

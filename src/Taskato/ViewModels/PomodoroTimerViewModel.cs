@@ -94,6 +94,7 @@ namespace Taskato.ViewModels
         public event Action? RestCompleted;
         public event Action? RestHalfway;
         public event Action<PomodoroPhaseTransition>? PhaseTransitioned;
+        public event Action<Models.PomodoroTimelineEntry>? TimelineRecorded;
 
         public ICommand StartWorkCommand { get; }
         public ICommand PauseCommand { get; }
@@ -161,7 +162,12 @@ namespace Taskato.ViewModels
                 _ => CurrentState is PomodoroService.PomodoroState.Working or
                     PomodoroService.PomodoroState.Resting or
                     PomodoroService.PomodoroState.Paused);
-            StopCommand = new RelayCommand(_ => _pomodoroService.Stop(), _ => IsStarted);
+            StopCommand = new RelayCommand(_ =>
+            {
+                if (CurrentState == PomodoroService.PomodoroState.CompletionPending)
+                    RecordTimelineEvent("action", "停止计时", "结束等待并重置计时器");
+                _pomodoroService.Stop();
+            }, _ => IsStarted);
             EarlyRestCommand = new RelayCommand(_ => _pomodoroService.CompleteWorkEarly(), _ => IsWorkingState);
 
             IncreaseTimeCommand = new RelayCommand(_ =>
@@ -171,6 +177,7 @@ namespace Taskato.ViewModels
                     _pomodoroService.WorkMinutes = Math.Min(240, _pomodoroService.WorkMinutes + 5);
                     TimerDisplay = $"{_pomodoroService.WorkMinutes:D2}:00";
                     onTimeAdjusted?.Invoke(_pomodoroService.WorkMinutes);
+                    RecordTimelineEvent("action", "增加专注时长", $"下一轮 {_pomodoroService.WorkMinutes} 分钟");
                 }
             }, _ => CurrentState == PomodoroService.PomodoroState.Idle);
 
@@ -181,14 +188,24 @@ namespace Taskato.ViewModels
                     _pomodoroService.WorkMinutes = Math.Max(1, _pomodoroService.WorkMinutes - 5);
                     TimerDisplay = $"{_pomodoroService.WorkMinutes:D2}:00";
                     onTimeAdjusted?.Invoke(_pomodoroService.WorkMinutes);
+                    RecordTimelineEvent("action", "减少专注时长", $"下一轮 {_pomodoroService.WorkMinutes} 分钟");
                 }
             }, _ => CurrentState == PomodoroService.PomodoroState.Idle);
         }
 
         public void StartRest() => _pomodoroService.StartRest();
         public void StartWork() => _pomodoroService.StartWork();
-        public bool TryAdjustRemainingSeconds(int remainingSeconds) =>
-            _pomodoroService.TryAdjustRemainingSeconds(remainingSeconds);
+        public bool TryAdjustRemainingSeconds(int remainingSeconds)
+        {
+            if (!_pomodoroService.TryAdjustRemainingSeconds(remainingSeconds)) return false;
+            var phaseName = TimerPhase == "rest" ? "休息" : "专注";
+            RecordTimelineEvent("action", $"调整{phaseName}剩余时间",
+                $"剩余 {remainingSeconds / 60} 分 {remainingSeconds % 60} 秒");
+            return true;
+        }
+
+        public void RecordTimelineEvent(string kind, string title, string detail = "") =>
+            TimelineRecorded?.Invoke(new Models.PomodoroTimelineEntry(DateTimeOffset.Now, kind, title, detail));
         public bool IsValidRemainingAdjustment(int remainingSeconds) =>
             _pomodoroService.IsValidRemainingAdjustment(remainingSeconds);
 

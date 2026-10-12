@@ -757,9 +757,14 @@ namespace Taskato.ViewModels
                 if (!_focusTimerSlotIds.TryGetValue(timer, out var currentSlotId)) return;
                 _focusTracker.Track(currentSlotId, timer, SelectedTask, transition);
             };
+            timer.TimelineRecorded += entry =>
+            {
+                if (_focusTimerSlotIds.TryGetValue(timer, out var currentSlotId))
+                    _focusTracker.TrackTimeline(currentSlotId, SelectedTask, entry);
+            };
         }
 
-        private string GetFocusTimerSlotId(PomodoroTimerViewModel timer) =>
+        public string GetFocusTimerSlotId(PomodoroTimerViewModel timer) =>
             _focusTimerSlotIds.TryGetValue(timer, out var slotId)
                 ? slotId
                 : $"timer-{Guid.NewGuid():N}";

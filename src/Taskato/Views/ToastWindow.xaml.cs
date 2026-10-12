@@ -38,6 +38,7 @@ namespace Taskato.Views
 
         /// <summary>"继续工作"按钮的回调委托</summary>
         private readonly Action? _onContinue;
+        private readonly Action? _onMinimize;
 
         /// <summary>弹窗计时器</summary>
         private System.Windows.Threading.DispatcherTimer? _elapsedTimer;
@@ -78,7 +79,7 @@ namespace Taskato.Views
         public ToastWindow(string title, string subtitle,
             Action? onRest, Action? onContinue, bool showTimer = false, bool isRestComplete = false,
             double actionDelaySeconds = 1.5, int soundChoice = 3, string customSoundPath = "",
-            int initialElapsedSeconds = 0)
+            int initialElapsedSeconds = 0, Action? onMinimize = null)
         {
             InitializeComponent();
 
@@ -88,6 +89,7 @@ namespace Taskato.Views
 
             _onRest = onRest;
             _onContinue = onContinue;
+            _onMinimize = onMinimize;
             _soundChoice = soundChoice; // 记录音效方案，供 PlayNotificationSound 使用
             _customSoundPath = customSoundPath;
             _actionDelaySeconds = Math.Clamp(actionDelaySeconds, MinActionDelaySeconds, MaxActionDelaySeconds);
@@ -282,6 +284,7 @@ namespace Taskato.Views
         private void MinimizeButton_Click(object sender, RoutedEventArgs e)
         {
             WindowState = WindowState.Minimized;
+            _onMinimize?.Invoke();
         }
 
         /// <summary>

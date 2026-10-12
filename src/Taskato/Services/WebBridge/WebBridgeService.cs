@@ -146,6 +146,7 @@ namespace Taskato.Services.WebBridge
                 "app.backupData" => await BackupDataAsync(),
                 "app.restoreData" => await StageDataRestoreAsync(),
                 "pomodoro.list" => GetTimers(),
+                "pomodoro.timeline" => await GetPomodoroTimelineAsync(request.Params),
                 "pomodoro.command" => ExecuteTimerCommand(request.Params),
                 "window.minimize" or "window.maximize" or "window.close" or "window.drag" => ExecuteWindowCommand(request.Method),
                 _ => throw new BridgeRequestException("method_not_found", $"不支持的方法：{request.Method}")

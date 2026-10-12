@@ -102,6 +102,15 @@ export interface TimerListResult {
   timers: TimerDto[];
 }
 
+export interface PomodoroTimelineDto {
+  id: number;
+  occurredAt: string;
+  kind: "action" | "completion" | "reminder" | "choice";
+  title: string;
+  detail: string;
+  taskTitle: string;
+}
+
 export interface FocusStartDto {
   time: string;
   timerName: string;

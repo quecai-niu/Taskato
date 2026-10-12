@@ -54,6 +54,7 @@ import {
   useBridgeRefresh,
 } from "../ui";
 import { TaskPicker } from "../components/TaskPicker";
+import { PomodoroTimeline } from "../components/PomodoroTimeline";
 
 type TaskNode = TaskDto & { children: TaskNode[] };
 type TaskReorderSection = "groupedRoots" | "ungroupedRoots" | "subtasks";
@@ -2867,6 +2868,7 @@ export function TaskPage({
             )}
           </div>
         </section>
+        <PomodoroTimeline timerId={activeTimer?.id} />
         <section className="details-panel">
           {taskViewMode === "create" ? (
             <div className="create-context-panel">

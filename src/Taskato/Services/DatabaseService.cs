@@ -108,6 +108,7 @@ namespace Taskato.Services
             await MigrateLegacyCompletionRecordsAsync();
             await InitializeActivityRecordsAsync();
             await InitializeFocusAnalyticsAsync();
+            await _db.CreateTableAsync<PomodoroTimelineRecord>();
             await InitializeProgressRecordsAsync();
         }
 

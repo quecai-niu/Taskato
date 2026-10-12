@@ -62,7 +62,30 @@ namespace Taskato.Services
                             transition.EndReason);
                         break;
                 }
+
+                // 替换阶段是内部衔接；时间链只展示可解释的阶段变化。
+                if (transition.EndReason == "replaced") return;
+                var phaseName = transition.Phase == PomodoroFocusPhase.Work ? "专注" : "休息";
+                var title = transition.Kind switch
+                {
+                    PomodoroPhaseTransitionKind.Started => $"开始{phaseName}",
+                    PomodoroPhaseTransitionKind.Paused => $"暂停{phaseName}",
+                    PomodoroPhaseTransitionKind.Resumed => $"恢复{phaseName}",
+                    _ when transition.EndReason == "stopped" => $"停止{phaseName}",
+                    _ when transition.EndReason == "completed_early" => "提前完成专注",
+                    _ => $"{phaseName}时间到"
+                };
+                var kind = transition.Kind == PomodoroPhaseTransitionKind.Ended &&
+                    transition.EndReason != "stopped" ? "completion" : "action";
+                await _database.AppendPomodoroTimelineAsync(timerSlotId, taskTitle,
+                    new PomodoroTimelineEntry(transition.OccurredAt, kind, title));
             });
+        }
+
+        public void TrackTimeline(string timerSlotId, TaskItem? task, PomodoroTimelineEntry entry)
+        {
+            var taskTitle = task?.Title ?? string.Empty;
+            Enqueue(() => _database.AppendPomodoroTimelineAsync(timerSlotId, taskTitle, entry));
         }
 
         public void Reconcile(
@@ -100,7 +123,7 @@ namespace Taskato.Services
                         }
                         catch (Exception exception)
                         {
-                            DiagnosticsService.Log("保存番茄钟统计失败", exception);
+                            DiagnosticsService.Log("保存番茄钟统计或时间链失败", exception);
                         }
                     },
                     CancellationToken.None,

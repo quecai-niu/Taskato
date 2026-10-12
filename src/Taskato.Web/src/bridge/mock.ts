@@ -3,6 +3,7 @@ import type {
   BridgeApi,
   FocusAnalyticsResult,
   ProgressRecordDto,
+  PomodoroTimelineDto,
   SettingsDto,
   SummaryResult,
   TaskActivityDto,
@@ -230,6 +231,7 @@ const settings: SettingsDto = {
 export class MockBridge implements BridgeApi {
   readonly isNative = false;
   private activeTimerId = "timer-0";
+  private timerTimeline: Array<PomodoroTimelineDto & { timerId: string }> = [];
   private timers: TimerDto[] = [
     {
       id: "timer-0",
@@ -675,6 +677,9 @@ export class MockBridge implements BridgeApi {
       case "app.openLogsFolder":
         result = { opened: true };
         break;
+      case "pomodoro.timeline":
+        result = this.timerTimeline.filter((entry) => entry.timerId === params.timerId).slice(-100).reverse();
+        break;
       case "pomodoro.list":
         result = {
           activeId: this.activeTimerId,
@@ -685,6 +690,7 @@ export class MockBridge implements BridgeApi {
       case "pomodoro.command": {
         const command = String(params.command);
         const timerId = String(params.timerId || this.activeTimerId);
+        const previousTimer = this.timers.find((timer) => timer.id === timerId);
         if (command === "select") this.activeTimerId = timerId;
         else if (command === "add" && settings.enableMultiplePomodoros) {
           const id = `timer-${Date.now()}`;
@@ -788,6 +794,27 @@ export class MockBridge implements BridgeApi {
             }
             return timer;
           });
+        }
+        const actionTitles: Record<string, string> = {
+          start: "开始专注",
+          pause: previousTimer?.status === "已暂停" ? "恢复计时" : "暂停计时",
+          stop: "停止计时",
+          rest: "提前完成专注",
+          increase: "增加专注时长",
+          decrease: "减少专注时长",
+          adjustRemaining: "调整剩余时间",
+        };
+        if (previousTimer && actionTitles[command]) {
+          this.timerTimeline.push({
+            id: this.timerTimeline.length + 1,
+            timerId,
+            occurredAt: new Date().toISOString(),
+            kind: command === "rest" ? "completion" : "action",
+            title: actionTitles[command],
+            detail: command === "adjustRemaining" ? `剩余 ${Number(params.remainingSeconds) / 60} 分钟` : "",
+            taskTitle: "",
+          });
+          this.emit("focus.changed", {});
         }
         this.emit("pomodoro.changed", {});
         result = await this.request("pomodoro.list");
