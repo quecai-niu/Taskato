@@ -22,6 +22,43 @@ function elapsedLabel(seconds: number): string {
   return `${hours > 0 ? `${hours} 小时 ` : ""}${minutes > 0 ? `${minutes} 分 ` : ""}${remainder} 秒`;
 }
 
+function simpleTimelineEntries(entries: PomodoroTimelineDto[]): PomodoroTimelineDto[] {
+  const phaseEntries = entries.filter((entry) => phaseEvents[entry.title]);
+  const result: PomodoroTimelineDto[] = [];
+  let index = 0;
+  while (index < phaseEntries.length) {
+    const entry = phaseEntries[index];
+    if (!entry.title.includes("专注")) {
+      result.push(entry);
+      index++;
+      continue;
+    }
+
+    const focusEntries: PomodoroTimelineDto[] = [];
+    while (index < phaseEntries.length && phaseEntries[index].title.includes("专注")) {
+      focusEntries.push(phaseEntries[index]);
+      index++;
+    }
+    const completedEntries = focusEntries.filter((item) => item.title !== "开始专注");
+    // 未进入休息的多轮专注合并展示；缺少统计时长的旧记录保留原样。
+    if (completedEntries.length < 2 || completedEntries.some((item) => item.durationSeconds == null)) {
+      result.push(...focusEntries);
+      continue;
+    }
+
+    const latestCompletion = completedEntries[0];
+    let focusedSeconds = 0;
+    for (const completedEntry of completedEntries) {
+      focusedSeconds += completedEntry.durationSeconds!;
+    }
+    // 新一轮仍在进行时保留其开始事件，只合并已经结束的轮次。
+    const latestCompletionIndex = focusEntries.indexOf(latestCompletion);
+    result.push(...focusEntries.slice(0, latestCompletionIndex));
+    result.push({ ...latestCompletion, title: "专注时间到", durationSeconds: focusedSeconds });
+  }
+  return result;
+}
+
 export function PomodoroTimeline({ timerId }: { timerId?: string }) {
   const [expanded, setExpanded] = useState(true);
   const [mode, setMode] = useState<"simple" | "detailed">("simple");
@@ -54,8 +91,7 @@ export function PomodoroTimeline({ timerId }: { timerId?: string }) {
   }, [load]);
   useBridgeRefresh("focus.changed", () => void load());
 
-  const visibleEntries = mode === "detailed" ? entries : entries.filter((entry) =>
-    phaseEvents[entry.title]);
+  const visibleEntries = mode === "detailed" ? entries : simpleTimelineEntries(entries);
 
   return (
     <section className={`pomodoro-timeline${expanded ? " is-expanded" : ""}`} aria-label="番茄钟时间链">
