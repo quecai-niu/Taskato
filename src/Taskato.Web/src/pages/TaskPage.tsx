@@ -1029,7 +1029,6 @@ export function TaskPage({
   const [newTaskParentId, setNewTaskParentId] = useState<number | null>(null);
   const [childTitle, setChildTitle] = useState("");
   const [childPriority, setChildPriority] = useState(0);
-  const childInputRef = useRef<HTMLTextAreaElement>(null);
   const [contentDraft, setContentDraft] = useState("");
   const [contentStatus, setContentStatus] = useState<
     "saved" | "unsaved" | "saving" | "error"
@@ -1471,7 +1470,6 @@ export function TaskPage({
         setTaskViewMode("detail");
       } else {
         setChildTitle("");
-        if (childInputRef.current) childInputRef.current.style.height = "";
         setChildPriority(0);
       }
       await load();
@@ -2708,17 +2706,12 @@ export function TaskPage({
                       <div className="subtask-composer-body">
                         <div className="subtask-input-row">
                           <textarea
-                            ref={childInputRef}
                             aria-label="新建子任务"
                             aria-describedby="subtask-input-hint"
                             rows={2}
                             maxLength={5000}
                             value={childTitle}
-                            onChange={(event) => {
-                              setChildTitle(event.target.value);
-                              event.currentTarget.style.height = "auto";
-                              event.currentTarget.style.height = `${event.currentTarget.scrollHeight}px`;
-                            }}
+                            onChange={(event) => setChildTitle(event.target.value)}
                             onKeyDown={(event) => {
                               if (
                                 event.key === "Enter" &&
