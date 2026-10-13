@@ -36,6 +36,7 @@ namespace Taskato.Views
             InitializeComponent();
             Loaded += async (_, _) => await InitializeWebViewAsync();
             _bridge.WindowCommandRequested += HandleWindowCommand;
+            StateChanged += (_, _) => _bridge.NotifyWindowStateChanged(WindowState == WindowState.Maximized);
         }
 
         public void NavigateTo(string page) => _bridge.NavigateTo(page);
@@ -110,6 +111,7 @@ namespace Taskato.Views
         {
             switch (command)
             {
+                case "state": _bridge.NotifyWindowStateChanged(WindowState == WindowState.Maximized); break;
                 case "minimize": WindowState = WindowState.Minimized; break;
                 case "maximize": WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized; break;
                 case "close": Hide(); break;

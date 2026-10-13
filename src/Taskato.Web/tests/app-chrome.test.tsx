@@ -72,7 +72,7 @@ describe("应用框架交互", () => {
   it("标题栏空白区域请求原生拖动，按钮区域不会误触发", async () => {
     const request = vi.spyOn(bridge, "request");
     await act(async () => {
-      root.render(<TopBar activePage="tasks" appearanceMode="dark" onSearch={() => undefined} onNotifications={() => undefined} onToggleAppearance={() => undefined} />);
+      root.render(<TopBar reportError={(error) => { throw error; }} activePage="tasks" appearanceMode="dark" onSearch={() => undefined} onNotifications={() => undefined} onToggleAppearance={() => undefined} />);
     });
     host.querySelector<HTMLElement>(".top-bar")?.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, button: 0 }));
     expect(request).toHaveBeenCalledWith("window.drag");
@@ -84,7 +84,7 @@ describe("应用框架交互", () => {
   it("标题栏提供带当前状态的日夜模式快捷切换", async () => {
     const toggle = vi.fn();
     await act(async () => {
-      root.render(<TopBar activePage="tasks" appearanceMode="dark" onSearch={() => undefined} onNotifications={() => undefined} onToggleAppearance={toggle} />);
+      root.render(<TopBar reportError={(error) => { throw error; }} activePage="tasks" appearanceMode="dark" onSearch={() => undefined} onNotifications={() => undefined} onToggleAppearance={toggle} />);
     });
 
     const button = host.querySelector<HTMLButtonElement>('[aria-label="切换到日间模式"]');
@@ -95,27 +95,24 @@ describe("应用框架交互", () => {
 
   it("标题栏始终提供完整的原生窗口控制按钮", async () => {
     await act(async () => {
-      root.render(<TopBar activePage="tasks" appearanceMode="dark" onSearch={() => undefined} onNotifications={() => undefined} onToggleAppearance={() => undefined} />);
+      root.render(<TopBar reportError={(error) => { throw error; }} activePage="tasks" appearanceMode="dark" onSearch={() => undefined} onNotifications={() => undefined} onToggleAppearance={() => undefined} />);
     });
 
     expect(host.querySelector('[aria-label="最小化"]')).not.toBeNull();
-    expect(host.querySelector('[aria-label="最大化或还原"]')).not.toBeNull();
+    expect(host.querySelector('[aria-label="最大化"]')).not.toBeNull();
     expect(host.querySelector('[aria-label="关闭到托盘"]')).not.toBeNull();
   });
 
-  it("左侧导航会恢复并保存用户的折叠状态", async () => {
-    window.localStorage.setItem("taskato.navCollapsed", "true");
+  it("左侧导航始终收起且没有展开按钮", async () => {
+    window.localStorage.setItem("taskato.navCollapsed", "false");
     await act(async () => {
       root.render(<App />);
       await new Promise((resolve) => window.setTimeout(resolve, 0));
     });
 
     expect(host.querySelector(".app-shell.nav-is-collapsed")).not.toBeNull();
-    const expandButton = host.querySelector<HTMLButtonElement>(
-      '[aria-label="展开导航"]',
-    )!;
-    await act(async () => expandButton.click());
-    expect(window.localStorage.getItem("taskato.navCollapsed")).toBe("false");
+    expect(host.querySelector('[aria-label="展开导航"]')).toBeNull();
+    expect(host.querySelector('[aria-label="收起导航"]')).toBeNull();
   });
 
   it("切换菜单后恢复当前会话中选中的任务", async () => {
@@ -137,7 +134,7 @@ describe("应用框架交互", () => {
 
     const navigate = (label: string) =>
       [...host.querySelectorAll<HTMLButtonElement>(".nav-item")].find(
-        (button) => button.textContent?.includes(label),
+        (button) => button.getAttribute("aria-label") === label,
       )!;
     await act(async () => {
       navigate("历史记录").click();
@@ -175,7 +172,7 @@ describe("应用框架交互", () => {
     });
 
     const settingsButton = [...host.querySelectorAll<HTMLButtonElement>(".nav-item")]
-      .find((button) => button.textContent?.includes("设置"))!;
+      .find((button) => button.getAttribute("aria-label") === "设置")!;
     await act(async () => {
       settingsButton.click();
       await new Promise((resolve) => window.setTimeout(resolve, 0));

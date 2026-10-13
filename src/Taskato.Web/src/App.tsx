@@ -21,14 +21,9 @@ import {
   type PageId,
 } from "./ui";
 
-const NAV_COLLAPSED_STORAGE_KEY = "taskato.navCollapsed";
-
 /// 只负责应用级导航和错误边界；各业务页面与桌面框架分别位于独立模块。
 export function App() {
   const [activePage, setActivePage] = useState<PageId>("tasks");
-  const [navCollapsed, setNavCollapsed] = useState(
-    () => window.localStorage.getItem(NAV_COLLAPSED_STORAGE_KEY) === "true",
-  );
   const [error, setError] = useState<string | null>(null);
   const [pageRefreshVersion, setPageRefreshVersion] = useState(0);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -82,13 +77,6 @@ export function App() {
   ]);
 
   useEffect(() => {
-    window.localStorage.setItem(
-      NAV_COLLAPSED_STORAGE_KEY,
-      String(navCollapsed),
-    );
-  }, [navCollapsed]);
-
-  useEffect(() => {
     void bridge
       .request<{ protocolVersion: number }>("app.ready")
       .then((result) => {
@@ -137,18 +125,17 @@ export function App() {
   }, []);
 
   return (
-    <div className={`app-shell ${navCollapsed ? "nav-is-collapsed" : ""}`}>
+    <div className="app-shell nav-is-collapsed">
       <AppNav
         activePage={activePage}
         onNavigate={(page) => {
           setActivePage(page);
           setNotificationsOpen(false);
         }}
-        collapsed={navCollapsed}
-        onToggle={() => setNavCollapsed((value) => !value)}
       />
       <div className="app-main">
         <TopBar
+          reportError={reportError}
           activePage={activePage}
           appearanceMode={appearanceMode}
           onSearch={() => setSearchOpen(true)}

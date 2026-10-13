@@ -4,12 +4,13 @@ import {
   Bell,
   CaretRight,
   CheckCircle,
+  Copy,
   ClockCounterClockwise,
   ListChecks,
   MagnifyingGlass,
   Minus,
   Moon,
-  SidebarSimple,
+  Square,
   Sparkle,
   Sun,
   Timer,
@@ -30,28 +31,16 @@ import {
 export function AppNav({
   activePage,
   onNavigate,
-  collapsed,
-  onToggle,
 }: {
   activePage: PageId;
   onNavigate(page: PageId): void;
-  collapsed: boolean;
-  onToggle(): void;
 }) {
   return (
-    <aside className={`app-nav ${collapsed ? "collapsed" : ""}`}>
+    <aside className="app-nav collapsed">
       <div className="brand-row">
-        <div className="brand-mark">
+        <div className="brand-mark" title="Taskato">
           <Sparkle size={19} weight="fill" />
         </div>
-        {!collapsed && <strong>Taskato</strong>}
-        <IconButton
-          label={collapsed ? "展开导航" : "收起导航"}
-          onClick={onToggle}
-          className="nav-collapse"
-        >
-          <SidebarSimple size={19} />
-        </IconButton>
       </div>
       <nav aria-label="主要导航">
         {navItems.map(({ id, label, icon: Icon }) => (
@@ -59,49 +48,51 @@ export function AppNav({
             key={id}
             className={`nav-item ${activePage === id ? "active" : ""}`}
             onClick={() => onNavigate(id)}
-            title={collapsed ? label : undefined}
+            title={label}
+            aria-label={label}
           >
             <Icon size={20} weight={activePage === id ? "fill" : "regular"} />
-            {!collapsed && <span>{label}</span>}
           </button>
         ))}
       </nav>
       <div className="nav-spacer" />
-      <div className="focus-summary">
+      <div className="focus-summary" title="本地专注 · C# 计时器">
         <Timer size={20} />
-        {!collapsed && (
-          <div>
-            <strong>本地专注</strong>
-            <span>C# 计时器</span>
-          </div>
-        )}
       </div>
-      <div className="profile-row">
+      <div
+        className="profile-row"
+        title={`本地用户 · ${bridge.isNative ? "数据已连接" : "浏览器预览"}`}
+      >
         <span className="avatar">T</span>
-        {!collapsed && (
-          <span className="profile-copy">
-            <strong>本地用户</strong>
-            <small>{bridge.isNative ? "数据已连接" : "浏览器预览"}</small>
-          </span>
-        )}
       </div>
     </aside>
   );
 }
 
 export function TopBar({
+  reportError,
   activePage,
   appearanceMode,
   onSearch,
   onNotifications,
   onToggleAppearance,
 }: {
+  reportError(error: unknown): void;
   activePage: PageId;
   appearanceMode: "dark" | "light";
   onSearch(): void;
   onNotifications(): void;
   onToggleAppearance(): void;
 }) {
+  const [isMaximized, setIsMaximized] = useState(false);
+  useEffect(() => {
+    if (!bridge.isNative) return;
+    const unsubscribe = bridge.subscribe("window.stateChanged", (payload) => {
+      setIsMaximized((payload as { isMaximized: boolean }).isMaximized);
+    });
+    void bridge.request("window.state").catch(reportError);
+    return unsubscribe;
+  }, [reportError]);
   const title =
     navItems.find((item) => item.id === activePage)?.label ?? "任务";
   const drag = (event: MouseEvent<HTMLElement>) => {
@@ -149,10 +140,10 @@ export function TopBar({
           <Minus size={18} />
         </IconButton>
         <IconButton
-          label="最大化或还原"
-          onClick={() => void bridge.request("window.maximize")}
+          label={isMaximized ? "还原" : "最大化"}
+          onClick={() => void bridge.request("window.maximize").catch(reportError)}
         >
-          <SidebarSimple size={18} />
+          {isMaximized ? <Copy size={18} /> : <Square size={18} />}
         </IconButton>
         <IconButton
           label="关闭到托盘"

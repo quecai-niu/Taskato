@@ -61,6 +61,9 @@ namespace Taskato.Services.WebBridge
             _webView.WebMessageReceived += WebView_WebMessageReceived;
         }
 
+        public void NotifyWindowStateChanged(bool isMaximized) =>
+            PostEvent("window.stateChanged", new { isMaximized });
+
         public void NavigateTo(string page) => PostEvent("app.navigate", new { page });
 
         private async void WebView_WebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
@@ -148,7 +151,7 @@ namespace Taskato.Services.WebBridge
                 "pomodoro.list" => GetTimers(),
                 "pomodoro.timeline" => await GetPomodoroTimelineAsync(request.Params),
                 "pomodoro.command" => ExecuteTimerCommand(request.Params),
-                "window.minimize" or "window.maximize" or "window.close" or "window.drag" => ExecuteWindowCommand(request.Method),
+                "window.minimize" or "window.maximize" or "window.close" or "window.drag" or "window.state" => ExecuteWindowCommand(request.Method),
                 _ => throw new BridgeRequestException("method_not_found", $"不支持的方法：{request.Method}")
             };
         }
