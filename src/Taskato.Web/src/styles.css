@@ -468,3 +468,10 @@ body{font-size:var(--font-control)}
 .summary-stats strong { grid-row: auto; grid-column: 1; overflow-wrap: anywhere; }
 .progress-current-task { display: flex; align-items: center; gap: 8px; margin: 12px 0; }
 .progress-current-task input { width: 16px; height: 16px; accent-color: var(--primary); }
+
+/* 收起任务栏时保留顶部展开按钮，并把列表空间交还中央内容。 */
+.task-workspace.tree-is-collapsed{grid-template-columns:52px 0 minmax(360px,1fr) 12px var(--inspector-pane-width,310px)}
+.tree-is-collapsed .tree-pane{display:flex;padding:23px 8px}
+.tree-is-collapsed .tree-pane>.pane-heading{justify-content:center;padding:0 0 15px}
+.tree-is-collapsed .pane-heading>div,.tree-is-collapsed .tree-pane>:not(.pane-heading){display:none}
+.tree-is-collapsed .tree-pane+.pane-resizer{visibility:hidden}

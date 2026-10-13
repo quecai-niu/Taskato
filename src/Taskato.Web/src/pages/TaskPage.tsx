@@ -204,6 +204,7 @@ export function filterTasksWithAncestors(
 }
 
 const TREE_PANE_DEFAULT = 300;
+const TREE_PANE_COLLAPSED_WIDTH = 52;
 const TREE_PANE_MIN = 220;
 const TREE_PANE_MAX = 560;
 const INSPECTOR_PANE_DEFAULT = 310;
@@ -1058,12 +1059,21 @@ export function TaskPage({
   const [treePaneWidth, setTreePaneWidth] = useState(() =>
     storedPaneWidth("taskato.treePaneWidth", TREE_PANE_DEFAULT),
   );
+  const [treePaneCollapsed, setTreePaneCollapsed] = useState(
+    () => window.localStorage.getItem("taskato.treePaneCollapsed") === "true",
+  );
   const [inspectorPaneWidth, setInspectorPaneWidth] = useState(() =>
     storedPaneWidth("taskato.inspectorPaneWidth", INSPECTOR_PANE_DEFAULT),
   );
   useEffect(() => {
     window.localStorage.setItem("taskato.treePaneWidth", String(treePaneWidth));
   }, [treePaneWidth]);
+  useEffect(() => {
+    window.localStorage.setItem(
+      "taskato.treePaneCollapsed",
+      String(treePaneCollapsed),
+    );
+  }, [treePaneCollapsed]);
   useEffect(() => {
     window.localStorage.setItem(
       "taskato.inspectorPaneWidth",
@@ -1081,6 +1091,16 @@ export function TaskPage({
     const fitPanesToWindow = () => {
       const total = workspaceRef.current?.getBoundingClientRect().width ?? 0;
       if (!total) return;
+      if (treePaneCollapsed) {
+        const available =
+          total - TREE_PANE_COLLAPSED_WIDTH - CANVAS_PANE_MIN - RESIZER_WIDTH / 2;
+        if (inspectorPaneWidth > available) {
+          setInspectorPaneWidth(
+            clamp(available, INSPECTOR_PANE_MIN, INSPECTOR_PANE_MAX),
+          );
+        }
+        return;
+      }
       const available = total - CANVAS_PANE_MIN - RESIZER_WIDTH;
       if (treePaneWidth + inspectorPaneWidth <= available) return;
       // 缩小窗口时优先保住中央任务内容，并让左右栏都保持可操作的最小宽度。
@@ -1092,7 +1112,7 @@ export function TaskPage({
     fitPanesToWindow();
     window.addEventListener("resize", fitPanesToWindow);
     return () => window.removeEventListener("resize", fitPanesToWindow);
-  }, [inspectorPaneWidth, treePaneWidth]);
+  }, [inspectorPaneWidth, treePaneWidth, treePaneCollapsed]);
   const [timerState, setTimerState] = useState<TimerListResult>({
     activeId: "",
     multipleEnabled: false,
@@ -1965,13 +1985,15 @@ export function TaskPage({
         ),
       );
     } else {
+      const visibleTreeWidth = treePaneCollapsed ? TREE_PANE_COLLAPSED_WIDTH : treePaneWidth;
+      const visibleResizerWidth = treePaneCollapsed ? RESIZER_WIDTH / 2 : RESIZER_WIDTH;
       setInspectorPaneWidth(
         clamp(
           width,
           INSPECTOR_PANE_MIN,
           Math.min(
             INSPECTOR_PANE_MAX,
-            total - treePaneWidth - CANVAS_PANE_MIN - RESIZER_WIDTH,
+            total - visibleTreeWidth - CANVAS_PANE_MIN - visibleResizerWidth,
           ),
         ),
       );
@@ -2132,7 +2154,7 @@ export function TaskPage({
 
   return (
     <div
-      className="task-workspace page-enter"
+      className={`task-workspace page-enter${treePaneCollapsed ? " tree-is-collapsed" : ""}`}
       ref={workspaceRef}
       style={
         {
@@ -2147,6 +2169,17 @@ export function TaskPage({
             <span className="section-kicker">工作空间</span>
             <h2>项目与任务</h2>
           </div>
+          <button
+            type="button"
+            className="icon-button"
+            aria-label={treePaneCollapsed ? "展开项目与任务栏" : "折叠项目与任务栏"}
+            title={treePaneCollapsed ? "展开项目与任务栏" : "折叠项目与任务栏"}
+            aria-expanded={!treePaneCollapsed}
+            aria-controls="task-tree"
+            onClick={() => setTreePaneCollapsed((value) => !value)}
+          >
+            {treePaneCollapsed ? <CaretRight size={18} /> : <CaretLeft size={18} />}
+          </button>
         </div>
         <button
           type="button"
@@ -2180,7 +2213,7 @@ export function TaskPage({
             </button>
           </div>
         </div>
-        <div className="task-tree">
+        <div className="task-tree" id="task-tree">
           <div className="tree-section-label">
             <span>任务组</span>
             <small>{groupedRoots.length}</small>
@@ -2246,7 +2279,8 @@ export function TaskPage({
         role="separator"
         aria-label="调整任务树宽度"
         aria-orientation="vertical"
-        tabIndex={0}
+        aria-hidden={treePaneCollapsed}
+        tabIndex={treePaneCollapsed ? -1 : 0}
         onPointerDown={beginPaneResize("tree")}
         onPointerMove={movePaneResize}
         onPointerUp={finishPaneResize}
