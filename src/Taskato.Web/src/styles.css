@@ -299,6 +299,17 @@ body{font-size:var(--font-control)}
 .pomodoro-timeline-event p{margin:5px 0 0}
 .pomodoro-timeline-event .pomodoro-timeline-task{color:var(--text-3)}
 .pomodoro-timeline-event small{display:block;margin-top:6px;color:var(--text-3);font-size:11px}
+.pomodoro-timeline-event-heading{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 12px}
+.pomodoro-timeline-event.start-work{--timeline-event-color:var(--primary)}
+.pomodoro-timeline-event.start-rest{--timeline-event-color:#60a5fa}
+.pomodoro-timeline-event.end-work{--timeline-event-color:var(--secondary)}
+.pomodoro-timeline-event.end-rest{--timeline-event-color:var(--green)}
+.pomodoro-timeline-event.early-work{--timeline-event-color:var(--red)}
+.pomodoro-timeline-event.early-rest{--timeline-event-color:#fbbf24}
+.pomodoro-timeline-event:is(.start-work,.start-rest,.end-work,.end-rest,.early-work,.early-rest)::before{background:var(--timeline-event-color)}
+.pomodoro-timeline-event-heading strong{color:var(--timeline-event-color,var(--text));margin-top:0}
+:root[data-theme="light"] .pomodoro-timeline-event.start-rest{--timeline-event-color:#2563eb}
+:root[data-theme="light"] .pomodoro-timeline-event.early-rest{--timeline-event-color:#a16207}
 
 @media(max-width:1180px){.history-table>header,.history-row{min-width:820px;grid-template-columns:155px 112px minmax(180px,1fr) minmax(190px,1.2fr) 78px}}
 

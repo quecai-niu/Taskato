@@ -14,7 +14,7 @@
 - `src/Taskato.Web/src/pages/WorkspacePages.tsx`：五个业务页面的稳定导出入口。
 - `src/Taskato.Web/src/pages/TaskPage.tsx`：保留祖先链的层级任务树、中央新增任务页面、任务详情、推进记录时间线，以及可拖动调整运行中剩余时间的番茄钟侧栏。
 - `src/Taskato.Web/src/components/TaskPicker.tsx`：统一的任务筛选与搜索选择器，供父任务、移动任务、总结补录和推进记录编辑复用。
-- `src/Taskato.Web/src/components/PomodoroTimeline.tsx`：番茄钟与任务详情之间默认折叠的时间链，按计时器查询最近 100 条事件；默认简略，仅显示专注与休息的开始、结束时间，可切换详细展示全部事件、任务内容及运行、暂停时长和事件间隔。
+- `src/Taskato.Web/src/components/PomodoroTimeline.tsx`：番茄钟与任务详情之间默认折叠的时间链，按计时器查询最近 100 条事件；默认简略，显示专注与休息的开始、结束及提前结束六种彩色事件，第二行显示暂停或专注、休息时长；可切换详细展示全部事件、任务内容及事件间隔。
 - `src/Taskato.Web/src/pages/SettingsPage.tsx`：一比一承接旧版主题、番茄钟、系统、总结、提示音和飞书设置，并保留数据保护入口。
 - `src/Taskato.Web/src/pages/SummaryPage.tsx`、`HistoryPage.tsx`：可独立渲染和测试的总结与历史页面。
 - `src/Taskato.Web/src/pages/FocusAnalyticsPage.tsx`：按天、周、月展示番茄钟专注/休息/暂停时长热力格子与启动标记。
