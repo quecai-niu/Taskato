@@ -35,7 +35,7 @@ Taskato 是一个基于 **.NET 8 + WPF + WebView2 + React** 的 Windows 本地�
 - C# 负责 SQLite 数据、任务规则、番茄钟、托盘、通知、备份恢复和系统生命周期。
 - WPF 只保留 WebView2 桌面宿主、完成确认、提醒弹窗和必要的原生文件对话框，不再维护旧版 WPF 工作区。
 
-主界面是可最大化、可缩放分栏的整窗工作台。日间模式以主题主色的不同浓度构成浅色层次：图标导航较深、侧栏与标题栏柔和、正文接近中性白，卡片与输入区分层，主操作保留主题色；切换主色后整套表面配色同步变化。夜间模式采用高对比深色主题；左侧导航固定收起为图标栏，分栏宽度和最大化状态会在下次启动时恢复；窗口按钮按当前状态显示最大化或还原图标。
+主界面是可最大化、可缩放分栏的整窗工作台。日间模式采用低刺激米黄色，夜间模式采用高对比深色主题；左侧导航固定收起为图标栏，分栏宽度和最大化状态会在下次启动时恢复；窗口按钮按当前状态显示最大化或还原图标。
 
 ## 界面预览
 
@@ -72,11 +72,11 @@ Taskato 是一个基于 **.NET 8 + WPF + WebView2 + React** 的 Windows 本地�
 
 ## 下载安装
 
-最新稳定版是 **v2.64**：
+最新稳定版是 **v2.40**：
 
-- [下载 Windows 安装包](https://github.com/quecai-niu/Taskato/releases/download/v2.64/Taskato-2.64.0-win-x64-setup.exe)
-- [下载便携版 ZIP](https://github.com/quecai-niu/Taskato/releases/download/v2.64/Taskato-2.64.0-win-x64-portable.zip)
-- [查看 v2.64 Release、SHA-256 与发布清单](https://github.com/quecai-niu/Taskato/releases/tag/v2.64)
+- [下载 Windows 安装包](https://github.com/quecai-niu/Taskato/releases/download/v2.40/Taskato-2.40.0-win-x64-setup.exe)
+- [下载便携版 ZIP](https://github.com/quecai-niu/Taskato/releases/download/v2.40/Taskato-2.40.0-win-x64-portable.zip)
+- [查看 v2.40 Release、SHA-256 与发布清单](https://github.com/quecai-niu/Taskato/releases/tag/v2.40)
 
 安装包是 `.NET 8 win-x64` 自包含版本，目标电脑不需要预装 .NET Desktop Runtime；若系统缺少 WebView2 Evergreen Runtime，安装器会从微软官方入口下载。
 
@@ -136,13 +136,13 @@ dotnet run --project src/TestProject/TestProject.csproj -c Release
 生成经过前端测试、C# 回归和真实 WebView2 烟测的便携包：
 
 ```powershell
-.\scripts\build-release.ps1 -Version 2.64.0
+.\scripts\build-release.ps1 -Version 2.40.0
 ```
 
 已安装 Inno Setup 时，同时生成安装包：
 
 ```powershell
-.\scripts\build-release.ps1 -Version 2.64.0 -BuildInstaller
+.\scripts\build-release.ps1 -Version 2.40.0 -BuildInstaller
 ```
 
 完整运行时、升级、签名和回滚策略见 [发布与恢复说明](docs/release_Taskato_20260729.md)。
