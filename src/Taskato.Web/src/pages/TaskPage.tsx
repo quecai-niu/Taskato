@@ -214,7 +214,7 @@ const INSPECTOR_PANE_MAX = 560;
 const CANVAS_PANE_MIN = 360;
 const RESIZER_WIDTH = 24;
 const PRIORITY_CONTEXT_MENU_WIDTH = 176;
-const PRIORITY_CONTEXT_MENU_HEIGHT = 190;
+const PRIORITY_CONTEXT_MENU_HEIGHT = 232;
 const CONTEXT_MENU_VIEWPORT_GAP = 8;
 
 function storedPaneWidth(key: string, fallback: number): number {
@@ -311,6 +311,7 @@ function PriorityContextMenu({
   top,
   disabled,
   onChange,
+  onDelete,
   onClose,
 }: {
   task: TaskDto;
@@ -318,6 +319,7 @@ function PriorityContextMenu({
   top: number;
   disabled: boolean;
   onChange(priority: number): void;
+  onDelete(): void;
   onClose(): void;
 }) {
   const menuRef = useRef<HTMLDivElement>(null);
@@ -355,7 +357,7 @@ function PriorityContextMenu({
     event.preventDefault();
     const items = [
       ...(menuRef.current?.querySelectorAll<HTMLButtonElement>(
-        '[role="menuitemradio"]:not(:disabled)',
+        '[role="menuitemradio"]:not(:disabled), [role="menuitem"]:not(:disabled)',
       ) ?? []),
     ];
     if (items.length === 0) return;
@@ -374,7 +376,7 @@ function PriorityContextMenu({
       ref={menuRef}
       className="priority-context-menu"
       role="menu"
-      aria-label={`修改“${taskTitle(task.title)}”的优先级`}
+      aria-label={`“${taskTitle(task.title)}”的任务菜单`}
       style={{ left, top }}
       onContextMenu={(event) => event.preventDefault()}
       onKeyDown={moveFocus}
@@ -397,6 +399,16 @@ function PriorityContextMenu({
           {task.priority === index && <Check size={14} weight="bold" />}
         </button>
       ))}
+      <button
+        type="button"
+        role="menuitem"
+        className="progress-context-delete"
+        disabled={disabled}
+        onClick={onDelete}
+      >
+        <Trash size={16} />
+        删除
+      </button>
     </div>
   );
 }
@@ -1585,14 +1597,18 @@ export function TaskPage({
     () => setPriorityContextMenu(null),
     [],
   );
-  const deleteTask = async (mode: "deleteBranch" | "promoteChildren") => {
-    if (
-      !selected ||
-      !window.confirm(`确定处理“${taskTitle(selected.title)}”吗？完成历史会保留。`)
-    )
+  const deleteTask = async (
+    mode: "deleteBranch" | "promoteChildren",
+    task = selected,
+  ) => {
+    if (!task) return;
+    const action = mode === "deleteBranch"
+      ? "及其全部子任务"
+      : "并将直属子任务提升一级";
+    if (!window.confirm(`确定删除“${taskTitle(task.title)}”${action}吗？完成历史会保留。`))
       return;
     try {
-      await bridge.request("tasks.delete", { taskId: selected.id, mode });
+      await bridge.request("tasks.delete", { taskId: task.id, mode });
       await load();
     } catch (error) {
       reportError(error);
@@ -3014,6 +3030,11 @@ export function TaskPage({
             const task = priorityContextMenu.task;
             closePriorityContextMenu();
             void updateTaskPriority(task, priority);
+          }}
+          onDelete={() => {
+            const task = priorityContextMenu.task;
+            closePriorityContextMenu();
+            void deleteTask("deleteBranch", task);
           }}
         />
       )}
