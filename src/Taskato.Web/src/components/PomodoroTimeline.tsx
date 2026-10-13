@@ -69,6 +69,8 @@ export function PomodoroTimeline({ timerId }: { timerId?: string }) {
               const elapsed = previous
                 ? (new Date(entry.occurredAt).getTime() - new Date(previous.occurredAt).getTime()) / 1000
                 : null;
+              const isPhaseEvent = /^(开始|恢复|暂停|停止)(专注|休息)$/.test(entry.title)
+                || ["提前完成专注", "专注时间到", "休息时间到"].includes(entry.title);
               return (
                 <li key={entry.id} className={`pomodoro-timeline-event ${entry.kind}`}>
                   <time dateTime={entry.occurredAt}>{new Date(entry.occurredAt).toLocaleString("zh-CN", {
@@ -78,7 +80,9 @@ export function PomodoroTimeline({ timerId }: { timerId?: string }) {
                   <strong>{entry.title}</strong>
                   {entry.detail && <p>{entry.detail}</p>}
                   {entry.taskTitle && <p className="pomodoro-timeline-task">{taskTitle(entry.taskTitle)}</p>}
-                  {elapsed !== null && <small>距上一事件 {elapsedLabel(elapsed)}</small>}
+                  {entry.durationSeconds != null
+                    ? <small>{entry.durationLabel} {elapsedLabel(entry.durationSeconds)}</small>
+                    : !isPhaseEvent && elapsed !== null && <small>距上一事件 {elapsedLabel(elapsed)}</small>}
                 </li>
               );
             })}

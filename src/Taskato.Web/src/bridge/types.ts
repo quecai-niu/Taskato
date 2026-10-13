@@ -109,6 +109,8 @@ export interface PomodoroTimelineDto {
   title: string;
   detail: string;
   taskTitle: string;
+  durationSeconds?: number | null;
+  durationLabel?: string;
 }
 
 export interface FocusStartDto {

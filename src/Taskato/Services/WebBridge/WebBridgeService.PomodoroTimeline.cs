@@ -21,6 +21,8 @@ namespace Taskato.Services.WebBridge
                 entry.Kind,
                 entry.Title,
                 entry.Detail,
+                entry.DurationSeconds,
+                entry.DurationLabel,
                 taskTitle = entry.TaskTitleSnapshot
             }).ToList();
         }

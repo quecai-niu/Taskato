@@ -14,6 +14,10 @@ namespace Taskato.Models
         public string Title { get; set; } = string.Empty;
         public string Detail { get; set; } = string.Empty;
         public string TaskTitleSnapshot { get; set; } = string.Empty;
+        [Ignore]
+        public double? DurationSeconds { get; set; }
+        [Ignore]
+        public string DurationLabel { get; set; } = string.Empty;
     }
 
     public sealed record PomodoroTimelineEntry(
