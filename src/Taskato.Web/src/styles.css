@@ -524,7 +524,7 @@ body{font-size:var(--font-control)}
 .task-document .subtask-composer-heading{background:var(--surface-2)}
 .task-document .subtask-input-row{flex-wrap:wrap;gap:10px;padding:0;border:0;border-radius:0;background:transparent}
 .task-document .subtask-input-row:focus-within{box-shadow:none}
-.task-document .subtask-input-row textarea{flex:1 1 180px;min-width:0;min-height:64px;max-height:180px;overflow-y:auto;resize:none;padding:8px 10px;border:1px solid var(--border);border-radius:7px;outline:0;background:var(--surface);color:var(--text);font:inherit;font-size:var(--font-body);line-height:1.6}
+.task-document .subtask-input-row textarea{flex:1 1 180px;min-width:0;min-height:64px;max-height:96px;overflow-y:auto;resize:none;padding:8px 10px;border:1px solid var(--border);border-radius:7px;outline:0;background:var(--surface);color:var(--text);font:inherit;font-size:var(--font-body);line-height:1.6}
 .task-document .subtask-input-row textarea:focus{border-color:var(--primary)}
 .task-document .subtask-input-row textarea::placeholder{color:var(--text-3)}
 .task-document .subtask-create-priority{display:flex;flex-wrap:wrap;justify-content:space-between;gap:3px;margin:10px 0 0;padding:10px 0 0;border-top:1px solid var(--border)}
