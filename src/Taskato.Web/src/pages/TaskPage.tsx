@@ -205,7 +205,7 @@ export function filterTasksWithAncestors(
 }
 
 const TREE_PANE_DEFAULT = 300;
-const TREE_PANE_COLLAPSED_WIDTH = 76;
+const TREE_PANE_COLLAPSED_WIDTH = 170;
 const TREE_PANE_MIN = 220;
 const TREE_PANE_MAX = 560;
 const INSPECTOR_PANE_DEFAULT = 310;
@@ -415,7 +415,6 @@ function PriorityContextMenu({
 
 function TaskTreeRow({
   task,
-  compact,
   selectedId,
   expanded,
   onToggle,
@@ -432,7 +431,6 @@ function TaskTreeRow({
   onReorderKeyDown,
 }: {
   task: TaskNode;
-  compact: boolean;
   selectedId: number | null;
   expanded: Set<number>;
   onToggle(id: number): void;
@@ -552,7 +550,7 @@ function TaskTreeRow({
           onClick={() => onSelect(task.id)}
           onDoubleClick={() => task.parentId != null && onEditContent(task.id)}
         >
-          {compact ? Array.from(taskTitle(task.title))[0] : taskTitle(task.title)}
+          {taskTitle(task.title)}
         </button>
         <span className={`priority-badge priority-${task.priority}`}>
           {priorityLabels[task.priority]}
@@ -578,7 +576,6 @@ function TaskTreeRow({
             <TaskTreeRow
               key={child.id}
               task={child}
-              compact={compact}
               selectedId={selectedId}
               expanded={expanded}
               onToggle={onToggle}
@@ -1651,6 +1648,7 @@ export function TaskPage({
     if (!(target instanceof HTMLElement)) return;
     if (
       target === event.currentTarget ||
+      target.classList.contains("task-document") ||
       target.classList.contains("canvas-header") ||
       target.classList.contains("content-section") ||
       target.classList.contains("subtask-list") ||
@@ -2178,7 +2176,7 @@ export function TaskPage({
       ref={workspaceRef}
       style={
         {
-          "--tree-pane-width": `${treePaneWidth}px`,
+          "--tree-pane-width": `${treePaneCollapsed ? TREE_PANE_COLLAPSED_WIDTH : treePaneWidth}px`,
           "--inspector-pane-width": `${inspectorPaneWidth}px`,
         } as React.CSSProperties
       }
@@ -2201,30 +2199,33 @@ export function TaskPage({
             {treePaneCollapsed ? <CaretRight size={18} /> : <CaretLeft size={18} />}
           </button>
         </div>
-        <button
-          type="button"
-          className={`open-task-create ${taskViewMode === "create" ? "active" : ""}`}
-          aria-label="新增任务"
-          title="新增任务"
-          onClick={() => setTaskViewMode("create")}
-        >
-          {!treePaneCollapsed && <Plus size={17} weight="bold" />}
-          {treePaneCollapsed ? "新" : "新增任务"}
-        </button>
-        {treePaneCollapsed && (
+        <div className="tree-toolbar">
           <button
             type="button"
-            className="pane-search compact-task-search"
-            aria-label="筛选任务"
-            title="筛选任务"
-            onClick={() => {
-              setTreePaneCollapsed(false);
-              window.requestAnimationFrame(() => paneSearchRef.current?.focus());
-            }}
+            className={`open-task-create ${taskViewMode === "create" ? "active" : ""}`}
+            aria-label="新增任务"
+            title="新增任务"
+            onClick={() => setTaskViewMode("create")}
           >
-            搜
+            <Plus size={17} weight="bold" />
+            {treePaneCollapsed ? "新" : "新增任务"}
           </button>
-        )}
+          {treePaneCollapsed && (
+            <button
+              type="button"
+              className="pane-search compact-task-search"
+              aria-label="筛选任务"
+              title="筛选任务"
+              onClick={() => {
+                setTreePaneCollapsed(false);
+                window.requestAnimationFrame(() => paneSearchRef.current?.focus());
+              }}
+            >
+              <MagnifyingGlass size={16} />
+              搜
+            </button>
+          )}
+        </div>
         <label className="pane-search">
           <MagnifyingGlass size={16} />
           <input
@@ -2259,7 +2260,6 @@ export function TaskPage({
             <TaskTreeRow
               key={task.id}
               task={task}
-              compact={treePaneCollapsed}
               selectedId={taskViewMode === "detail" ? selectedId : null}
               expanded={expanded}
               onToggle={toggleExpanded}
@@ -2289,7 +2289,6 @@ export function TaskPage({
             <TaskTreeRow
               key={task.id}
               task={task}
-              compact={treePaneCollapsed}
               selectedId={taskViewMode === "detail" ? selectedId : null}
               expanded={expanded}
               onToggle={toggleExpanded}
@@ -2396,7 +2395,7 @@ export function TaskPage({
             </form>
           </section>
         ) : selected ? (
-          <>
+          <div className="task-document">
             <div className="canvas-header">
               <div className="breadcrumbs">
                 <span>任务</span>
@@ -2535,6 +2534,13 @@ export function TaskPage({
                         onChange={(event) => setChildTitle(event.target.value)}
                         placeholder="输入子任务内容，按 Enter 保存"
                       />
+                      <PrioritySelector
+                        className="subtask-create-priority"
+                        label="新子任务优先级"
+                        caption="新子任务优先级"
+                        value={childPriority}
+                        onChange={setChildPriority}
+                      />
                       <button
                         type="submit"
                         aria-label="添加子任务"
@@ -2544,13 +2550,6 @@ export function TaskPage({
                         <span>添加</span>
                       </button>
                     </div>
-                    <PrioritySelector
-                      className="subtask-create-priority"
-                      label="新子任务优先级"
-                      caption="新子任务优先级"
-                      value={childPriority}
-                      onChange={setChildPriority}
-                    />
                   </div>
                 </form>
               )}
@@ -2767,7 +2766,7 @@ export function TaskPage({
                 )}
               </div>
             </section>
-          </>
+          </div>
         ) : (
           <div className="empty-state">
             <h2>还没有任务</h2>

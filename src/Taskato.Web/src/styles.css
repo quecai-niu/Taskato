@@ -480,27 +480,57 @@ body{font-size:var(--font-control)}
 .progress-current-task { display: flex; align-items: center; gap: 8px; margin: 12px 0; }
 .progress-current-task input { width: 16px; height: 16px; accent-color: var(--primary); }
 
-/* 收起任务栏时用单字显示常用操作和任务，保留选择高亮及优先级。 */
-.task-workspace.tree-is-collapsed{grid-template-columns:76px 0 minmax(360px,1fr) 12px var(--inspector-pane-width,310px)}
-.tree-is-collapsed .tree-pane{display:flex;padding:23px 8px}
-.tree-is-collapsed .tree-pane>.pane-heading{justify-content:center;padding:0 0 15px}
-.tree-is-collapsed .tree-pane .pane-heading>div,
+/* 精简任务栏保留名称清单；所有折叠样式都限定在左栏内。 */
+.task-workspace.tree-is-collapsed{grid-template-columns:var(--tree-pane-width,170px) 0 minmax(360px,1fr) 12px var(--inspector-pane-width,310px)}
+.tree-toolbar{flex-shrink:0}
+.tree-is-collapsed .tree-pane{display:flex;padding:20px 12px;background:var(--nav)}
+.tree-is-collapsed .tree-pane>.pane-heading{padding:0 0 12px;gap:8px}
+.tree-is-collapsed .tree-pane .pane-heading h2{margin:0;font-size:var(--font-control)}
+.tree-is-collapsed .tree-pane .pane-heading .icon-button{flex-shrink:0;width:28px;height:28px}
+.tree-is-collapsed .tree-pane .section-kicker,
 .tree-is-collapsed .tree-pane .tree-filter-row,
 .tree-is-collapsed .tree-pane label.pane-search,
-.tree-is-collapsed .tree-pane .tree-section-label,
+.tree-is-collapsed .tree-pane .tree-section-label:not(.ungrouped),
+.tree-is-collapsed .tree-pane .tree-section-label small,
 .tree-is-collapsed .tree-pane .task-drag-handle,
 .tree-is-collapsed .tree-pane .task-drag-handle-placeholder,
 .tree-is-collapsed .tree-pane .tree-expand,
 .tree-is-collapsed .tree-pane .group-state,
 .tree-is-collapsed .tree-pane .task-check,
 .tree-is-collapsed .tree-pane .tree-parent-progress{display:none}
-.tree-is-collapsed .tree-pane .open-task-create,.compact-task-search{justify-content:center;padding-inline:0}
-.compact-task-search{flex-shrink:0;color:var(--text-2);cursor:pointer}
-.tree-is-collapsed .tree-pane .tree-row{grid-template-columns:minmax(0,1fr) auto;gap:4px;padding:3px 5px}
-.tree-is-collapsed .tree-pane .tree-title{text-align:center}
-.tree-is-collapsed .tree-pane .tree-children{margin-left:0;padding-left:0}
+.tree-is-collapsed .tree-pane .tree-toolbar{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.tree-is-collapsed .tree-pane .open-task-create,.tree-is-collapsed .tree-pane .compact-task-search{height:32px;min-height:32px;justify-content:center;gap:6px;margin:0;padding:0 6px;border-radius:7px;font-size:var(--font-control);font-weight:500}
+.compact-task-search{flex-shrink:0;background:var(--surface);color:var(--text-2);cursor:pointer}
+.compact-task-search:hover{background:var(--hover);color:var(--text);border-color:var(--border-strong)}
+.tree-is-collapsed .tree-pane .task-tree{padding-top:4px}
+.tree-is-collapsed .tree-pane .tree-row{min-height:40px;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:3px 8px;font-weight:500}
+.tree-is-collapsed .tree-pane .tree-row.parent-node{margin-top:0}
+.tree-is-collapsed .tree-pane .tree-title{text-align:left;font-weight:500}
+.tree-is-collapsed .tree-pane .tree-row.selected .tree-title{font-weight:650}
+.tree-is-collapsed .tree-pane .priority-badge{min-width:16px;padding:0;border:0;background:transparent;font-weight:500}
+.tree-is-collapsed .tree-pane .tree-section-label.ungrouped{height:auto;margin:16px 0 6px;padding:14px 8px 0;letter-spacing:0;font-weight:500}
+.tree-is-collapsed .tree-pane .tree-children{margin-left:0;padding-left:8px}
 .tree-is-collapsed .tree-pane .tree-children::before{display:none}
 .tree-is-collapsed .tree-pane+.pane-resizer{visibility:hidden}
+
+/* 标题、元信息和正文共用一个居中容器，避免宽窗口中各自对齐。 */
+.task-document{width:min(100%,880px);margin:0 auto}
+.task-document .content-section{max-width:none;margin:0 0 26px}
+.task-document .task-title-block>div{min-width:0}
+.task-document .task-title-block h2{overflow-wrap:anywhere}
+.task-document .meta-strip{flex-wrap:wrap}
+.task-document .subtask-composer{border-color:var(--border);background:var(--surface);border-radius:10px}
+.task-document .subtask-composer-heading{background:var(--surface-2)}
+.task-document .subtask-input-row{flex-wrap:wrap;gap:10px;padding:0;border:0;border-radius:0;background:transparent}
+.task-document .subtask-input-row:focus-within{box-shadow:none}
+.task-document .subtask-input-row input{flex:1 1 220px;min-height:36px;padding:0 10px;border:1px solid var(--border);border-radius:7px;background:var(--surface)}
+.task-document .subtask-input-row input:focus{border-color:var(--primary)}
+.task-document .subtask-create-priority{flex:0 0 auto;gap:3px;margin:0;padding:0;border:0}
+.task-document .subtask-create-priority>span{margin-right:5px;font-weight:500}
+.task-document .subtask-input-row>button{flex:0 0 auto;height:36px}
+.task-document .subtask-row{min-height:52px}
+.task-document .subtask-priority-badge{border:0;background:transparent;font-weight:500}
+.inspector-pane section.timer-card{border-radius:12px;background:var(--surface);box-shadow:0 8px 24px color-mix(in srgb,#000 6%,transparent)}
 
 .task-images-help { color: var(--text-3); font-size: 12px; line-height: 1.6; }
 .task-images-error { color: var(--red); overflow-wrap: anywhere; margin: 12px 0; }
