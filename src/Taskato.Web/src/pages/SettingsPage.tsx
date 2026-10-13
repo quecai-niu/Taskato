@@ -274,7 +274,7 @@ export function SettingsPage({ reportError }: { reportError(error: unknown): voi
           {sections.map(({ id, label, icon: Icon }) => <button key={id} className={active === id ? "active" : ""} onClick={() => navigate(id)}><Icon size={17} />{label}</button>)}
         </aside>
         <main className="settings-content">
-          <section id="settings-theme"><div><h3>外观与主题颜色</h3><p>日间模式采用柔和米黄色背景；标题栏也可随时快捷切换。</p></div>
+          <section id="settings-theme"><div><h3>外观与主题颜色</h3><p>日间模式以主题主色的不同浓度区分导航、侧栏与工作区；标题栏也可随时快捷切换。</p></div>
             <div className="setting-row"><div><strong>外观模式</strong><span>两个入口共用同一项持久化设置</span></div><div className="segmented" aria-label="外观模式"><button className={settings.appearanceMode === "dark" ? "active" : ""} onClick={() => selectAppearance("dark")}>夜间</button><button className={settings.appearanceMode === "light" ? "active" : ""} onClick={() => selectAppearance("light")}>日间</button></div></div>
             <div className="theme-palette" role="radiogroup" aria-label="主题颜色">{palettes.map(([primary, secondary], index) => <button key={primary} role="radio" aria-checked={settings.selectedColorIndex === index} className={settings.selectedColorIndex === index ? "selected" : ""} style={{ background: `linear-gradient(135deg,${primary},${secondary})` }} onClick={() => selectPalette(index)}>{settings.selectedColorIndex === index ? "✓" : ""}</button>)}</div>
           </section>
