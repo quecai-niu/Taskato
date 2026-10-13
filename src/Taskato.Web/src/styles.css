@@ -484,13 +484,22 @@ body{font-size:var(--font-control)}
 .task-workspace.tree-is-collapsed{grid-template-columns:76px 0 minmax(360px,1fr) 12px var(--inspector-pane-width,310px)}
 .tree-is-collapsed .tree-pane{display:flex;padding:23px 8px}
 .tree-is-collapsed .tree-pane>.pane-heading{justify-content:center;padding:0 0 15px}
-.tree-is-collapsed .pane-heading>div,.tree-is-collapsed .tree-filter-row,.tree-is-collapsed label.pane-search,.tree-is-collapsed .tree-section-label,.tree-is-collapsed .task-drag-handle,.tree-is-collapsed .task-drag-handle-placeholder,.tree-is-collapsed .tree-expand,.tree-is-collapsed .group-state,.tree-is-collapsed .task-check,.tree-is-collapsed .tree-parent-progress{display:none}
-.tree-is-collapsed .open-task-create,.compact-task-search{justify-content:center;padding-inline:0}
+.tree-is-collapsed .tree-pane .pane-heading>div,
+.tree-is-collapsed .tree-pane .tree-filter-row,
+.tree-is-collapsed .tree-pane label.pane-search,
+.tree-is-collapsed .tree-pane .tree-section-label,
+.tree-is-collapsed .tree-pane .task-drag-handle,
+.tree-is-collapsed .tree-pane .task-drag-handle-placeholder,
+.tree-is-collapsed .tree-pane .tree-expand,
+.tree-is-collapsed .tree-pane .group-state,
+.tree-is-collapsed .tree-pane .task-check,
+.tree-is-collapsed .tree-pane .tree-parent-progress{display:none}
+.tree-is-collapsed .tree-pane .open-task-create,.compact-task-search{justify-content:center;padding-inline:0}
 .compact-task-search{flex-shrink:0;color:var(--text-2);cursor:pointer}
-.tree-is-collapsed .tree-row{grid-template-columns:minmax(0,1fr) auto;gap:4px;padding:3px 5px}
-.tree-is-collapsed .tree-title{text-align:center}
-.tree-is-collapsed .tree-children{margin-left:0;padding-left:0}
-.tree-is-collapsed .tree-children::before{display:none}
+.tree-is-collapsed .tree-pane .tree-row{grid-template-columns:minmax(0,1fr) auto;gap:4px;padding:3px 5px}
+.tree-is-collapsed .tree-pane .tree-title{text-align:center}
+.tree-is-collapsed .tree-pane .tree-children{margin-left:0;padding-left:0}
+.tree-is-collapsed .tree-pane .tree-children::before{display:none}
 .tree-is-collapsed .tree-pane+.pane-resizer{visibility:hidden}
 
 .task-images-help { color: var(--text-3); font-size: 12px; line-height: 1.6; }

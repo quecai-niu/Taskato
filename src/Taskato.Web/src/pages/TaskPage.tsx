@@ -542,11 +542,9 @@ function TaskTreeRow({
         >
           {compact ? Array.from(taskTitle(task.title))[0] : taskTitle(task.title)}
         </button>
-        {task.priority > 0 && (
-          <span className={`priority-badge priority-${task.priority}`}>
-            {priorityLabels[task.priority]}
-          </span>
-        )}
+        <span className={`priority-badge priority-${task.priority}`}>
+          {priorityLabels[task.priority]}
+        </span>
         {isParent && (
           <span className="tree-parent-progress">
             <i>
