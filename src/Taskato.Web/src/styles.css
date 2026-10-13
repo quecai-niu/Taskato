@@ -249,7 +249,7 @@ body{font-size:var(--font-control)}
 .history-empty{font-size:var(--font-body)}
 
 /* 专注仪表卡：把状态、倒计时、时长和操作分成清晰的四个视觉层级。 */
-.inspector-pane section.timer-card{margin:0 0 20px;padding:17px;border:1px solid var(--border);border-radius:14px;background:linear-gradient(160deg,color-mix(in srgb,var(--primary) 8%,var(--surface)) 0%,var(--surface) 45%);box-shadow:0 12px 32px color-mix(in srgb,#000 14%,transparent)}
+.inspector-pane section.timer-card,.task-overview>.timer-card{margin:0 0 20px;padding:17px;border:1px solid var(--border);border-radius:14px;background:linear-gradient(160deg,color-mix(in srgb,var(--primary) 8%,var(--surface)) 0%,var(--surface) 45%);box-shadow:0 12px 32px color-mix(in srgb,#000 14%,transparent)}
 .timer-status-pill{padding:4px 8px;border:1px solid color-mix(in srgb,var(--green) 30%,transparent);border-radius:999px;background:color-mix(in srgb,var(--green) 10%,transparent);font-size:var(--font-caption)}
 .timer-picker-row{display:flex;align-items:center;gap:9px;margin-top:16px;color:var(--text-3);font-size:var(--font-caption)}
 .timer-picker-row .timer-select{flex:1;width:auto;height:38px;margin:0;padding:0 10px;font-size:var(--font-body)}
@@ -523,14 +523,15 @@ body{font-size:var(--font-control)}
 .task-document .subtask-composer-heading{background:var(--surface-2)}
 .task-document .subtask-input-row{flex-wrap:wrap;gap:10px;padding:0;border:0;border-radius:0;background:transparent}
 .task-document .subtask-input-row:focus-within{box-shadow:none}
-.task-document .subtask-input-row input{flex:1 1 220px;min-height:36px;padding:0 10px;border:1px solid var(--border);border-radius:7px;background:var(--surface)}
-.task-document .subtask-input-row input:focus{border-color:var(--primary)}
-.task-document .subtask-create-priority{flex:0 0 auto;gap:3px;margin:0;padding:0;border:0}
+.task-document .subtask-input-row textarea{flex:1 1 180px;min-width:0;min-height:64px;max-height:180px;overflow-y:auto;resize:none;padding:8px 10px;border:1px solid var(--border);border-radius:7px;outline:0;background:var(--surface);color:var(--text);font:inherit;font-size:var(--font-body);line-height:1.6}
+.task-document .subtask-input-row textarea:focus{border-color:var(--primary)}
+.task-document .subtask-input-row textarea::placeholder{color:var(--text-3)}
+.task-document .subtask-create-priority{display:flex;flex-wrap:wrap;justify-content:space-between;gap:3px;margin:10px 0 0;padding:10px 0 0;border-top:1px solid var(--border)}
 .task-document .subtask-create-priority>span{margin-right:5px;font-weight:500}
 .task-document .subtask-input-row>button{flex:0 0 auto;height:36px}
 .task-document .subtask-row{min-height:52px}
 .task-document .subtask-priority-badge{border:0;background:transparent;font-weight:500}
-.inspector-pane section.timer-card{border-radius:12px;background:var(--surface);box-shadow:0 8px 24px color-mix(in srgb,#000 6%,transparent)}
+.inspector-pane section.timer-card,.task-overview>.timer-card{border-radius:12px;background:var(--surface);box-shadow:0 8px 24px color-mix(in srgb,#000 6%,transparent)}
 
 .task-images-help { color: var(--text-3); font-size: 12px; line-height: 1.6; }
 .task-images-error { color: var(--red); overflow-wrap: anywhere; margin: 12px 0; }
@@ -546,3 +547,19 @@ body{font-size:var(--font-control)}
 .task-image-dialog .section-title-row > span { min-width: 0; overflow-wrap: anywhere; }
 .task-image-dialog .section-title-row > button { flex-shrink: 0; }
 .task-image-dialog > img { display: block; max-width: 100%; max-height: 76vh; margin: 16px auto 0; object-fit: contain; }
+
+/* 任务页上半区并排放置任务信息与原计时卡片，下方列表继续占满正文宽度。 */
+.task-canvas{container-type:inline-size}
+.task-overview{display:grid;grid-template-columns:minmax(0,1fr) 278px;align-items:start;gap:28px;margin-bottom:26px}
+.task-overview-content{min-width:0}
+.task-overview-content .content-section{margin-bottom:0}
+.task-overview>.timer-card{min-width:0;margin-bottom:0}
+.task-document .subtask-input-row{align-items:flex-start}
+.subtask-input-hint{display:block;margin-top:7px;color:var(--text-3);font-size:var(--font-caption)}
+/* 时间链接替原计时卡片区域，记录内部滚动，详情保留在右栏下方。 */
+.task-inspector-detail{display:flex;flex-direction:column}
+.task-inspector-detail section.pomodoro-timeline.is-expanded{display:flex;flex:1;flex-direction:column;min-height:180px}
+.task-inspector-detail .pomodoro-timeline-toggle{flex-shrink:0}
+.task-inspector-detail .pomodoro-timeline-content{flex:1;min-height:0;max-height:none}
+.task-inspector-detail .details-panel{flex-shrink:0}
+@container (max-width:700px){.task-overview{grid-template-columns:minmax(0,1fr)}.task-overview>.timer-card{width:min(100%,278px);justify-self:end}}

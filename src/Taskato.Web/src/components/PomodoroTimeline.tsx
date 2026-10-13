@@ -23,7 +23,7 @@ function elapsedLabel(seconds: number): string {
 }
 
 export function PomodoroTimeline({ timerId }: { timerId?: string }) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(true);
   const [mode, setMode] = useState<"simple" | "detailed">("simple");
   const [entries, setEntries] = useState<PomodoroTimelineDto[]>([]);
   const [loading, setLoading] = useState(false);
@@ -58,7 +58,7 @@ export function PomodoroTimeline({ timerId }: { timerId?: string }) {
     phaseEvents[entry.title]);
 
   return (
-    <section className="pomodoro-timeline" aria-label="番茄钟时间链">
+    <section className={`pomodoro-timeline${expanded ? " is-expanded" : ""}`} aria-label="番茄钟时间链">
       <button
         type="button"
         className="pomodoro-timeline-toggle"

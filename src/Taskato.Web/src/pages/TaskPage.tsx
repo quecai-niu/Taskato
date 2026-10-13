@@ -1029,6 +1029,7 @@ export function TaskPage({
   const [newTaskParentId, setNewTaskParentId] = useState<number | null>(null);
   const [childTitle, setChildTitle] = useState("");
   const [childPriority, setChildPriority] = useState(0);
+  const childInputRef = useRef<HTMLTextAreaElement>(null);
   const [contentDraft, setContentDraft] = useState("");
   const [contentStatus, setContentStatus] = useState<
     "saved" | "unsaved" | "saving" | "error"
@@ -1458,6 +1459,7 @@ export function TaskPage({
         setTaskViewMode("detail");
       } else {
         setChildTitle("");
+        if (childInputRef.current) childInputRef.current.style.height = "";
         setChildPriority(0);
       }
       await load();
@@ -2170,6 +2172,164 @@ export function TaskPage({
     );
   };
 
+  const focusPanel = (
+    <section className="focus-panel timer-card">
+      <div className="focus-heading">
+        <div>
+          <Timer size={19} />
+          <span>当前专注</span>
+        </div>
+        <span className="live-label timer-status-pill">
+          {activeTimer?.status ?? "未连接"}
+        </span>
+      </div>
+      <label className="timer-picker-row">
+        <span>计时器</span>
+        <select
+          className="timer-select"
+          aria-label="选择番茄钟"
+          value={timerState.activeId}
+          onChange={(event) =>
+            void bridge
+              .request("pomodoro.command", {
+                command: "select",
+                timerId: event.target.value,
+              })
+              .then(loadTimers)
+              .catch(reportError)
+          }
+        >
+          {timerState.timers.map((timer) => (
+            <option key={timer.id} value={timer.id}>
+              {timer.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <div className="timer-display-stage">
+        <span>{timerPhaseLabel}倒计时</span>
+        <strong className="timer-value">
+          {timerDisplay}
+        </strong>
+        <p>
+          {taskViewMode === "create"
+            ? "新增任务页面 · 专注计时无所属"
+            : taskTitle(progressTarget?.title ?? selected?.title ?? "选择任务后开始专注")}
+        </p>
+        {isCompletionPending ? (
+          <div className="timer-progress" aria-label="当前阶段已经结束">
+            <span />
+          </div>
+        ) : (
+          <input
+            className="timer-progress-slider"
+            type="range"
+            min={timerMinimum}
+            max={timerMaximum}
+            step="any"
+            value={timerSliderSeconds}
+            disabled={
+              !activeTimer?.canAdjustRemaining || timerAdjustmentSaving
+            }
+            aria-label={`调整${timerPhaseLabel}剩余时长`}
+            aria-valuetext={`${timerPhaseLabel}剩余 ${timerDisplay}`}
+            title={
+              activeTimer?.canAdjustRemaining
+                ? `拖动调整剩余时间，最大 ${formatTimerSeconds(timerMaximum)}`
+                : "仅在倒计时运行时可以调整"
+            }
+            style={
+              {
+                "--timer-slider-progress": `${timerSliderProgress}%`,
+              } as CSSProperties
+            }
+            onChange={(event) =>
+              previewTimerAdjustment(event.currentTarget.valueAsNumber)
+            }
+            onPointerUp={() => void commitTimerAdjustment()}
+            onPointerCancel={cancelTimerAdjustment}
+            onKeyDown={adjustTimerByKeyboard}
+            onKeyUp={() => void commitTimerAdjustment()}
+            onBlur={() => void commitTimerAdjustment()}
+          />
+        )}
+      </div>
+      <div className="timer-duration-controls" aria-label="调整番茄钟时长">
+        <button
+          type="button"
+          aria-label="减少五分钟"
+          disabled={activeTimer?.isStarted ?? true}
+          onClick={() => void timerCommand("decrease")}
+        >
+          −5 分钟
+        </button>
+        <span>{activeTimer?.workMinutes ?? 25} 分钟专注</span>
+        <button
+          type="button"
+          aria-label="增加五分钟"
+          disabled={activeTimer?.isStarted ?? true}
+          onClick={() => void timerCommand("increase")}
+        >
+          ＋5 分钟
+        </button>
+      </div>
+      <div className="timer-controls">
+        <button
+          className="primary-control"
+          disabled={
+            isCompletionPending || (activeTimer?.isStarted
+              ? !activeTimer.canPause
+              : !activeTimer?.canStart)
+          }
+          onClick={() =>
+            void timerCommand(activeTimer?.isStarted ? "pause" : "start")
+          }
+        >
+          {isCompletionPending ? (
+            <Timer size={18} />
+          ) : activeTimer?.isStarted ? (
+            <Pause size={18} />
+          ) : (
+            <Play size={18} />
+          )}
+          {isCompletionPending
+            ? "请处理完成提醒"
+            : activeTimer?.isStarted
+              ? "暂停 / 继续"
+              : "开始专注"}
+        </button>
+      </div>
+      <div className="timer-secondary-controls timer-action-row">
+        <button
+          disabled={!activeTimer?.canStop}
+          onClick={() => void timerCommand("stop")}
+        >
+          <Stop size={15} />
+          停止
+        </button>
+        <button
+          disabled={!activeTimer?.canRest}
+          onClick={() => void timerCommand("rest")}
+        >
+          <Timer size={15} />
+          提前完成
+        </button>
+      </div>
+      <div className="timer-secondary-controls timer-management-row">
+        {timerState.multipleEnabled && (
+          <button onClick={() => void timerCommand("add")}>
+            添加计时器
+          </button>
+        )}
+        {timerState.multipleEnabled && activeTimer?.id !== "timer-0" && (
+          <button onClick={() => void timerCommand("remove")}>
+            移除当前计时器
+          </button>
+        )}
+      </div>
+    </section>
+  );
+
   return (
     <div
       className={`task-workspace page-enter${treePaneCollapsed ? " tree-is-collapsed" : ""}`}
@@ -2396,163 +2556,191 @@ export function TaskPage({
           </section>
         ) : selected ? (
           <div className="task-document">
-            <div className="canvas-header">
-              <div className="breadcrumbs">
-                <span>任务</span>
-                {selectedPath.map((item, index) => {
-                  const isCurrentTask = index === selectedPath.length - 1;
-                  return (
-                    <span className="breadcrumb-part" key={item.id}>
-                      <CaretRight size={13} />
-                      {isCurrentTask ? (
-                        <span aria-current="page">{taskTitle(item.title)}</span>
-                      ) : (
-                        <button
-                          className="breadcrumb-link"
-                          aria-label={`返回父任务：${taskTitle(item.title)}`}
-                          onClick={() => selectTask(item.id)}
-                        >
-                          {taskTitle(item.title)}
-                        </button>
-                      )}
-                    </span>
-                  );
-                })}
-              </div>
-              <IconButton
-                label="更多操作"
-                onClick={() => setTaskMenuOpen((value) => !value)}
-              >
-                <DotsThree size={20} />
-              </IconButton>
-              {taskMenuOpen && (
-                <div className="task-action-menu" role="menu">
-                  <button
-                    role="menuitem"
-                    onClick={() => {
-                      setTaskMenuOpen(false);
-                      focusTaskContentEditor();
-                    }}
+            <div className="task-overview">
+              <div className="task-overview-content">
+                <div className="canvas-header">
+                  <div className="breadcrumbs">
+                    <span>任务</span>
+                    {selectedPath.map((item, index) => {
+                      const isCurrentTask = index === selectedPath.length - 1;
+                      return (
+                        <span className="breadcrumb-part" key={item.id}>
+                          <CaretRight size={13} />
+                          {isCurrentTask ? (
+                            <span aria-current="page">{taskTitle(item.title)}</span>
+                          ) : (
+                            <button
+                              className="breadcrumb-link"
+                              aria-label={`返回父任务：${taskTitle(item.title)}`}
+                              onClick={() => selectTask(item.id)}
+                            >
+                              {taskTitle(item.title)}
+                            </button>
+                          )}
+                        </span>
+                      );
+                    })}
+                  </div>
+                  <IconButton
+                    label="更多操作"
+                    onClick={() => setTaskMenuOpen((value) => !value)}
                   >
-                    <NotePencil size={16} />
-                    编辑任务
-                  </button>
-                  <button
-                    role="menuitem"
-                    onClick={() => {
-                      setTaskMenuOpen(false);
-                      document
-                        .getElementById("task-operations")
-                        ?.scrollIntoView({ behavior: "smooth", block: "center" });
-                    }}
-                  >
-                    <ListChecks size={16} />
-                    移动或调整层级
-                  </button>
-                  <button
-                    className="danger"
-                    role="menuitem"
-                    onClick={() => {
-                      setTaskMenuOpen(false);
-                      void deleteTask("deleteBranch");
-                    }}
-                  >
-                    <Trash size={16} />
-                    删除任务分支
-                  </button>
-                </div>
-              )}
-            </div>
-            <div className="task-title-block">
-              <button
-                className={`task-check large ${selected.isCompleted ? "checked" : ""}`}
-                onClick={() => toggleComplete(selected)}
-              >
-                {selected.isCompleted && <Check size={15} />}
-              </button>
-              <div>
-                <h2 className="task-title-display">{taskTitle(selected.title)}</h2>
-                <p>
-                  {selected.hasChildren
-                    ? "所有叶子任务完成后，由你手动确认父任务完成。"
-                    : "专注完成当前任务，并按需记录实际耗时。"}
-                </p>
-              </div>
-            </div>
-            <div className="meta-strip">
-              <PrioritySelector
-                className="detail-priority-selector"
-                label="任务优先级"
-                value={selected.priority}
-                disabled={prioritySaving}
-                onChange={(priority) =>
-                  void updateTaskPriority(selected, priority)
-                }
-              />
-              <span className="meta-item">
-                <CalendarBlank size={16} />
-                {new Date(selected.createdAt).toLocaleDateString()}
-              </span>
-            </div>
-            <section className="content-section">
-              <div className="section-title-row">
-                <div>
-                  <h3>直属子任务</h3>
-                  <span>
-                    {children.filter((item) => item.isCompleted).length}/
-                    {children.length} 已完成
-                  </span>
-                </div>
-              </div>
-              <div className="progress-track">
-                <span
-                  style={{
-                    width: `${children.length ? (children.filter((item) => item.isCompleted).length / children.length) * 100 : 0}%`,
-                  }}
-                />
-              </div>
-              {selected.canAddChild && (
-                <form
-                  className="subtask-composer subtask-composer-card"
-                  aria-label="新增直属子任务"
-                  onSubmit={(event) => void add(event, selected.id, "child")}
-                >
-                  <header className="subtask-composer-heading">
-                    <span aria-hidden="true">
-                      <Plus size={16} weight="bold" />
-                    </span>
-                    <div>
-                      <strong>新增直属子任务</strong>
-                      <small>将创建在当前任务下</small>
-                    </div>
-                  </header>
-                  <div className="subtask-composer-body">
-                    <div className="subtask-input-row">
-                      <input
-                        aria-label="新建子任务"
-                        value={childTitle}
-                        onChange={(event) => setChildTitle(event.target.value)}
-                        placeholder="输入子任务内容，按 Enter 保存"
-                      />
-                      <PrioritySelector
-                        className="subtask-create-priority"
-                        label="新子任务优先级"
-                        caption="新子任务优先级"
-                        value={childPriority}
-                        onChange={setChildPriority}
-                      />
+                    <DotsThree size={20} />
+                  </IconButton>
+                  {taskMenuOpen && (
+                    <div className="task-action-menu" role="menu">
                       <button
-                        type="submit"
-                        aria-label="添加子任务"
-                        disabled={!childTitle.trim()}
+                        role="menuitem"
+                        onClick={() => {
+                          setTaskMenuOpen(false);
+                          focusTaskContentEditor();
+                        }}
                       >
-                        <Plus size={15} />
-                        <span>添加</span>
+                        <NotePencil size={16} />
+                        编辑任务
+                      </button>
+                      <button
+                        role="menuitem"
+                        onClick={() => {
+                          setTaskMenuOpen(false);
+                          document
+                            .getElementById("task-operations")
+                            ?.scrollIntoView({ behavior: "smooth", block: "center" });
+                        }}
+                      >
+                        <ListChecks size={16} />
+                        移动或调整层级
+                      </button>
+                      <button
+                        className="danger"
+                        role="menuitem"
+                        onClick={() => {
+                          setTaskMenuOpen(false);
+                          void deleteTask("deleteBranch");
+                        }}
+                      >
+                        <Trash size={16} />
+                        删除任务分支
                       </button>
                     </div>
+                  )}
+                </div>
+                <div className="task-title-block">
+                  <button
+                    className={`task-check large ${selected.isCompleted ? "checked" : ""}`}
+                    onClick={() => toggleComplete(selected)}
+                  >
+                    {selected.isCompleted && <Check size={15} />}
+                  </button>
+                  <div>
+                    <h2 className="task-title-display">{taskTitle(selected.title)}</h2>
+                    <p>
+                      {selected.hasChildren
+                        ? "所有叶子任务完成后，由你手动确认父任务完成。"
+                        : "专注完成当前任务，并按需记录实际耗时。"}
+                    </p>
                   </div>
-                </form>
-              )}
+                </div>
+                <div className="meta-strip">
+                  <PrioritySelector
+                    className="detail-priority-selector"
+                    label="任务优先级"
+                    value={selected.priority}
+                    disabled={prioritySaving}
+                    onChange={(priority) =>
+                      void updateTaskPriority(selected, priority)
+                    }
+                  />
+                  <span className="meta-item">
+                    <CalendarBlank size={16} />
+                    {new Date(selected.createdAt).toLocaleDateString()}
+                  </span>
+                </div>
+                <section className="content-section">
+                  <div className="section-title-row">
+                    <div>
+                      <h3>直属子任务</h3>
+                      <span>
+                        {children.filter((item) => item.isCompleted).length}/
+                        {children.length} 已完成
+                      </span>
+                    </div>
+                  </div>
+                  <div className="progress-track">
+                    <span
+                      style={{
+                        width: `${children.length ? (children.filter((item) => item.isCompleted).length / children.length) * 100 : 0}%`,
+                      }}
+                    />
+                  </div>
+                  {selected.canAddChild && (
+                    <form
+                      className="subtask-composer subtask-composer-card"
+                      aria-label="新增直属子任务"
+                      onSubmit={(event) => void add(event, selected.id, "child")}
+                    >
+                      <header className="subtask-composer-heading">
+                        <span aria-hidden="true">
+                          <Plus size={16} weight="bold" />
+                        </span>
+                        <div>
+                          <strong>新增直属子任务</strong>
+                          <small>将创建在当前任务下</small>
+                        </div>
+                      </header>
+                      <div className="subtask-composer-body">
+                        <div className="subtask-input-row">
+                          <textarea
+                            ref={childInputRef}
+                            aria-label="新建子任务"
+                            aria-describedby="subtask-input-hint"
+                            rows={2}
+                            maxLength={5000}
+                            value={childTitle}
+                            onChange={(event) => {
+                              setChildTitle(event.target.value);
+                              event.currentTarget.style.height = "auto";
+                              event.currentTarget.style.height = `${event.currentTarget.scrollHeight}px`;
+                            }}
+                            onKeyDown={(event) => {
+                              if (
+                                event.key === "Enter" &&
+                                !event.shiftKey &&
+                                !event.nativeEvent.isComposing
+                              ) {
+                                event.preventDefault();
+                                event.currentTarget.form!.requestSubmit();
+                              }
+                            }}
+                            placeholder="输入子任务内容"
+                          />
+                          <button
+                            type="submit"
+                            aria-label="添加子任务"
+                            disabled={!childTitle.trim()}
+                          >
+                            <Plus size={15} />
+                            <span>添加</span>
+                          </button>
+                        </div>
+                        <small id="subtask-input-hint" className="subtask-input-hint">
+                          Enter 保存 · Shift+Enter 换行
+                        </small>
+                        <PrioritySelector
+                          className="subtask-create-priority"
+                          label="新子任务优先级"
+                          caption="新子任务优先级"
+                          value={childPriority}
+                          onChange={setChildPriority}
+                        />
+                      </div>
+                    </form>
+                  )}
+                </section>
+              </div>
+              {focusPanel}
+            </div>
+            <section className="content-section">
               <div className="subtask-list">
                 {(collapseCompletedChildren ? incompleteChildren : children).map(
                   renderSubtaskRow,
@@ -2786,162 +2974,8 @@ export function TaskPage({
         onPointerCancel={finishPaneResize}
         onKeyDown={resizePaneByKeyboard("inspector")}
       />
-      <aside className="inspector-pane">
-        <section className="focus-panel timer-card">
-          <div className="focus-heading">
-            <div>
-              <Timer size={19} />
-              <span>当前专注</span>
-            </div>
-            <span className="live-label timer-status-pill">
-              {activeTimer?.status ?? "未连接"}
-            </span>
-          </div>
-          <label className="timer-picker-row">
-            <span>计时器</span>
-            <select
-              className="timer-select"
-              aria-label="选择番茄钟"
-              value={timerState.activeId}
-              onChange={(event) =>
-                void bridge
-                  .request("pomodoro.command", {
-                    command: "select",
-                    timerId: event.target.value,
-                  })
-                  .then(loadTimers)
-                  .catch(reportError)
-              }
-            >
-              {timerState.timers.map((timer) => (
-                <option key={timer.id} value={timer.id}>
-                  {timer.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <div className="timer-display-stage">
-            <span>{timerPhaseLabel}倒计时</span>
-            <strong className="timer-value">
-              {timerDisplay}
-            </strong>
-            <p>
-              {taskViewMode === "create"
-                ? "新增任务页面 · 专注计时无所属"
-                : taskTitle(progressTarget?.title ?? selected?.title ?? "选择任务后开始专注")}
-            </p>
-            {isCompletionPending ? (
-              <div className="timer-progress" aria-label="当前阶段已经结束">
-                <span />
-              </div>
-            ) : (
-              <input
-                className="timer-progress-slider"
-                type="range"
-                min={timerMinimum}
-                max={timerMaximum}
-                step="any"
-                value={timerSliderSeconds}
-                disabled={
-                  !activeTimer?.canAdjustRemaining || timerAdjustmentSaving
-                }
-                aria-label={`调整${timerPhaseLabel}剩余时长`}
-                aria-valuetext={`${timerPhaseLabel}剩余 ${timerDisplay}`}
-                title={
-                  activeTimer?.canAdjustRemaining
-                    ? `拖动调整剩余时间，最大 ${formatTimerSeconds(timerMaximum)}`
-                    : "仅在倒计时运行时可以调整"
-                }
-                style={
-                  {
-                    "--timer-slider-progress": `${timerSliderProgress}%`,
-                  } as CSSProperties
-                }
-                onChange={(event) =>
-                  previewTimerAdjustment(event.currentTarget.valueAsNumber)
-                }
-                onPointerUp={() => void commitTimerAdjustment()}
-                onPointerCancel={cancelTimerAdjustment}
-                onKeyDown={adjustTimerByKeyboard}
-                onKeyUp={() => void commitTimerAdjustment()}
-                onBlur={() => void commitTimerAdjustment()}
-              />
-            )}
-          </div>
-          <div className="timer-duration-controls" aria-label="调整番茄钟时长">
-            <button
-              type="button"
-              aria-label="减少五分钟"
-              disabled={activeTimer?.isStarted ?? true}
-              onClick={() => void timerCommand("decrease")}
-            >
-              −5 分钟
-            </button>
-            <span>{activeTimer?.workMinutes ?? 25} 分钟专注</span>
-            <button
-              type="button"
-              aria-label="增加五分钟"
-              disabled={activeTimer?.isStarted ?? true}
-              onClick={() => void timerCommand("increase")}
-            >
-              ＋5 分钟
-            </button>
-          </div>
-          <div className="timer-controls">
-            <button
-              className="primary-control"
-              disabled={
-                isCompletionPending || (activeTimer?.isStarted
-                  ? !activeTimer.canPause
-                  : !activeTimer?.canStart)
-              }
-              onClick={() =>
-                void timerCommand(activeTimer?.isStarted ? "pause" : "start")
-              }
-            >
-              {isCompletionPending ? (
-                <Timer size={18} />
-              ) : activeTimer?.isStarted ? (
-                <Pause size={18} />
-              ) : (
-                <Play size={18} />
-              )}
-              {isCompletionPending
-                ? "请处理完成提醒"
-                : activeTimer?.isStarted
-                  ? "暂停 / 继续"
-                  : "开始专注"}
-            </button>
-          </div>
-          <div className="timer-secondary-controls timer-action-row">
-            <button
-              disabled={!activeTimer?.canStop}
-              onClick={() => void timerCommand("stop")}
-            >
-              <Stop size={15} />
-              停止
-            </button>
-            <button
-              disabled={!activeTimer?.canRest}
-              onClick={() => void timerCommand("rest")}
-            >
-              <Timer size={15} />
-              提前完成
-            </button>
-          </div>
-          <div className="timer-secondary-controls timer-management-row">
-            {timerState.multipleEnabled && (
-              <button onClick={() => void timerCommand("add")}>
-                添加计时器
-              </button>
-            )}
-            {timerState.multipleEnabled && activeTimer?.id !== "timer-0" && (
-              <button onClick={() => void timerCommand("remove")}>
-                移除当前计时器
-              </button>
-            )}
-          </div>
-        </section>
+      <aside className={`inspector-pane${taskViewMode === "detail" && selected ? " task-inspector-detail" : ""}`}>
+        {(taskViewMode === "create" || !selected) && focusPanel}
         <PomodoroTimeline timerId={activeTimer?.id} />
         <section className="details-panel">
           {taskViewMode === "create" ? (
