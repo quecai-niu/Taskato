@@ -242,7 +242,7 @@ namespace Taskato.Services.WebBridge
             if (parameters.TryGetProperty("title", out var titleElement))
             {
                 var title = titleElement.ValueKind == JsonValueKind.String
-                    ? titleElement.GetString()?.Trim()
+                    ? titleElement.GetString()
                     : null;
                 if (string.IsNullOrWhiteSpace(title) || title.Length > 5000)
                     throw new BridgeRequestException("invalid_title", "任务内容不能为空且不能超过 5000 个字符。");

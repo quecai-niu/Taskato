@@ -419,6 +419,49 @@ internal static class Program
                 Assert(!malformedUpdate.Ok && malformedUpdate.Error?.Code == "invalid_params",
                     "错误参数类型不能泄漏为内部异常。");
 
+                var exactContentTask = await AddTaskAsync(database, "桥接原样保存任务");
+                var exactContent = "  保留标题空格  \r\n\r\n保留末尾空格  \r\n";
+                var exactContentUpdate = await bridge.ProcessRequestAsync(new WebBridgeRequest
+                {
+                    Id = "content-exact-1",
+                    Method = "tasks.update",
+                    Params = JsonSerializer.SerializeToElement(new
+                    {
+                        taskId = exactContentTask.Id,
+                        title = exactContent
+                    })
+                });
+                Assert(exactContentUpdate.Ok,
+                    "任务内容更新必须接受包含首尾空格和换行的有效内容。");
+                Assert((await database.GetTaskByIdAsync(exactContentTask.Id))?.Title == exactContent,
+                    "任务内容更新必须原样持久化首尾空格和换行。");
+
+                var whitespaceOnlyUpdate = await bridge.ProcessRequestAsync(new WebBridgeRequest
+                {
+                    Id = "content-invalid-blank",
+                    Method = "tasks.update",
+                    Params = JsonSerializer.SerializeToElement(new
+                    {
+                        taskId = exactContentTask.Id,
+                        title = " \r\n\t "
+                    })
+                });
+                Assert(!whitespaceOnlyUpdate.Ok && whitespaceOnlyUpdate.Error?.Code == "invalid_title",
+                    "全空白任务内容仍必须被拒绝。");
+
+                var oversizedContentUpdate = await bridge.ProcessRequestAsync(new WebBridgeRequest
+                {
+                    Id = "content-invalid-length",
+                    Method = "tasks.update",
+                    Params = JsonSerializer.SerializeToElement(new
+                    {
+                        taskId = exactContentTask.Id,
+                        title = new string('长', 5001)
+                    })
+                });
+                Assert(!oversizedContentUpdate.Ok && oversizedContentUpdate.Error?.Code == "invalid_title",
+                    "超过 5000 字符的任务内容仍必须被拒绝。");
+
                 var taskList = await bridge.ProcessRequestAsync(new WebBridgeRequest
                 {
                     Id = "tasks-1",

@@ -94,6 +94,15 @@ interface PendingTaskDrag {
   invalid: boolean;
 }
 
+type TaskContentSaveStatus = "saved" | "unsaved" | "saving" | "error";
+
+interface TaskContentDraftEntry {
+  value: string;
+  baseline: string;
+  revision: number;
+  status: TaskContentSaveStatus;
+}
+
 const TASK_EXPANSION_STORAGE_KEY = "taskato.expandedTaskIds";
 const PROGRESS_RECORD_PREVIEW_COUNT = 3;
 const TASK_REORDER_LONG_PRESS_MS = 300;
@@ -1030,9 +1039,8 @@ export function TaskPage({
   const [childTitle, setChildTitle] = useState("");
   const [childPriority, setChildPriority] = useState(0);
   const [contentDraft, setContentDraft] = useState("");
-  const [contentStatus, setContentStatus] = useState<
-    "saved" | "unsaved" | "saving" | "error"
-  >("saved");
+  const [contentStatus, setContentStatus] =
+    useState<TaskContentSaveStatus>("saved");
   const [taskMenuOpen, setTaskMenuOpen] = useState(false);
   const [pendingTaskDelete, setPendingTaskDelete] = useState<{
     task: TaskDto;
@@ -1055,7 +1063,16 @@ export function TaskPage({
     message: string;
     run(): Promise<void>;
   } | null>(null);
-  const contentRequestVersion = useRef(0);
+  const contentDrafts = useRef(new Map<number, TaskContentDraftEntry>());
+  const contentDraftTaskId = useRef<number | null>(null);
+  const contentDraftValue = useRef("");
+  const contentRevision = useRef(0);
+  const contentSaveQueue = useRef<Promise<void>>(Promise.resolve());
+  const pendingContentSaves = useRef(
+    new Map<number, Map<number, Promise<void>>>(),
+  );
+  const contentDebounceTimer = useRef<number | null>(null);
+  const taskLoadVersion = useRef(0);
   const contentFocusTaskId = useRef<number | null>(null);
   const [completionTask, setCompletionTask] = useState<TaskDto | null>(null);
   const [progressScope, setProgressScope] = useState<"own" | "all">("own");
@@ -1151,8 +1168,10 @@ export function TaskPage({
   const [timerAdjustmentSaving, setTimerAdjustmentSaving] = useState(false);
 
   const load = useCallback(async () => {
+    const version = ++taskLoadVersion.current;
     try {
       const result = await bridge.request<TaskListResult>("tasks.list");
+      if (taskLoadVersion.current !== version) return;
       setTasks(result.tasks);
       setDetailTasks(result.detailTasks);
       setSelectedId((current) => {
@@ -1185,6 +1204,7 @@ export function TaskPage({
         );
       }
     } catch (error) {
+      if (taskLoadVersion.current !== version) return;
       reportError(error);
     }
   }, [reportError, storedTaskExpansion]);
@@ -1332,13 +1352,52 @@ export function TaskPage({
     }
     return path;
   }, [detailTasks, selected]);
-  useEffect(
-    () => {
-      setContentDraft(selected?.title ?? "");
+  useEffect(() => {
+    if (!selected) {
+      contentDraftTaskId.current = null;
+      contentDraftValue.current = "";
+      setContentDraft("");
       setContentStatus("saved");
-    },
-    [selected?.id, selected?.title],
-  );
+      return;
+    }
+
+    const entry = contentDrafts.current.get(selected.id);
+    if (contentDraftTaskId.current !== selected.id) {
+      const nextValue = entry?.value ?? selected.title;
+      if (entry?.status === "saved" && entry.value === selected.title) {
+        contentDrafts.current.delete(selected.id);
+      }
+      contentDraftTaskId.current = selected.id;
+      contentDraftValue.current = nextValue;
+      setContentDraft(nextValue);
+      setContentStatus(entry?.status ?? "saved");
+      return;
+    }
+
+    if (entry) {
+      if (entry.status === "saved") {
+        if (entry.value === selected.title) {
+          contentDrafts.current.delete(selected.id);
+        }
+        return;
+      }
+
+      entry.baseline = selected.title;
+      const hasPendingSave =
+        (pendingContentSaves.current.get(selected.id)?.size ?? 0) > 0;
+      if (entry.value === selected.title && !hasPendingSave) {
+        contentDrafts.current.delete(selected.id);
+        setContentStatus("saved");
+      }
+      return;
+    }
+
+    if (contentDraftValue.current !== selected.title) {
+      contentDraftValue.current = selected.title;
+      setContentDraft(selected.title);
+    }
+    setContentStatus("saved");
+  }, [selected?.id, selected?.title]);
   useEffect(() => setCompletedChildrenExpanded(false), [selected?.id]);
   useEffect(() => {
     if (collapseCompletedChildren && progressTarget?.isCompleted)
@@ -1367,6 +1426,101 @@ export function TaskPage({
     focusTaskContentEditor();
   }, [focusTaskContentEditor, selectedId]);
 
+  const saveTaskContent = useCallback(
+    (taskId: number, content: string, revision: number): Promise<void> => {
+      const entry = contentDrafts.current.get(taskId);
+      if (
+        !entry ||
+        entry.revision !== revision ||
+        entry.value !== content
+      ) {
+        return Promise.resolve();
+      }
+
+      if (!content.trim()) {
+        entry.status = "error";
+        if (contentDraftTaskId.current === taskId) setContentStatus("error");
+        return Promise.resolve();
+      }
+
+      const taskPendingSaves =
+        pendingContentSaves.current.get(taskId) ??
+        new Map<number, Promise<void>>();
+      const existingSave = taskPendingSaves.get(revision);
+      if (existingSave) {
+        entry.status = "saving";
+        if (contentDraftTaskId.current === taskId) setContentStatus("saving");
+        return existingSave;
+      }
+
+      if (entry.value === entry.baseline && taskPendingSaves.size === 0) {
+        entry.status = "saved";
+        if (contentDraftTaskId.current === taskId) setContentStatus("saved");
+        return Promise.resolve();
+      }
+
+      entry.status = "saving";
+      if (contentDraftTaskId.current === taskId) setContentStatus("saving");
+
+      const executeSave = async () => {
+        try {
+          await bridge.request<TaskDto>("tasks.update", {
+            taskId,
+            title: content,
+          });
+          setTasks((current) =>
+            current.map((task) =>
+              task.id === taskId ? { ...task, title: content } : task,
+            ),
+          );
+          setDetailTasks((current) =>
+            current.map((task) =>
+              task.id === taskId ? { ...task, title: content } : task,
+            ),
+          );
+
+          const currentEntry = contentDrafts.current.get(taskId);
+          if (!currentEntry) return;
+          currentEntry.baseline = content;
+          if (
+            currentEntry.revision === revision &&
+            currentEntry.value === content
+          ) {
+            contentDrafts.current.delete(taskId);
+            if (contentDraftTaskId.current === taskId) {
+              setContentStatus("saved");
+            }
+          }
+        } catch (error) {
+          const currentEntry = contentDrafts.current.get(taskId);
+          if (
+            currentEntry?.revision === revision &&
+            currentEntry.value === content
+          ) {
+            currentEntry.status = "error";
+            if (contentDraftTaskId.current === taskId) {
+              setContentStatus("error");
+            }
+            reportError(error);
+          }
+        } finally {
+          const currentTaskSaves = pendingContentSaves.current.get(taskId);
+          currentTaskSaves?.delete(revision);
+          if (currentTaskSaves?.size === 0) {
+            pendingContentSaves.current.delete(taskId);
+          }
+        }
+      };
+
+      const save = contentSaveQueue.current.then(executeSave);
+      contentSaveQueue.current = save;
+      taskPendingSaves.set(revision, save);
+      pendingContentSaves.current.set(taskId, taskPendingSaves);
+      return save;
+    },
+    [reportError],
+  );
+
   const editTaskContent = (taskId: number) => {
     setTaskViewMode("detail");
     if (selectedId === taskId) {
@@ -1381,37 +1535,6 @@ export function TaskPage({
     setTaskViewMode("detail");
     setSelectedId(taskId);
   };
-
-  const saveTaskContent = useCallback(
-    async (task: TaskDto, draft: string) => {
-      const content = draft.trim();
-      if (!content) {
-        setContentStatus("error");
-        return;
-      }
-      if (content === task.title) {
-        setContentStatus("saved");
-        return;
-      }
-
-      const version = ++contentRequestVersion.current;
-      setContentStatus("saving");
-      try {
-        await bridge.request("tasks.update", {
-          taskId: task.id,
-          title: content,
-        });
-        if (contentRequestVersion.current !== version) return;
-        setContentStatus("saved");
-        await load();
-      } catch (error) {
-        if (contentRequestVersion.current !== version) return;
-        setContentStatus("error");
-        reportError(error);
-      }
-    },
-    [load, reportError],
-  );
   const activeTimer =
     timerState.timers.find((timer) => timer.id === timerState.activeId) ??
     timerState.timers[0];
@@ -2073,16 +2196,33 @@ export function TaskPage({
     };
 
   useEffect(() => {
-    if (!selected || contentDraft === selected.title) {
-      setContentStatus("saved");
+    if (contentDebounceTimer.current != null) {
+      window.clearTimeout(contentDebounceTimer.current);
+      contentDebounceTimer.current = null;
+    }
+
+    if (selectedId == null) return;
+    const entry = contentDrafts.current.get(selectedId);
+    if (
+      !entry ||
+      entry.value !== contentDraft ||
+      entry.status !== "unsaved"
+    ) {
       return;
     }
-    setContentStatus("unsaved");
+
     const timer = window.setTimeout(() => {
-      void saveTaskContent(selected, contentDraft);
+      contentDebounceTimer.current = null;
+      void saveTaskContent(selectedId, entry.value, entry.revision);
     }, 700);
-    return () => window.clearTimeout(timer);
-  }, [contentDraft, saveTaskContent, selected]);
+    contentDebounceTimer.current = timer;
+    return () => {
+      window.clearTimeout(timer);
+      if (contentDebounceTimer.current === timer) {
+        contentDebounceTimer.current = null;
+      }
+    };
+  }, [contentDraft, saveTaskContent, selectedId]);
 
   const renderSubtaskRow = (item: TaskDto) => {
     const isProgressTarget = item.id === progressTarget?.id;
@@ -2803,9 +2943,43 @@ export function TaskPage({
                 maxLength={5000}
                 placeholder="第一行作为标题，其余内容作为详细说明；停止输入后自动保存。"
                 value={contentDraft}
-                onChange={(event) => setContentDraft(event.target.value)}
+                onChange={(event) => {
+                  if (!selected) return;
+                  const value = event.target.value;
+                  const existing = contentDrafts.current.get(selected.id);
+                  const baseline = existing?.baseline ?? selected.title;
+                  const revision = ++contentRevision.current;
+                  const hasPendingSave =
+                    (pendingContentSaves.current.get(selected.id)?.size ?? 0) > 0;
+
+                  contentDraftTaskId.current = selected.id;
+                  contentDraftValue.current = value;
+                  setContentDraft(value);
+                  if (value === baseline && !hasPendingSave) {
+                    contentDrafts.current.delete(selected.id);
+                    setContentStatus("saved");
+                    return;
+                  }
+
+                  contentDrafts.current.set(selected.id, {
+                    value,
+                    baseline,
+                    revision,
+                    status: "unsaved",
+                  });
+                  setContentStatus("unsaved");
+                }}
                 onBlur={() => {
-                  if (selected) void saveTaskContent(selected, contentDraft);
+                  if (contentDebounceTimer.current != null) {
+                    window.clearTimeout(contentDebounceTimer.current);
+                    contentDebounceTimer.current = null;
+                  }
+                  const taskId = contentDraftTaskId.current;
+                  if (taskId == null) return;
+                  const entry = contentDrafts.current.get(taskId);
+                  if (entry) {
+                    void saveTaskContent(taskId, entry.value, entry.revision);
+                  }
                 }}
               />
             </section>

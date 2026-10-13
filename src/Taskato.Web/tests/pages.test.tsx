@@ -107,6 +107,43 @@ describe("独立业务页面", () => {
     });
   }
 
+  function updateTextArea(textarea: HTMLTextAreaElement, value: string): void {
+    const valueSetter = Object.getOwnPropertyDescriptor(
+      HTMLTextAreaElement.prototype,
+      "value",
+    )!.set!;
+    valueSetter.call(textarea, value);
+    textarea.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+
+  function deferTaskUpdates() {
+    const originalRequest = bridge.request.bind(bridge);
+    const pendingUpdates: Array<{
+      params: Record<string, unknown>;
+      resolve(): Promise<void>;
+      reject(error: Error): void;
+    }> = [];
+    const requestSpy = vi.spyOn(bridge, "request").mockImplementation(
+      <T,>(method: string, params: Record<string, unknown> = {}) => {
+        if (method !== "tasks.update") return originalRequest<T>(method, params);
+        return new Promise<T>((resolve, reject) => {
+          pendingUpdates.push({
+            params,
+            resolve: async () => {
+              try {
+                resolve(await originalRequest<T>(method, params));
+              } catch (error) {
+                reject(error);
+              }
+            },
+            reject,
+          });
+        });
+      },
+    );
+    return { pendingUpdates, requestSpy };
+  }
+
   async function openContextMenu(
     element: HTMLElement,
     clientX = 120,
@@ -1334,6 +1371,216 @@ describe("独立业务页面", () => {
     );
   });
 
+  it("自动保存串行执行且旧刷新不会覆盖后续输入或移动光标", async () => {
+    await renderAndFlush(
+      <TaskPage reportError={() => undefined} requestedTaskId={null} />,
+    );
+    const { pendingUpdates, requestSpy } = deferTaskUpdates();
+    const editor = host.querySelector<HTMLTextAreaElement>(
+      '[aria-label="任务内容"]',
+    )!;
+
+    await act(async () => {
+      editor.focus();
+      updateTextArea(editor, "第一版任务内容");
+      await new Promise((resolve) => window.setTimeout(resolve, 750));
+    });
+    expect(pendingUpdates).toHaveLength(1);
+
+    const latestContent = "第一版中间继续输入任务内容";
+    await act(async () => {
+      updateTextArea(editor, latestContent);
+      editor.setSelectionRange(7, 7);
+      await new Promise((resolve) => window.setTimeout(resolve, 750));
+    });
+    expect(
+      requestSpy.mock.calls.filter(([method]) => method === "tasks.update"),
+    ).toHaveLength(1);
+
+    await act(async () => {
+      await pendingUpdates[0].resolve();
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
+    expect(pendingUpdates).toHaveLength(2);
+    expect(editor.value).toBe(latestContent);
+    expect(editor.selectionStart).toBe(7);
+    expect(editor.selectionEnd).toBe(7);
+
+    await act(async () => {
+      await pendingUpdates[1].resolve();
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
+    expect(pendingUpdates.map((update) => update.params.title)).toEqual([
+      "第一版任务内容",
+      latestContent,
+    ]);
+    expect(host.querySelector(".task-content-section .save-status")?.textContent).toBe(
+      "已保存",
+    );
+  });
+
+  it("较早发起的任务列表刷新不会覆盖较新的任务内容", async () => {
+    const originalRequest = bridge.request.bind(bridge);
+    const initial = await originalRequest<TaskListResult>("tasks.list");
+    const selectedTaskId = initial.selectedTaskId ?? initial.tasks[0].id;
+    const pendingLists: Array<(result: TaskListResult) => void> = [];
+    let initialListLoaded = false;
+    vi.spyOn(bridge, "request").mockImplementation(
+      <T,>(method: string, params?: Record<string, unknown>) => {
+        if (method !== "tasks.list") return originalRequest<T>(method, params);
+        if (!initialListLoaded) {
+          initialListLoaded = true;
+          return Promise.resolve(initial as T);
+        }
+        return new Promise<T>((resolve) => {
+          pendingLists.push((result) => resolve(result as T));
+        });
+      },
+    );
+    await renderAndFlush(
+      <TaskPage reportError={() => undefined} requestedTaskId={selectedTaskId} />,
+    );
+    if (pendingLists.length > 0) {
+      await act(async () => {
+        pendingLists.forEach((resolve) => resolve(initial));
+        await new Promise((resolve) => window.setTimeout(resolve, 0));
+      });
+    }
+    const refreshStartIndex = pendingLists.length;
+
+    const emitTaskChange = (bridge as unknown as {
+      emit(eventName: string, payload: unknown): void;
+    }).emit.bind(bridge);
+    await act(async () => {
+      emitTaskChange("tasks.changed", {});
+      emitTaskChange("tasks.changed", {});
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
+    expect(pendingLists).toHaveLength(refreshStartIndex + 2);
+
+    const withSelectedTitle = (title: string): TaskListResult => ({
+      ...initial,
+      tasks: initial.tasks.map((task) =>
+        task.id === selectedTaskId ? { ...task, title } : task,
+      ),
+      detailTasks: initial.detailTasks.map((task) =>
+        task.id === selectedTaskId ? { ...task, title } : task,
+      ),
+    });
+    await act(async () => {
+      pendingLists[refreshStartIndex + 1](withSelectedTitle("较新的任务内容"));
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
+    expect(
+      host.querySelector<HTMLTextAreaElement>('[aria-label="任务内容"]')?.value,
+    ).toBe("较新的任务内容");
+
+    await act(async () => {
+      pendingLists[refreshStartIndex](withSelectedTitle("过期的任务内容"));
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
+    expect(
+      host.querySelector<HTMLTextAreaElement>('[aria-label="任务内容"]')?.value,
+    ).toBe("较新的任务内容");
+  });
+
+  it("任务内容自动保存会原样保留首尾空格和连续换行", async () => {
+    await renderAndFlush(
+      <TaskPage reportError={() => undefined} requestedTaskId={null} />,
+    );
+    const requestSpy = vi.spyOn(bridge, "request");
+    const editor = host.querySelector<HTMLTextAreaElement>(
+      '[aria-label="任务内容"]',
+    )!;
+    const exactContent = "  保留空格  \n\n详细说明  \n";
+
+    await act(async () => {
+      updateTextArea(editor, exactContent);
+      await new Promise((resolve) => window.setTimeout(resolve, 800));
+    });
+
+    expect(requestSpy).toHaveBeenCalledWith("tasks.update", {
+      taskId: expect.any(Number),
+      title: exactContent,
+    });
+    expect(editor.value).toBe(exactContent);
+  });
+
+  it("快速切换任务再返回时保留尚未确认落库的草稿", async () => {
+    await renderAndFlush(
+      <TaskPage reportError={() => undefined} requestedTaskId={null} />,
+    );
+    const { pendingUpdates } = deferTaskUpdates();
+    const editor = host.querySelector<HTMLTextAreaElement>(
+      '[aria-label="任务内容"]',
+    )!;
+    const selectedTitle = host.querySelector<HTMLButtonElement>(
+      ".tree-row.selected .tree-title",
+    )!;
+    const otherTitle = [
+      ...host.querySelectorAll<HTMLButtonElement>(".tree-title"),
+    ].find((button) => button !== selectedTitle)!;
+    const pendingContent = "切换期间仍需保留的草稿";
+
+    await act(async () => {
+      editor.focus();
+      updateTextArea(editor, pendingContent);
+      editor.blur();
+      otherTitle.click();
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+      selectedTitle.click();
+      await new Promise((resolve) => window.setTimeout(resolve, 20));
+    });
+
+    expect(pendingUpdates).toHaveLength(1);
+    expect(
+      host.querySelector<HTMLTextAreaElement>('[aria-label="任务内容"]')?.value,
+    ).toBe(pendingContent);
+
+    await act(async () => {
+      await pendingUpdates[0].resolve();
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
+  });
+
+  it("旧版本保存失败不会覆盖较新版本的保存状态", async () => {
+    const reportError = vi.fn();
+    await renderAndFlush(
+      <TaskPage reportError={reportError} requestedTaskId={null} />,
+    );
+    const { pendingUpdates } = deferTaskUpdates();
+    const editor = host.querySelector<HTMLTextAreaElement>(
+      '[aria-label="任务内容"]',
+    )!;
+
+    await act(async () => {
+      updateTextArea(editor, "会失败的旧版本");
+      await new Promise((resolve) => window.setTimeout(resolve, 750));
+      updateTextArea(editor, "最终保存的新版本");
+      await new Promise((resolve) => window.setTimeout(resolve, 750));
+    });
+    expect(pendingUpdates).toHaveLength(1);
+
+    await act(async () => {
+      pendingUpdates[0].reject(new Error("旧版本保存失败"));
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
+    expect(pendingUpdates).toHaveLength(2);
+    expect(reportError).not.toHaveBeenCalled();
+    expect(host.querySelector(".task-content-section .save-status")?.textContent).toBe(
+      "正在保存…",
+    );
+
+    await act(async () => {
+      await pendingUpdates[1].resolve();
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    });
+    expect(editor.value).toBe("最终保存的新版本");
+    expect(host.querySelector(".task-content-section .save-status")?.textContent).toBe(
+      "已保存",
+    );
+  });
+
   it("任务内容失去焦点时立即保存，不等待自动保存延迟", async () => {
     const requestSpy = vi.spyOn(bridge, "request");
     await renderAndFlush(
@@ -1352,13 +1599,20 @@ describe("独立业务页面", () => {
       valueSetter.call(editor, "切换任务前必须保存的内容");
       editor.dispatchEvent(new Event("input", { bubbles: true }));
       editor.blur();
-      await new Promise((resolve) => window.setTimeout(resolve, 20));
+      await new Promise((resolve) => window.setTimeout(resolve, 800));
     });
 
     expect(requestSpy).toHaveBeenCalledWith("tasks.update", {
       taskId: expect.any(Number),
       title: "切换任务前必须保存的内容",
     });
+    expect(
+      requestSpy.mock.calls.filter(
+        ([method, params]) =>
+          method === "tasks.update" &&
+          params?.title === "切换任务前必须保存的内容",
+      ),
+    ).toHaveLength(1);
   });
 
   it("子任务面包屑可以返回父任务", async () => {
