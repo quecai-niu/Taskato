@@ -101,6 +101,12 @@ namespace Taskato.Services
         public bool CanAdjustRemaining =>
             CurrentState is PomodoroState.Working or PomodoroState.Resting;
 
+        // 总时长在调整倒计时时同步保留已用秒数；暂停期间剩余秒数不变。
+        public int? CurrentPhaseElapsedSeconds =>
+            CurrentState is PomodoroState.Working or PomodoroState.Resting or PomodoroState.Paused
+                ? Math.Max(0, _totalSeconds - _remainingSeconds)
+                : null;
+
         // ==================== 事件回调 ====================
 
         /// <summary>

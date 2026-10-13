@@ -3160,7 +3160,7 @@ export function TaskPage({
       />
       <aside className={`inspector-pane${taskViewMode === "detail" && selected ? " task-inspector-detail" : ""}`}>
         {(taskViewMode === "create" || !selected) && focusPanel}
-        <PomodoroTimeline timerId={activeTimer?.id} />
+        <PomodoroTimeline timerId={activeTimer?.id} timer={activeTimer} />
         <section className="details-panel">
           {taskViewMode === "create" ? (
             <div className="create-context-panel">

@@ -508,6 +508,7 @@ namespace Taskato.Services.WebBridge
         private TimerBridgeDto ToTimerDto(PomodoroTimerViewModel timer) => new(
             TimerId(timer), timer.TimerName, timer.TimerDisplay, timer.StatusText, timer.Progress,
             timer.WorkMinutes, timer.RestMinutes, timer.TimerPhase, timer.RemainingSeconds,
+            timer.CurrentPhaseElapsedSeconds,
             timer.MinimumAdjustableSeconds, timer.MaximumAdjustableSeconds,
             timer.AdjustmentStepSeconds, timer.CanAdjustRemaining, timer.IsStarted,
             timer.StartWorkCommand.CanExecute(null), timer.PauseCommand.CanExecute(null),

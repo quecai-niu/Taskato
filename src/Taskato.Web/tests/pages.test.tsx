@@ -237,6 +237,7 @@ describe("独立业务页面", () => {
           restMinutes: 5,
           phase: "rest",
           remainingSeconds: 180,
+          currentPhaseElapsedSeconds: 120,
           minimumAdjustableSeconds: 60,
           maximumAdjustableSeconds: 450,
           adjustmentStepSeconds: 60,

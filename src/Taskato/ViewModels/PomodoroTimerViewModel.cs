@@ -59,6 +59,7 @@ namespace Taskato.ViewModels
             ? "rest"
             : "work";
         public int RemainingSeconds => _pomodoroService.DisplayRemainingSeconds;
+        public int? CurrentPhaseElapsedSeconds => _pomodoroService.CurrentPhaseElapsedSeconds;
         public int MinimumAdjustableSeconds => PomodoroService.MinimumAdjustableSeconds;
         public int MaximumAdjustableSeconds => _pomodoroService.MaximumAdjustableSeconds;
         public int AdjustmentStepSeconds => PomodoroService.AdjustmentStepSeconds;

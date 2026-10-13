@@ -85,6 +85,7 @@ export interface TimerDto {
   restMinutes: number;
   phase: "work" | "rest";
   remainingSeconds: number;
+  currentPhaseElapsedSeconds: number | null;
   minimumAdjustableSeconds: number;
   maximumAdjustableSeconds: number;
   adjustmentStepSeconds: number;

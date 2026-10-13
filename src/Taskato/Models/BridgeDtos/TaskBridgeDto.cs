@@ -58,6 +58,7 @@ namespace Taskato.Models.BridgeDtos
         int RestMinutes,
         string Phase,
         int RemainingSeconds,
+        int? CurrentPhaseElapsedSeconds,
         int MinimumAdjustableSeconds,
         int MaximumAdjustableSeconds,
         int AdjustmentStepSeconds,

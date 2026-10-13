@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CaretRight, ClockCounterClockwise } from "@phosphor-icons/react";
-import { bridge, type PomodoroTimelineDto, type SettingsDto } from "../bridge";
+import { bridge, type PomodoroTimelineDto, type SettingsDto, type TimerDto } from "../bridge";
 import { taskTitle } from "../taskText";
 import { useBridgeRefresh } from "../ui";
 
@@ -80,7 +80,7 @@ function simpleTimelineEntries(entries: PomodoroTimelineDto[], pauseThresholdMin
   return result;
 }
 
-export function PomodoroTimeline({ timerId }: { timerId?: string }) {
+export function PomodoroTimeline({ timerId, timer }: { timerId?: string; timer?: TimerDto }) {
   const [expanded, setExpanded] = useState(true);
   const [mode, setMode] = useState<"simple" | "detailed">("simple");
   const [entries, setEntries] = useState<PomodoroTimelineDto[]>([]);
@@ -145,6 +145,12 @@ export function PomodoroTimeline({ timerId }: { timerId?: string }) {
             <button type="button" className={mode === "detailed" ? "active" : ""} aria-pressed={mode === "detailed"} onClick={() => setMode("detailed")}>详细</button>
           </div>
           <p className="pomodoro-timeline-caption">当前计时器 · 最近 100 条 · 从本功能启用后记录</p>
+          {timer?.currentPhaseElapsedSeconds != null && (
+            <p className="pomodoro-timeline-caption">
+              <strong>当前{timer.phase === "work" ? "专注" : "休息"}已进行 {elapsedLabel(timer.currentPhaseElapsedSeconds)}</strong>
+              {timer.status === "已暂停" && " · 已暂停"}
+            </p>
+          )}
           {loading && entries.length === 0 && <p role="status">正在加载记录…</p>}
           {error && <div role="alert"><p>{error}</p><button type="button" onClick={() => void load()}>重试</button></div>}
           {!loading && !error && visibleEntries.length === 0 && <p>{mode === "simple" ? "暂无专注或休息的开始、结束记录。" : "暂无记录。开始专注后，阶段变化、提醒和你的选择会保存在这里。"}</p>}
