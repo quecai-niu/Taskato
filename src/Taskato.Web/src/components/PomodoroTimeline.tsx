@@ -22,27 +22,46 @@ function elapsedLabel(seconds: number): string {
   return `${hours > 0 ? `${hours} 小时 ` : ""}${minutes > 0 ? `${minutes} 分 ` : ""}${remainder} 秒`;
 }
 
-function simpleTimelineEntries(entries: PomodoroTimelineDto[]): PomodoroTimelineDto[] {
-  const phaseEntries = entries.filter((entry) => phaseEvents[entry.title]);
-  const result: PomodoroTimelineDto[] = [];
+type TimelineDisplayEntry = PomodoroTimelineDto & { startedAt?: string };
+
+function simpleTimelineEntries(entries: PomodoroTimelineDto[], pauseThresholdMinutes: number): TimelineDisplayEntry[] {
+  const originalPhaseEntries = entries.filter((entry) => phaseEvents[entry.title]);
+  const phaseEntries: TimelineDisplayEntry[] = [];
+  for (let index = 0; index < originalPhaseEntries.length; index++) {
+    const entry = originalPhaseEntries[index];
+    const start = originalPhaseEntries[index + 1];
+    const isCompletion = !entry.title.startsWith("开始");
+    // 记录按时间倒序排列；只有紧邻的同阶段开始、结束才能配对。
+    const matchesStart = start?.title === (entry.title.includes("专注") ? "开始专注" : "开始休息");
+    if (isCompletion && matchesStart && entry.durationSeconds != null
+      && start.durationSeconds != null && start.durationSeconds < pauseThresholdMinutes * 60) {
+      phaseEntries.push({ ...entry, startedAt: start.occurredAt });
+      index++;
+    } else {
+      phaseEntries.push(entry);
+    }
+  }
+
+  const result: TimelineDisplayEntry[] = [];
   let index = 0;
   while (index < phaseEntries.length) {
     const entry = phaseEntries[index];
-    if (!entry.title.includes("专注")) {
+    if (!entry.title.includes("专注") || entry.title === "开始专注") {
       result.push(entry);
       index++;
       continue;
     }
 
-    const focusEntries: PomodoroTimelineDto[] = [];
-    while (index < phaseEntries.length && phaseEntries[index].title.includes("专注")) {
-      focusEntries.push(phaseEntries[index]);
+    const completedEntries: TimelineDisplayEntry[] = [];
+    // 保留下来的开始节点代表长暂停、进行中的轮次或旧记录，不能跨越它合并。
+    while (index < phaseEntries.length && phaseEntries[index].title.includes("专注")
+      && phaseEntries[index].title !== "开始专注") {
+      completedEntries.push(phaseEntries[index]);
       index++;
     }
-    const completedEntries = focusEntries.filter((item) => item.title !== "开始专注");
-    // 未进入休息的多轮专注合并展示；缺少统计时长的旧记录保留原样。
-    if (completedEntries.length < 2 || completedEntries.some((item) => item.durationSeconds == null)) {
-      result.push(...focusEntries);
+    // 未进入休息的多轮专注合并展示；缺少配对开始或统计时长的旧记录保留原样。
+    if (completedEntries.length < 2 || completedEntries.some((item) => item.durationSeconds == null || item.startedAt == null)) {
+      result.push(...completedEntries);
       continue;
     }
 
@@ -51,10 +70,12 @@ function simpleTimelineEntries(entries: PomodoroTimelineDto[]): PomodoroTimeline
     for (const completedEntry of completedEntries) {
       focusedSeconds += completedEntry.durationSeconds!;
     }
-    // 新一轮仍在进行时保留其开始事件，只合并已经结束的轮次。
-    const latestCompletionIndex = focusEntries.indexOf(latestCompletion);
-    result.push(...focusEntries.slice(0, latestCompletionIndex));
-    result.push({ ...latestCompletion, title: "专注时间到", durationSeconds: focusedSeconds });
+    result.push({
+      ...latestCompletion,
+      title: "专注时间到",
+      durationSeconds: focusedSeconds,
+      startedAt: completedEntries[completedEntries.length - 1].startedAt,
+    });
   }
   return result;
 }
@@ -101,7 +122,7 @@ export function PomodoroTimeline({ timerId }: { timerId?: string }) {
     setPauseThresholdMinutes((payload as SettingsDto).timelinePauseThresholdMinutes);
   }), []);
 
-  const visibleEntries = mode === "detailed" ? entries : simpleTimelineEntries(entries);
+  const visibleEntries: TimelineDisplayEntry[] = mode === "detailed" ? entries : simpleTimelineEntries(entries, pauseThresholdMinutes);
 
   return (
     <section className={`pomodoro-timeline${expanded ? " is-expanded" : ""}`} aria-label="番茄钟时间链">
@@ -153,6 +174,7 @@ export function PomodoroTimeline({ timerId }: { timerId?: string }) {
                       hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
                     })}</time>
                   </div>
+                  {entry.startedAt && <small>起止 {new Date(entry.startedAt).toLocaleString("zh-CN", { hour12: false })} — {new Date(entry.occurredAt).toLocaleString("zh-CN", { hour12: false })}</small>}
                   {showDuration && <small>{durationLabel} {elapsedLabel(entry.durationSeconds!)}</small>}
                   {mode === "detailed" && entry.detail && <p>{entry.detail}</p>}
                   {mode === "detailed" && entry.taskTitle && <p className="pomodoro-timeline-task">{taskTitle(entry.taskTitle)}</p>}
