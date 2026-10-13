@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
@@ -11,6 +12,10 @@ namespace Taskato.Services
     {
         private const int WmGetMinMaxInfo = 0x0024;
         private const uint MonitorDefaultToNearest = 0x00000002;
+
+        // Win32 GWL_STYLE / GWL_EXSTYLE：使用窗口实际样式计算非客户区，避免硬编码边框像素。
+        private const int WindowStyleIndex = -16;
+        private const int WindowExtendedStyleIndex = -20;
 
         public static void Attach(Window window)
         {
@@ -52,17 +57,46 @@ namespace Taskato.Services
             var workArea = monitorInfo.WorkArea;
             var monitorArea = monitorInfo.MonitorArea;
 
+            // 工作区对应可见客户区；无标题栏但可缩放的窗口仍有不可见边框。
+            // 按窗口 DPI 扩展外框，避免最大化后四边露出桌面，同时保持客户区不覆盖任务栏。
+            var frame = new NativeRectangle();
+            if (!AdjustWindowRectExForDpi(
+                ref frame,
+                unchecked((uint)GetWindowLong(windowHandle, WindowStyleIndex)),
+                false,
+                unchecked((uint)GetWindowLong(windowHandle, WindowExtendedStyleIndex)),
+                GetDpiForWindow(windowHandle)))
+            {
+                throw new Win32Exception(Marshal.GetLastWin32Error());
+            }
+
             // WM_GETMINMAXINFO 使用显示器像素坐标；相对偏移同时覆盖顶部或左侧任务栏场景。
-            minMaxInfo.MaxPosition.X = workArea.Left - monitorArea.Left;
-            minMaxInfo.MaxPosition.Y = workArea.Top - monitorArea.Top;
-            minMaxInfo.MaxSize.X = workArea.Right - workArea.Left;
-            minMaxInfo.MaxSize.Y = workArea.Bottom - workArea.Top;
+            minMaxInfo.MaxPosition.X = workArea.Left - monitorArea.Left + frame.Left;
+            minMaxInfo.MaxPosition.Y = workArea.Top - monitorArea.Top + frame.Top;
+            minMaxInfo.MaxSize.X = workArea.Right - workArea.Left + frame.Right - frame.Left;
+            minMaxInfo.MaxSize.Y = workArea.Bottom - workArea.Top + frame.Bottom - frame.Top;
             minMaxInfo.MaxTrackSize = minMaxInfo.MaxSize;
 
             Marshal.StructureToPtr(minMaxInfo, lParam, false);
             handled = true;
             return IntPtr.Zero;
         }
+
+        // 样式字段为 32 位，GetWindowLong 在 x86 / x64 下均适用于这两个索引。
+        [DllImport("user32.dll", EntryPoint = "GetWindowLongW")]
+        private static extern int GetWindowLong(IntPtr windowHandle, int index);
+
+        [DllImport("user32.dll")]
+        private static extern uint GetDpiForWindow(IntPtr windowHandle);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool AdjustWindowRectExForDpi(
+            ref NativeRectangle rectangle,
+            uint style,
+            [MarshalAs(UnmanagedType.Bool)] bool hasMenu,
+            uint extendedStyle,
+            uint dpi);
 
         [DllImport("user32.dll")]
         private static extern IntPtr MonitorFromWindow(IntPtr windowHandle, uint flags);
