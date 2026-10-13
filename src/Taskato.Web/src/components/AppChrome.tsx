@@ -13,7 +13,6 @@ import {
   Square,
   Sparkle,
   Sun,
-  Timer,
   X,
 } from "@phosphor-icons/react";
 import {
@@ -55,16 +54,6 @@ export function AppNav({
           </button>
         ))}
       </nav>
-      <div className="nav-spacer" />
-      <div className="focus-summary" title="本地专注 · C# 计时器">
-        <Timer size={20} />
-      </div>
-      <div
-        className="profile-row"
-        title={`本地用户 · ${bridge.isNative ? "数据已连接" : "浏览器预览"}`}
-      >
-        <span className="avatar">T</span>
-      </div>
     </aside>
   );
 }
