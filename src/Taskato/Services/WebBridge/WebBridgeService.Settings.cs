@@ -64,7 +64,7 @@ namespace Taskato.Services.WebBridge
             c.AutoShowDailySummary = OptionalBool(parameters, "autoShowDailySummary") ?? c.AutoShowDailySummary;
             c.ThemePrimaryColor = ValidatedColor(parameters, "themePrimaryColor", c.ThemePrimaryColor);
             c.ThemeSecondaryColor = ValidatedColor(parameters, "themeSecondaryColor", c.ThemeSecondaryColor);
-            c.SelectedColorIndex = ClampedOptionalInt(parameters, "selectedColorIndex", c.SelectedColorIndex, 0, 5);
+            c.SelectedColorIndex = ClampedOptionalInt(parameters, "selectedColorIndex", c.SelectedColorIndex, 0, 6);
             if (OptionalBool(parameters, "autoStartEnabled") is { } autoStartEnabled)
                 AutoStartService.SetAutoStart(autoStartEnabled);
             if (!_settings.Save())

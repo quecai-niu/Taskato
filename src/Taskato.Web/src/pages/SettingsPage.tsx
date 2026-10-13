@@ -21,6 +21,7 @@ const palettes = [
   ["#F59E0B", "#F97316"],
   ["#22C55E", "#10B981"],
   ["#3B82F6", "#2563EB"],
+  ["#FF6366", "#FFA855"],
 ] as const;
 
 type Section = "theme" | "pomodoro" | "system" | "summary" | "sound" | "feishu" | "data";
@@ -71,6 +72,12 @@ export function SettingsPage({ reportError }: { reportError(error: unknown): voi
   );
 
   if (!settings) return <div className="full-page"><p>正在加载设置…</p></div>;
+
+  // 勾选依据实际显示的颜色；旧配置中的八位 CSS 色值末两位是透明度。
+  const selectedPaletteIndex = palettes.findIndex(([primary, secondary]) =>
+    primary === settings.themePrimaryColor.slice(0, 7).toUpperCase() &&
+    secondary === settings.themeSecondaryColor.slice(0, 7).toUpperCase(),
+  );
 
   const patch = <K extends keyof SettingsDto>(key: K, value: SettingsDto[K]) => {
     setSettings({ ...settings, [key]: value });
@@ -281,7 +288,16 @@ export function SettingsPage({ reportError }: { reportError(error: unknown): voi
         <main className="settings-content">
           <section id="settings-theme"><div><h3>外观与主题颜色</h3><p>日间模式采用柔和米黄色背景；标题栏也可随时快捷切换。</p></div>
             <div className="setting-row"><div><strong>外观模式</strong><span>两个入口共用同一项持久化设置</span></div><div className="segmented" aria-label="外观模式"><button className={settings.appearanceMode === "dark" ? "active" : ""} onClick={() => selectAppearance("dark")}>夜间</button><button className={settings.appearanceMode === "light" ? "active" : ""} onClick={() => selectAppearance("light")}>日间</button></div></div>
-            <div className="theme-palette" role="radiogroup" aria-label="主题颜色">{palettes.map(([primary, secondary], index) => <button key={primary} role="radio" aria-checked={settings.selectedColorIndex === index} className={settings.selectedColorIndex === index ? "selected" : ""} style={{ background: `linear-gradient(135deg,${primary},${secondary})` }} onClick={() => selectPalette(index)}>{settings.selectedColorIndex === index ? "✓" : ""}</button>)}</div>
+            <div className="theme-palette" role="radiogroup" aria-label="主题颜色">
+              {palettes.map(([primary, secondary], index) => (
+                <button key={primary} role="radio" aria-label={index === 6 ? "珊瑚粉与暖橙" : `配色 ${index + 1}`} aria-checked={selectedPaletteIndex === index} className={selectedPaletteIndex === index ? "selected" : ""} style={{ background: `linear-gradient(135deg,${primary},${secondary})` }} onClick={() => selectPalette(index)}>
+                  {selectedPaletteIndex === index ? "✓" : ""}
+                </button>
+              ))}
+              {selectedPaletteIndex === -1 && (
+                <button role="radio" aria-label="当前配色" aria-checked={true} className="selected" style={{ background: `linear-gradient(135deg,${settings.themePrimaryColor},${settings.themeSecondaryColor})` }}>✓</button>
+              )}
+            </div>
           </section>
 
           <section id="settings-pomodoro"><div><h3>番茄钟时长</h3><p>工作 1–240 分钟，休息 1–30 分钟。</p></div>
