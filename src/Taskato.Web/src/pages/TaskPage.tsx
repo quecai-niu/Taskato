@@ -1035,6 +1035,18 @@ export function TaskPage({
     "saved" | "unsaved" | "saving" | "error"
   >("saved");
   const [taskMenuOpen, setTaskMenuOpen] = useState(false);
+  const [pendingTaskDelete, setPendingTaskDelete] = useState<{
+    task: TaskDto;
+    mode: "deleteBranch" | "promoteChildren";
+  } | null>(null);
+  const [taskDeleting, setTaskDeleting] = useState(false);
+  const taskDeleteDialogRef = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    if (!pendingTaskDelete) return;
+    const dialog = taskDeleteDialogRef.current!;
+    dialog.showModal();
+    return () => dialog.close();
+  }, [pendingTaskDelete]);
   const [priorityContextMenu, setPriorityContextMenu] = useState<{
     task: TaskDto;
     left: number;
@@ -1596,21 +1608,26 @@ export function TaskPage({
     () => setPriorityContextMenu(null),
     [],
   );
-  const deleteTask = async (
+  const deleteTask = (
     mode: "deleteBranch" | "promoteChildren",
     task = selected,
   ) => {
     if (!task) return;
-    const action = mode === "deleteBranch"
-      ? "及其全部子任务"
-      : "并将直属子任务提升一级";
-    if (!window.confirm(`确定删除“${taskTitle(task.title)}”${action}吗？完成历史会保留。`))
-      return;
+    setTaskMenuOpen(false);
+    setPendingTaskDelete({ task, mode });
+  };
+  const confirmTaskDelete = async () => {
+    if (!pendingTaskDelete || taskDeleting) return;
+    const { task, mode } = pendingTaskDelete;
+    setTaskDeleting(true);
     try {
       await bridge.request("tasks.delete", { taskId: task.id, mode });
+      setPendingTaskDelete(null);
       await load();
     } catch (error) {
       reportError(error);
+    } finally {
+      setTaskDeleting(false);
     }
   };
   const moveTask = async (parentId: number | null) => {
@@ -3070,6 +3087,59 @@ export function TaskPage({
             void deleteTask("deleteBranch", task);
           }}
         />
+      )}
+      {pendingTaskDelete && (
+        <dialog
+          ref={taskDeleteDialogRef}
+          className="modal task-delete-modal"
+          aria-labelledby="task-delete-title"
+          aria-describedby="task-delete-description"
+          onCancel={(event) => {
+            event.preventDefault();
+            if (!taskDeleting) setPendingTaskDelete(null);
+          }}
+        >
+          <header>
+            <div>
+              <span className="section-kicker">任务管理</span>
+              <h2 id="task-delete-title">删除任务？</h2>
+            </div>
+            <IconButton
+              label="关闭"
+              disabled={taskDeleting}
+              onClick={() => setPendingTaskDelete(null)}
+            >
+              <X size={19} />
+            </IconButton>
+          </header>
+          <p id="task-delete-description">
+            确定删除“{taskTitle(pendingTaskDelete.task.title)}”
+            {pendingTaskDelete.mode === "deleteBranch"
+              ? "及其全部子任务"
+              : "并将直属子任务提升一级"}
+            吗？完成历史会保留。
+          </p>
+          <footer>
+            <button
+              type="button"
+              className="secondary-button"
+              autoFocus
+              disabled={taskDeleting}
+              onClick={() => setPendingTaskDelete(null)}
+            >
+              取消
+            </button>
+            <button
+              type="button"
+              className="progress-delete-confirm-button"
+              disabled={taskDeleting}
+              onClick={() => void confirmTaskDelete()}
+            >
+              <Trash size={16} />
+              {taskDeleting ? "正在删除…" : "确认删除"}
+            </button>
+          </footer>
+        </dialog>
       )}
       {completionTask && (
         <CompletionDialog
