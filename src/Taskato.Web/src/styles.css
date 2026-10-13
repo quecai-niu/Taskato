@@ -482,16 +482,15 @@ body{font-size:var(--font-control)}
 .progress-current-task input { width: 16px; height: 16px; accent-color: var(--primary); }
 
 /* 精简任务栏保留名称清单；所有折叠样式都限定在左栏内。 */
-.task-workspace.tree-is-collapsed{grid-template-columns:var(--tree-pane-width,170px) 0 minmax(360px,1fr) 12px var(--inspector-pane-width,310px)}
+.task-workspace.tree-is-collapsed{grid-template-columns:var(--tree-pane-width,200px) 0 minmax(360px,1fr) 12px var(--inspector-pane-width,310px)}
 .tree-toolbar{flex-shrink:0}
 .tree-is-collapsed .tree-pane{display:flex;padding:20px 12px;background:var(--nav)}
-.tree-is-collapsed .tree-pane>.pane-heading{padding:0 0 12px;gap:8px}
-.tree-is-collapsed .tree-pane .pane-heading h2{margin:0;font-size:var(--font-control)}
+.tree-is-collapsed .tree-pane>.pane-heading{padding:0 4px 16px;gap:8px}
+.tree-is-collapsed .tree-pane .pane-heading h2{margin:0;font-size:15px;font-weight:700}
 .tree-is-collapsed .tree-pane .pane-heading .icon-button{flex-shrink:0;width:28px;height:28px}
 .tree-is-collapsed .tree-pane .section-kicker,
 .tree-is-collapsed .tree-pane .tree-filter-row,
 .tree-is-collapsed .tree-pane label.pane-search,
-.tree-is-collapsed .tree-pane .tree-section-label:not(.ungrouped),
 .tree-is-collapsed .tree-pane .tree-section-label small,
 .tree-is-collapsed .tree-pane .task-drag-handle,
 .tree-is-collapsed .tree-pane .task-drag-handle-placeholder,
@@ -499,17 +498,22 @@ body{font-size:var(--font-control)}
 .tree-is-collapsed .tree-pane .group-state,
 .tree-is-collapsed .tree-pane .task-check,
 .tree-is-collapsed .tree-pane .tree-parent-progress{display:none}
-.tree-is-collapsed .tree-pane .tree-toolbar{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
-.tree-is-collapsed .tree-pane .open-task-create,.tree-is-collapsed .tree-pane .compact-task-search{height:32px;min-height:32px;justify-content:center;gap:6px;margin:0;padding:0 6px;border-radius:7px;font-size:var(--font-control);font-weight:500}
+.tree-is-collapsed .tree-pane .tree-toolbar{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.tree-is-collapsed .tree-pane .open-task-create,.tree-is-collapsed .tree-pane .compact-task-search{height:36px;min-height:36px;justify-content:center;gap:8px;margin:0;padding:0 8px;border-radius:8px;font-size:var(--font-control);font-weight:500}
 .compact-task-search{flex-shrink:0;background:var(--surface);color:var(--text-2);cursor:pointer}
 .compact-task-search:hover{background:var(--hover);color:var(--text);border-color:var(--border-strong)}
 .tree-is-collapsed .tree-pane .task-tree{padding-top:4px}
-.tree-is-collapsed .tree-pane .tree-row{min-height:40px;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:3px 8px;font-weight:500}
+.tree-is-collapsed .tree-pane .tree-row{min-height:42px;grid-template-columns:minmax(0,1fr) auto;gap:10px;padding:3px 12px;border-radius:8px;font-weight:500}
 .tree-is-collapsed .tree-pane .tree-row.parent-node{margin-top:0}
 .tree-is-collapsed .tree-pane .tree-title{text-align:left;font-weight:500}
+.tree-is-collapsed .tree-pane .tree-row.selected{box-shadow:none}
 .tree-is-collapsed .tree-pane .tree-row.selected .tree-title{font-weight:650}
+.tree-is-collapsed .tree-pane .tree-row.selected .tree-title::before{content:"";position:absolute;left:3px;top:50%;width:3px;height:20px;transform:translateY(-50%);border-radius:3px;background:var(--primary);pointer-events:none}
 .tree-is-collapsed .tree-pane .priority-badge{min-width:16px;padding:0;border:0;background:transparent;font-weight:500}
-.tree-is-collapsed .tree-pane .tree-section-label.ungrouped{height:auto;margin:16px 0 6px;padding:14px 8px 0;letter-spacing:0;font-weight:500}
+.tree-is-collapsed .tree-pane .tree-section-label{height:30px;justify-content:flex-start;gap:10px;margin:0 0 4px;padding:0 12px;letter-spacing:0;font-weight:500}
+.tree-is-collapsed .tree-pane .tree-section-label::after{content:"";flex:1;height:1px;background:var(--border)}
+.tree-is-collapsed .tree-pane .tree-section-label.ungrouped{height:30px;margin:20px 0 4px;padding:0 12px;border-top:0}
+.tree-is-collapsed .tree-pane .tree-title:focus-visible,.tree-is-collapsed .tree-pane .tree-toolbar button:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
 .tree-is-collapsed .tree-pane .tree-children{margin-left:0;padding-left:8px}
 .tree-is-collapsed .tree-pane .tree-children::before{display:none}
 .tree-is-collapsed .tree-pane+.pane-resizer{visibility:hidden}

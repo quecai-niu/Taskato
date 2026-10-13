@@ -205,7 +205,7 @@ export function filterTasksWithAncestors(
 }
 
 const TREE_PANE_DEFAULT = 300;
-const TREE_PANE_COLLAPSED_WIDTH = 170;
+const TREE_PANE_COLLAPSED_WIDTH = 200;
 const TREE_PANE_MIN = 220;
 const TREE_PANE_MAX = 560;
 const INSPECTOR_PANE_DEFAULT = 310;
@@ -2428,7 +2428,7 @@ export function TaskPage({
         </div>
         <div className="task-tree" id="task-tree">
           <div className="tree-section-label">
-            <span>任务组</span>
+            <span>{treePaneCollapsed ? "项目" : "任务组"}</span>
             <small>{groupedRoots.length}</small>
           </div>
           {groupedRoots.map((task) => (
