@@ -2368,10 +2368,9 @@ export function TaskPage({
           {taskViewMode === "create"
             ? "新增任务页面 · 专注计时无所属"
             : taskTitle(selected?.title ?? "选择任务后开始专注")}
+          {taskViewMode === "detail" && progressTargets.length > 0 &&
+            ` · 专注目标：${progressTargets.length} 项`}
         </p>
-        {taskViewMode === "detail" && progressTargets.length > 0 && (
-          <p className="timer-focus-targets">专注目标：{progressTargets.map((task) => taskTitle(task.title)).join("、")}</p>
-        )}
         {isCompletionPending ? (
           <div className="timer-progress" aria-label="当前阶段已经结束">
             <span />

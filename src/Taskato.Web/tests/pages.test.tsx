@@ -417,8 +417,8 @@ describe("独立业务页面", () => {
     expect(activeRow.getAttribute("aria-current")).toBe("true");
     expect(activeRow.textContent).toContain("专注目标");
     expect(progressTargetChanged).toHaveBeenLastCalledWith([3]);
-    expect(host.querySelector(".timer-focus-targets")?.textContent).toContain(
-      "重构任务工作区",
+    expect(host.querySelector(".timer-display-stage p")?.textContent).toBe(
+      "发布 Taskato 3.0 · 专注目标：1 项",
     );
 
     await act(async () =>
