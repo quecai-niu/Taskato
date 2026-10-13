@@ -72,11 +72,11 @@ Taskato 是一个基于 **.NET 8 + WPF + WebView2 + React** 的 Windows 本地�
 
 ## 下载安装
 
-最新稳定版是 **v2.40**：
+最新稳定版是 **v2.64**：
 
-- [下载 Windows 安装包](https://github.com/quecai-niu/Taskato/releases/download/v2.40/Taskato-2.40.0-win-x64-setup.exe)
-- [下载便携版 ZIP](https://github.com/quecai-niu/Taskato/releases/download/v2.40/Taskato-2.40.0-win-x64-portable.zip)
-- [查看 v2.40 Release、SHA-256 与发布清单](https://github.com/quecai-niu/Taskato/releases/tag/v2.40)
+- [下载 Windows 安装包](https://github.com/quecai-niu/Taskato/releases/download/v2.64/Taskato-2.64.0-win-x64-setup.exe)
+- [下载便携版 ZIP](https://github.com/quecai-niu/Taskato/releases/download/v2.64/Taskato-2.64.0-win-x64-portable.zip)
+- [查看 v2.64 Release、SHA-256 与发布清单](https://github.com/quecai-niu/Taskato/releases/tag/v2.64)
 
 安装包是 `.NET 8 win-x64` 自包含版本，目标电脑不需要预装 .NET Desktop Runtime；若系统缺少 WebView2 Evergreen Runtime，安装器会从微软官方入口下载。
 
@@ -136,13 +136,13 @@ dotnet run --project src/TestProject/TestProject.csproj -c Release
 生成经过前端测试、C# 回归和真实 WebView2 烟测的便携包：
 
 ```powershell
-.\scripts\build-release.ps1 -Version 2.40.0
+.\scripts\build-release.ps1 -Version 2.64.0
 ```
 
 已安装 Inno Setup 时，同时生成安装包：
 
 ```powershell
-.\scripts\build-release.ps1 -Version 2.40.0 -BuildInstaller
+.\scripts\build-release.ps1 -Version 2.64.0 -BuildInstaller
 ```
 
 完整运行时、升级、签名和回滚策略见 [发布与恢复说明](docs/release_Taskato_20260729.md)。
