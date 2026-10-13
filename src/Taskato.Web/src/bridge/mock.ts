@@ -229,6 +229,8 @@ const settings: SettingsDto = {
 };
 
 export class MockBridge implements BridgeApi {
+  private imageSequence = 0;
+  private images: Array<{ id: number; taskId: number; fileName: string; thumbnailUrl: string; url: string }> = [];
   readonly isNative = false;
   private activeTimerId = "timer-0";
   private timerTimeline: Array<PomodoroTimelineDto & { timerId: string }> = [];
@@ -265,6 +267,34 @@ export class MockBridge implements BridgeApi {
   ): Promise<T> {
     let result: unknown;
     switch (method) {
+      case "tasks.images.list":
+        result = this.images.filter((image) => image.taskId === Number(params.taskId))
+          .map(({ id, fileName, thumbnailUrl }) => ({ id, fileName, thumbnailUrl }));
+        break;
+      case "tasks.images.add": {
+        const image = {
+          id: ++this.imageSequence,
+          taskId: Number(params.taskId),
+          fileName: String(params.fileName),
+          thumbnailUrl: `data:image/png;base64,${params.thumbnail}`,
+          url: `data:${params.contentType};base64,${params.data}`,
+        };
+        this.images.push(image);
+        result = { id: image.id };
+        this.emit("tasks.images.changed", { taskId: image.taskId });
+        break;
+      }
+      case "tasks.images.get": {
+        const image = this.images.find((image) => image.taskId === Number(params.taskId) && image.id === Number(params.imageId));
+        if (!image) throw new Error("图片已删除。");
+        result = { url: image.url };
+        break;
+      }
+      case "tasks.images.delete":
+        this.images = this.images.filter((image) => image.taskId !== Number(params.taskId) || image.id !== Number(params.imageId));
+        result = { affected: 1 };
+        this.emit("tasks.images.changed", { taskId: Number(params.taskId) });
+        break;
       case "app.ready":
         result = { protocolVersion: 1, appVersion: "preview" };
         break;
@@ -479,6 +509,7 @@ export class MockBridge implements BridgeApi {
       }
       case "tasks.delete":
         tasks = tasks.filter((task) => task.id !== Number(params.taskId));
+        this.images = this.images.filter((image) => tasks.some((task) => task.id === image.taskId));
         tasks = recalculateTaskStats(tasks);
         result = { affected: 1 };
         this.emit("tasks.changed", {});

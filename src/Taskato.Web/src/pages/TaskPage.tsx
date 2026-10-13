@@ -54,6 +54,7 @@ import {
   useBridgeRefresh,
 } from "../ui";
 import { TaskPicker } from "../components/TaskPicker";
+import { TaskImages } from "../components/TaskImages";
 import { PomodoroTimeline } from "../components/PomodoroTimeline";
 
 type TaskNode = TaskDto & { children: TaskNode[] };
@@ -2568,6 +2569,7 @@ export function TaskPage({
                   completedChildren.map(renderSubtaskRow)}
               </div>
             </section>
+            <TaskImages key={selected.id} taskId={selected.id}>
             <section id="task-content" className="content-section task-content-section">
               <div className="section-title-row">
                 <h3>任务内容</h3>
@@ -2596,6 +2598,7 @@ export function TaskPage({
                 }}
               />
             </section>
+            </TaskImages>
             <section id="task-progress" className="content-section progress-section">
               <div className="section-title-row progress-section-heading">
                 <div>

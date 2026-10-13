@@ -225,3 +225,9 @@ export interface BridgeApi {
     listener: (payload: unknown) => void,
   ): () => void;
 }
+
+export interface TaskImageDto {
+  id: number;
+  fileName: string;
+  thumbnailUrl: string;
+}

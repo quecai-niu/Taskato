@@ -54,6 +54,7 @@ namespace Taskato.Services
         public async Task InitializeAsync()
         {
             await _db.CreateTableAsync<TaskItem>();
+            await _db.CreateTableAsync<TaskImage>();
             await _db.CreateTableAsync<TaskCompletionRecord>();
 
             // 数据库迁移：为旧数据库添加 LastModifiedAt 列

@@ -481,3 +481,18 @@ body{font-size:var(--font-control)}
 .tree-is-collapsed .tree-children{margin-left:0;padding-left:0}
 .tree-is-collapsed .tree-children::before{display:none}
 .tree-is-collapsed .tree-pane+.pane-resizer{visibility:hidden}
+
+.task-images-help { color: var(--text-3); font-size: 12px; line-height: 1.6; }
+.task-images-error { color: var(--red); overflow-wrap: anywhere; margin: 12px 0; }
+.task-images-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+.task-image-card { min-width: 0; padding: 10px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); display: flex; flex-direction: column; gap: 8px; }
+.task-image-card > span { font-size: 12px; color: var(--text-2); overflow-wrap: anywhere; }
+.task-image-thumbnail { width: 100%; height: 120px; background: var(--surface-2); border-radius: 6px; cursor: pointer; }
+.task-image-thumbnail img { width: 100%; height: 100%; object-fit: contain; }
+.task-images-section:focus-visible, .task-image-thumbnail:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
+.task-image-dialog { width: min(1000px, 92vw); max-height: 90vh; padding: 18px; background: var(--surface); color: var(--text); border: 1px solid var(--border-strong); border-radius: 12px; overflow: auto; }
+.task-image-dialog::backdrop { background: var(--overlay); }
+.task-image-dialog .section-title-row { gap: 16px; }
+.task-image-dialog .section-title-row > span { min-width: 0; overflow-wrap: anywhere; }
+.task-image-dialog .section-title-row > button { flex-shrink: 0; }
+.task-image-dialog > img { display: block; max-width: 100%; max-height: 76vh; margin: 16px auto 0; object-fit: contain; }

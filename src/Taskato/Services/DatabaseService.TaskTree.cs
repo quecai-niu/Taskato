@@ -357,6 +357,7 @@ namespace Taskato.Services
                             $"随任务分支“{storedTask.Title}”一并删除",
                             DateTime.Now,
                             depthSnapshot: GetDepth(tasks, descendant.Id));
+                        connection.Execute("DELETE FROM TaskImages WHERE TaskId = ?", descendantId);
                         affectedRows += connection.Delete<TaskItem>(descendantId);
                     }
                     tasks.RemoveAll(candidate => branchIds.Contains(candidate.Id));
@@ -371,6 +372,7 @@ namespace Taskato.Services
                         : "删除任务及其全部子任务",
                     DateTime.Now,
                     depthSnapshot: GetDepth(tasks.Append(storedTask).ToList(), storedTask.Id));
+                connection.Execute("DELETE FROM TaskImages WHERE TaskId = ?", storedTask.Id);
                 affectedRows += connection.Delete<TaskItem>(storedTask.Id);
                 tasks.RemoveAll(candidate => candidate.Id == storedTask.Id);
                 RecalculateAncestorStates(

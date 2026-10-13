@@ -4,6 +4,8 @@
 
 ## 当前架构决策
 
+任务图片以二进制原图和 PNG 缩略图保存到独立的 `TaskImages` 表，自动包含在数据库备份与恢复中。`TaskImages.tsx` 负责文件选择、任务内容区域粘贴截图、缩略图和原图预览；`WebBridgeService.Images.cs` 提供 `tasks.images.list/add/get/delete` 白名单接口；`DatabaseService.Images.cs` 负责附件读写。列表只加载缩略图，原图按需读取；删除任务分支时在同一事务清理对应附件，提升子任务时保留子任务附件。原图限制为 10 MB，前端解码后限制为 4000 万像素；支持 PNG、JPEG、GIF、BMP、WebP。浏览器模拟模式的附件仅在当前预览会话保留，桌面应用使用 SQLite 持久化。
+
 1. C# Service/ViewModel 是任务、计时器和设置的唯一业务事实来源；React 只能调用 `WebBridgeService` 白名单协议。
 2. 每日总结只读取仍然有效的完成记录。任务完成后取消会保留在活动日志，但不继续出现在每日总结。
 3. `TaskActivityRecords` 是只追加时间线。写任务与写活动必须在同一 SQLite 事务中完成；旧库只回填可证明事实，并保留迁移边界。
