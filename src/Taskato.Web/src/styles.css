@@ -258,6 +258,7 @@ body{font-size:var(--font-control)}
 .timer-display-stage>span{color:var(--text-3);font-size:var(--font-caption);font-weight:700;letter-spacing:.08em}
 .timer-display-stage .timer-value{margin-top:10px;font-size:clamp(45px,4vw,54px);font-weight:720;line-height:1;font-variant-numeric:tabular-nums}
 .timer-display-stage p{overflow:hidden;margin:12px 0 0;color:var(--text-2);font-size:var(--font-body);text-overflow:ellipsis;white-space:nowrap}
+.timer-display-stage .timer-focus-targets{white-space:normal;overflow-wrap:anywhere}
 .timer-display-stage .timer-progress{height:6px;margin:17px 0 0;background:var(--border)}
 .timer-progress-slider{--timer-slider-progress:0%;display:block;width:100%;height:18px;margin:11px 0 -1px;padding:0;appearance:none;background:transparent;cursor:pointer}
 .timer-progress-slider::-webkit-slider-runnable-track{height:6px;border-radius:999px;background:linear-gradient(to right,var(--primary) 0 var(--timer-slider-progress),var(--border) var(--timer-slider-progress) 100%)}

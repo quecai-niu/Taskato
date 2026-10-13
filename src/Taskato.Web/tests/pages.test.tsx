@@ -393,13 +393,13 @@ describe("独立业务页面", () => {
     expect(subtaskList.textContent).toContain("确定新版信息架构");
   });
 
-  it("直属子任务可作为专注目标，手动推进仍默认归属详情任务", async () => {
+  it("右键可标记多个专注目标，手动推进仍默认归属详情任务", async () => {
     const progressTargetChanged = vi.fn();
     await renderAndFlush(
       <TaskPage
         reportError={() => undefined}
         requestedTaskId={1}
-        onProgressTargetTaskIdChange={progressTargetChanged}
+        onProgressTargetTaskIdsChange={progressTargetChanged}
       />,
     );
 
@@ -409,12 +409,15 @@ describe("独立业务页面", () => {
     const activeRow = [...subtaskList.querySelectorAll<HTMLElement>(".subtask-row")]
       .find((row) => row.textContent?.includes("重构任务工作区"))!;
     await act(async () => activeRow.click());
+    expect(activeRow.classList.contains("progress-target")).toBe(false);
+    await act(async () => activeRow.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true })));
+    await act(async () => host.querySelector<HTMLButtonElement>('[role="menuitemcheckbox"]')!.click());
 
     expect(activeRow.classList.contains("progress-target")).toBe(true);
     expect(activeRow.getAttribute("aria-current")).toBe("true");
     expect(activeRow.textContent).toContain("专注目标");
-    expect(progressTargetChanged).toHaveBeenLastCalledWith(3);
-    expect(host.querySelector(".timer-display-stage p")?.textContent).toContain(
+    expect(progressTargetChanged).toHaveBeenLastCalledWith([3]);
+    expect(host.querySelector(".timer-focus-targets")?.textContent).toContain(
       "重构任务工作区",
     );
 
@@ -452,9 +455,10 @@ describe("独立业务页面", () => {
     const completedRow = [...subtaskList.querySelectorAll<HTMLElement>(
       ".subtask-row",
     )].find((row) => row.textContent?.includes("确定新版信息架构"))!;
-    await act(async () => completedRow.click());
+    await act(async () => completedRow.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true })));
+    await act(async () => host.querySelector<HTMLButtonElement>('[role="menuitemcheckbox"]')!.click());
     expect(completedRow.classList.contains("progress-target")).toBe(true);
-    expect(progressTargetChanged).toHaveBeenLastCalledWith(2);
+    expect(progressTargetChanged).toHaveBeenLastCalledWith([3, 2]);
 
     await act(async () => createProgress.click());
     expect(
@@ -479,8 +483,12 @@ describe("独立业务页面", () => {
         .querySelector<HTMLElement>(".task-canvas")!
         .dispatchEvent(new MouseEvent("click", { bubbles: true }))
     );
-    expect(host.querySelector(".subtask-row.progress-target")).toBeNull();
-    expect(progressTargetChanged).toHaveBeenLastCalledWith(null);
+    expect(host.querySelectorAll(".subtask-row.progress-target")).toHaveLength(2);
+    expect(progressTargetChanged).toHaveBeenLastCalledWith([3, 2]);
+    await act(async () => activeRow.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true })));
+    expect(host.querySelector('[role="menuitemcheckbox"]')?.textContent).toContain("取消专注目标");
+    await act(async () => host.querySelector<HTMLButtonElement>('[role="menuitemcheckbox"]')!.click());
+    expect(progressTargetChanged).toHaveBeenLastCalledWith([2]);
     expect(host.querySelector(".timer-display-stage p")?.textContent).toContain(
       "发布 Taskato 3.0",
     );

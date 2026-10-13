@@ -185,7 +185,7 @@ describe("应用框架交互", () => {
     });
   });
 
-  it("任务详情选中的直属子任务会同步为番茄钟专注目标", async () => {
+  it("子任务专注目标只作标记，番茄钟仍归属当前任务组", async () => {
     const request = vi.spyOn(bridge, "request");
     await act(async () => {
       root.render(<App />);
@@ -195,7 +195,10 @@ describe("应用框架交互", () => {
     const subtaskRow = [...host.querySelectorAll<HTMLElement>(".subtask-row")]
       .find((row) => row.textContent?.includes("重构任务工作区"))!;
     await act(async () => {
-      subtaskRow.click();
+      subtaskRow.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true }));
+    });
+    await act(async () => {
+      host.querySelector<HTMLButtonElement>('[role="menuitemcheckbox"]')!.click();
       await new Promise((resolve) => window.setTimeout(resolve, 0));
     });
 
@@ -203,7 +206,7 @@ describe("应用框架交互", () => {
       activePage: "tasks",
       taskViewMode: "detail",
       selectedTaskId: 1,
-      progressTargetTaskId: 3,
+      progressTargetTaskId: null,
     });
   });
 });

@@ -34,7 +34,7 @@
 - `src/Taskato/Models/PomodoroTimelineRecord.cs`、`src/Taskato/Services/DatabaseService.PomodoroTimeline.cs`、`src/Taskato/Services/WebBridge/WebBridgeService.PomodoroTimeline.cs`：只追加保存阶段、实际提醒和按钮选择，使用持久化计时器槽位隔离历史，通过 `pomodoro.timeline` 查询；不回填旧事件。
 - `src/Taskato/Models/BridgeDtos/FocusAnalyticsBridgeDto.cs`、`src/Taskato/Services/WebBridge/WebBridgeService.FocusAnalytics.cs`：专注统计 DTO 与 Bridge 查询协议。
 - `src/Taskato/Services/WebBridge/WebBridgeService.cs`：协议入口、白名单分发、任务与番茄钟命令，包括运行中剩余时间调整的状态与范围校验。
-- `src/Taskato/Services/WorkspaceContextService.cs`：保存 React 当前页面、任务视图模式、选中任务和专注目标，为计时上下文提供经过数据库验证的具体任务。
+- `src/Taskato/Services/WorkspaceContextService.cs`：保存 React 当前页面、任务视图模式和选中任务，为计时上下文提供经过数据库验证的具体任务；多个子任务专注目标仅在前端会话标记，计时归属当前详情任务。
 - `src/Taskato/Services/WebBridge/WebBridgeService.Progress.cs`：推进记录查询、新增、编辑和删除协议。
 - `WebBridgeService.Reporting.cs`：每日总结、独立专注时长、今日推进记录、历史和导出。
 - `WebBridgeService.Settings.cs`：完整设置、提示音/飞书测试、原生文件对话框、备份恢复和本地目录能力。

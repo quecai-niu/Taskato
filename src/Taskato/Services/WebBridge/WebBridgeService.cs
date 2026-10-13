@@ -112,7 +112,7 @@ namespace Taskato.Services.WebBridge
                     protocolVersion = 1,
                     appVersion = System.Reflection.Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "1.0.0"
                 },
-                "workspace.context.set" => UpdateWorkspaceContext(request.Params),
+                "workspace.context.set" => await UpdateWorkspaceContextAsync(request.Params),
                 "tasks.list" => await GetTasksAsync(),
                 "tasks.options" => await GetTaskOptionsAsync(),
                 "tasks.parentCandidates" => await GetParentCandidatesAsync(request.Params),
@@ -185,7 +185,7 @@ namespace Taskato.Services.WebBridge
             return tasks.Select(ToTaskDto).ToList();
         }
 
-        private object UpdateWorkspaceContext(JsonElement parameters)
+        private async Task<object> UpdateWorkspaceContextAsync(JsonElement parameters)
         {
             var activePage = RequiredString(parameters, "activePage");
             var taskViewMode = OptionalString(parameters, "taskViewMode") ?? "detail";
@@ -196,6 +196,13 @@ namespace Taskato.Services.WebBridge
                 taskViewMode,
                 selectedTaskId,
                 progressTargetTaskId);
+            var snapshot = _workspaceContext.Current;
+            var destination = await _workspaceContext.ResolveDestinationAsync(_database);
+            var task = destination.TaskId.HasValue
+                ? await _database.GetTaskByIdAsync(destination.TaskId.Value)
+                : null;
+            if (_workspaceContext.Current == snapshot)
+                _taskWorkspace.SelectedTask = task;
             return _workspaceContext.Current;
         }
 

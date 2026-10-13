@@ -322,6 +322,8 @@ function PriorityContextMenu({
   onChange,
   onDelete,
   onClose,
+  isFocusTarget,
+  onToggleFocusTarget,
 }: {
   task: TaskDto;
   left: number;
@@ -330,6 +332,8 @@ function PriorityContextMenu({
   onChange(priority: number): void;
   onDelete(): void;
   onClose(): void;
+  isFocusTarget: boolean;
+  onToggleFocusTarget?: () => void;
 }) {
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -366,7 +370,7 @@ function PriorityContextMenu({
     event.preventDefault();
     const items = [
       ...(menuRef.current?.querySelectorAll<HTMLButtonElement>(
-        '[role="menuitemradio"]:not(:disabled), [role="menuitem"]:not(:disabled)',
+        '[role="menuitemradio"]:not(:disabled), [role="menuitemcheckbox"]:not(:disabled), [role="menuitem"]:not(:disabled)',
       ) ?? []),
     ];
     if (items.length === 0) return;
@@ -390,6 +394,18 @@ function PriorityContextMenu({
       onContextMenu={(event) => event.preventDefault()}
       onKeyDown={moveFocus}
     >
+      {onToggleFocusTarget && (
+        <button
+          type="button"
+          role="menuitemcheckbox"
+          aria-checked={isFocusTarget}
+          className="priority-context-option"
+          onClick={onToggleFocusTarget}
+        >
+          <span>{isFocusTarget ? "取消专注目标" : "设为专注目标"}</span>
+          {isFocusTarget && <Check size={14} weight="bold" />}
+        </button>
+      )}
       <span className="priority-context-menu-title" role="presentation">
         切换优先级
       </span>
@@ -998,20 +1014,20 @@ export function TaskPage({
   reportError,
   requestedTaskId,
   sessionSelectedTaskId = null,
-  sessionProgressTargetTaskId = null,
+  sessionProgressTargetTaskIds = [],
   sessionTaskViewMode = "detail",
   onSelectedTaskIdChange,
-  onProgressTargetTaskIdChange,
+  onProgressTargetTaskIdsChange,
   onTaskViewModeChange,
   onRequestedTaskHandled,
 }: {
   reportError(error: unknown): void;
   requestedTaskId: number | null;
   sessionSelectedTaskId?: number | null;
-  sessionProgressTargetTaskId?: number | null;
+  sessionProgressTargetTaskIds?: number[];
   sessionTaskViewMode?: "detail" | "create";
   onSelectedTaskIdChange?(taskId: number | null): void;
-  onProgressTargetTaskIdChange?(taskId: number | null): void;
+  onProgressTargetTaskIdsChange?(taskIds: number[]): void;
   onTaskViewModeChange?(mode: "detail" | "create"): void;
   onRequestedTaskHandled?(): void;
 }) {
@@ -1020,9 +1036,7 @@ export function TaskPage({
   const [selectedId, setSelectedId] = useState<number | null>(
     sessionSelectedTaskId,
   );
-  const [progressTargetTaskId, setProgressTargetTaskId] = useState<
-    number | null
-  >(sessionProgressTargetTaskId);
+  const [progressTargetTaskIds, setProgressTargetTaskIds] = useState<number[]>(sessionProgressTargetTaskIds);
   const progressTargetOwnerId = useRef<number | null>(sessionSelectedTaskId);
   const [taskViewMode, setTaskViewMode] = useState<"detail" | "create">(
     sessionTaskViewMode,
@@ -1262,12 +1276,12 @@ export function TaskPage({
     onSelectedTaskIdChange?.(selectedId);
   }, [onSelectedTaskIdChange, selectedId]);
   useEffect(() => {
-    onProgressTargetTaskIdChange?.(progressTargetTaskId);
-  }, [onProgressTargetTaskIdChange, progressTargetTaskId]);
+    onProgressTargetTaskIdsChange?.(progressTargetTaskIds);
+  }, [onProgressTargetTaskIdsChange, progressTargetTaskIds]);
   useEffect(() => {
     if (progressTargetOwnerId.current === selectedId) return;
     progressTargetOwnerId.current = selectedId;
-    setProgressTargetTaskId(null);
+    setProgressTargetTaskIds([]);
   }, [selectedId]);
   useEffect(() => {
     onTaskViewModeChange?.(taskViewMode);
@@ -1329,8 +1343,10 @@ export function TaskPage({
         .sort(compareTaskDisplayOrder),
     [detailTasks, selectedId],
   );
-  const progressTarget =
-    children.find((task) => task.id === progressTargetTaskId) ?? null;
+  const progressTargets = useMemo(
+    () => children.filter((task) => progressTargetTaskIds.includes(task.id)),
+    [children, progressTargetTaskIds],
+  );
   const incompleteChildren = children.filter((task) => !task.isCompleted);
   const completedChildren = children.filter((task) => task.isCompleted);
   const collapseCompletedChildren =
@@ -1400,17 +1416,17 @@ export function TaskPage({
   }, [selected?.id, selected?.title]);
   useEffect(() => setCompletedChildrenExpanded(false), [selected?.id]);
   useEffect(() => {
-    if (collapseCompletedChildren && progressTarget?.isCompleted)
+    if (collapseCompletedChildren && progressTargets.some((task) => task.isCompleted))
       setCompletedChildrenExpanded(true);
-  }, [collapseCompletedChildren, progressTarget?.id, progressTarget?.isCompleted]);
+  }, [collapseCompletedChildren, progressTargets]);
   useEffect(
     () => setProgressRecordsExpanded(false),
     [progressScope, selected?.id],
   );
   useEffect(() => {
-    if (!selected || progressTargetTaskId == null || progressTarget) return;
-    setProgressTargetTaskId(null);
-  }, [progressTarget, progressTargetTaskId, selected]);
+    if (!selected || progressTargets.length === progressTargetTaskIds.length) return;
+    setProgressTargetTaskIds(progressTargets.map((task) => task.id));
+  }, [progressTargets, progressTargetTaskIds, selected]);
 
   const focusTaskContentEditor = useCallback(() => {
     const editor = document.querySelector<HTMLTextAreaElement>(
@@ -1720,7 +1736,7 @@ export function TaskPage({
       clientY,
       CONTEXT_MENU_VIEWPORT_GAP,
       window.innerHeight -
-        PRIORITY_CONTEXT_MENU_HEIGHT -
+        (PRIORITY_CONTEXT_MENU_HEIGHT + (task.parentId === selectedId ? 40 : 0)) -
         CONTEXT_MENU_VIEWPORT_GAP,
     );
     setPriorityContextMenu({ task, left, top });
@@ -1779,22 +1795,6 @@ export function TaskPage({
       );
     } catch (error) {
       reportError(error);
-    }
-  };
-
-  const clearProgressTargetFromBlank = (event: MouseEvent<HTMLElement>) => {
-    if (progressTargetTaskId == null) return;
-    const target = event.target;
-    if (!(target instanceof HTMLElement)) return;
-    if (
-      target === event.currentTarget ||
-      target.classList.contains("task-document") ||
-      target.classList.contains("canvas-header") ||
-      target.classList.contains("content-section") ||
-      target.classList.contains("subtask-list") ||
-      target.classList.contains("progress-track")
-    ) {
-      setProgressTargetTaskId(null);
     }
   };
 
@@ -2225,7 +2225,7 @@ export function TaskPage({
   }, [contentDraft, saveTaskContent, selectedId]);
 
   const renderSubtaskRow = (item: TaskDto) => {
-    const isProgressTarget = item.id === progressTarget?.id;
+    const isProgressTarget = progressTargetTaskIds.includes(item.id);
     const details = taskDetails(item.title);
     const reorder = taskReorderConfig(
       children,
@@ -2247,21 +2247,19 @@ export function TaskPage({
         data-reorder-task-id={item.id}
         data-reorder-section="subtasks"
         aria-current={isProgressTarget ? "true" : undefined}
-        aria-label={`${taskTitle(item.title)}${details ? `，${details}` : ""}${isProgressTarget ? "，当前专注目标" : "，单击设为专注目标"}`}
+        aria-label={`${taskTitle(item.title)}${details ? `，${details}` : ""}${isProgressTarget ? "，当前专注目标" : "，右键可设为专注目标"}`}
         onPointerDown={(event) => beginTaskReorder(event, item, reorder)}
         onPointerMove={moveTaskReorder}
         onPointerUp={finishTaskReorderWithDrop}
         onPointerCancel={cancelTaskReorder}
         onLostPointerCapture={cancelTaskReorder}
-        onClick={(event) => {
-          if (consumeSuppressedTaskClick(event)) return;
-          setProgressTargetTaskId(item.id);
-        }}
+        onClick={consumeSuppressedTaskClick}
         onKeyDown={(event) => {
           if (event.target !== event.currentTarget) return;
-          if (event.key !== "Enter" && event.key !== " ") return;
+          if (event.key !== "ContextMenu" && !(event.shiftKey && event.key === "F10")) return;
           event.preventDefault();
-          setProgressTargetTaskId(item.id);
+          const bounds = event.currentTarget.getBoundingClientRect();
+          openPriorityContextMenu(item, bounds.left, bounds.bottom);
         }}
         onContextMenu={(event) => {
           event.preventDefault();
@@ -2369,8 +2367,11 @@ export function TaskPage({
         <p>
           {taskViewMode === "create"
             ? "新增任务页面 · 专注计时无所属"
-            : taskTitle(progressTarget?.title ?? selected?.title ?? "选择任务后开始专注")}
+            : taskTitle(selected?.title ?? "选择任务后开始专注")}
         </p>
+        {taskViewMode === "detail" && progressTargets.length > 0 && (
+          <p className="timer-focus-targets">专注目标：{progressTargets.map((task) => taskTitle(task.title)).join("、")}</p>
+        )}
         {isCompletionPending ? (
           <div className="timer-progress" aria-label="当前阶段已经结束">
             <span />
@@ -2640,7 +2641,7 @@ export function TaskPage({
         onPointerCancel={finishPaneResize}
         onKeyDown={resizePaneByKeyboard("tree")}
       />
-      <main className="task-canvas" onClick={clearProgressTargetFromBlank}>
+      <main className="task-canvas">
         {taskViewMode === "create" ? (
           <section className="task-create-page" aria-labelledby="task-create-title">
             <div className="task-create-heading">
@@ -3242,6 +3243,18 @@ export function TaskPage({
           left={priorityContextMenu.left}
           top={priorityContextMenu.top}
           disabled={prioritySaving}
+          isFocusTarget={progressTargetTaskIds.includes(priorityContextMenu.task.id)}
+          onToggleFocusTarget={
+            priorityContextMenu.task.parentId === selectedId
+              ? () => {
+                  const taskId = priorityContextMenu.task.id;
+                  setProgressTargetTaskIds((ids) =>
+                    ids.includes(taskId) ? ids.filter((id) => id !== taskId) : [...ids, taskId],
+                  );
+                  closePriorityContextMenu();
+                }
+              : undefined
+          }
           onClose={closePriorityContextMenu}
           onChange={(priority) => {
             const task = priorityContextMenu.task;
