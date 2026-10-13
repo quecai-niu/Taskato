@@ -163,6 +163,11 @@ export function SettingsPage({ reportError }: { reportError(error: unknown): voi
       });
   };
   const save = async () => {
+    if (!Number.isInteger(settings.timelinePauseThresholdMinutes) || settings.timelinePauseThresholdMinutes < 0 || settings.timelinePauseThresholdMinutes > 60) {
+      setSaveStatus("error");
+      reportError(new Error("时间链暂停忽略阈值应为 0–60 的整数分钟。"));
+      return;
+    }
     if (settings.workMinutes < 1 || settings.workMinutes > 240 || settings.restMinutes < 1 || settings.restMinutes > 30) {
       setSaveStatus("error");
       reportError(new Error("工作时长应为 1–240 分钟，休息时长应为 1–30 分钟。"));
@@ -280,6 +285,7 @@ export function SettingsPage({ reportError }: { reportError(error: unknown): voi
           </section>
 
           <section id="settings-pomodoro"><div><h3>番茄钟时长</h3><p>工作 1–240 分钟，休息 1–30 分钟。</p></div>
+            <div className="setting-row"><div><strong>时间链暂停忽略阈值（分钟）</strong><span>默认 1 分钟，短于阈值的暂停时长不显示；0 表示全部显示，简略和详细模式均生效</span></div><input aria-label="时间链暂停忽略阈值（分钟）" className="number-input" type="number" min="0" max="60" step="1" value={settings.timelinePauseThresholdMinutes} onChange={(e) => patch("timelinePauseThresholdMinutes", Number(e.target.value))} /></div>
             <div className="setting-row"><div><strong>工作时长</strong><span>每次调整 1 分钟</span></div><div className="stepper"><button onClick={() => patch("workMinutes", Math.max(1, settings.workMinutes - 1))}>−</button><span>{settings.workMinutes} min</span><button onClick={() => patch("workMinutes", Math.min(240, settings.workMinutes + 1))}>＋</button></div></div>
             <div className="setting-row"><div><strong>休息时长</strong><span>每次调整 1 分钟</span></div><div className="stepper"><button onClick={() => patch("restMinutes", Math.max(1, settings.restMinutes - 1))}>−</button><span>{settings.restMinutes} min</span><button onClick={() => patch("restMinutes", Math.min(30, settings.restMinutes + 1))}>＋</button></div></div>
           </section>

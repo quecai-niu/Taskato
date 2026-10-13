@@ -13,6 +13,9 @@ namespace Taskato.Services
         public int WorkMinutes { get; set; } = 25;
         public int RestMinutes { get; set; } = 5;
 
+        /// <summary>时间链隐藏短于此分钟数的暂停时长；0 表示全部显示。</summary>
+        public int TimelinePauseThresholdMinutes { get; set; } = 1;
+
         /// <summary>网页工作区外观模式；仅允许 dark 或 light，旧配置默认使用夜间模式。</summary>
         public string AppearanceMode { get; set; } = "dark";
 
@@ -168,6 +171,7 @@ namespace Taskato.Services
 
         private void NormalizeNotificationCounts()
         {
+            Config.TimelinePauseThresholdMinutes = Math.Clamp(Config.TimelinePauseThresholdMinutes, 0, 60);
             // 配置文件可能由旧版本或手工编辑产生；持久化边界统一收敛，避免异常次数进入通知循环。
             Config.FeishuWorkNotificationCount = Math.Clamp(
                 Config.FeishuWorkNotificationCount, 0, FeishuService.MaximumNotificationCount);

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CaretRight, ClockCounterClockwise } from "@phosphor-icons/react";
-import { bridge, type PomodoroTimelineDto } from "../bridge";
+import { bridge, type PomodoroTimelineDto, type SettingsDto } from "../bridge";
 import { taskTitle } from "../taskText";
 import { useBridgeRefresh } from "../ui";
 
@@ -63,6 +63,7 @@ export function PomodoroTimeline({ timerId }: { timerId?: string }) {
   const [expanded, setExpanded] = useState(true);
   const [mode, setMode] = useState<"simple" | "detailed">("simple");
   const [entries, setEntries] = useState<PomodoroTimelineDto[]>([]);
+  const [pauseThresholdMinutes, setPauseThresholdMinutes] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const requestVersion = useRef(0);
@@ -73,8 +74,14 @@ export function PomodoroTimeline({ timerId }: { timerId?: string }) {
     setLoading(true);
     setError("");
     try {
-      const result = await bridge.request<PomodoroTimelineDto[]>("pomodoro.timeline", { timerId });
-      if (version === requestVersion.current) setEntries(result);
+      const [result, settings] = await Promise.all([
+        bridge.request<PomodoroTimelineDto[]>("pomodoro.timeline", { timerId }),
+        bridge.request<SettingsDto>("settings.get"),
+      ]);
+      if (version === requestVersion.current) {
+        setEntries(result);
+        setPauseThresholdMinutes(settings.timelinePauseThresholdMinutes);
+      }
     } catch (failure) {
       if (version === requestVersion.current) {
         setError(failure instanceof Error ? failure.message : String(failure));
@@ -90,6 +97,9 @@ export function PomodoroTimeline({ timerId }: { timerId?: string }) {
     return () => { requestVersion.current++; };
   }, [load]);
   useBridgeRefresh("focus.changed", () => void load());
+  useEffect(() => bridge.subscribe("settings.changed", (payload) => {
+    setPauseThresholdMinutes((payload as SettingsDto).timelinePauseThresholdMinutes);
+  }), []);
 
   const visibleEntries = mode === "detailed" ? entries : simpleTimelineEntries(entries);
 
@@ -131,6 +141,9 @@ export function PomodoroTimeline({ timerId }: { timerId?: string }) {
                 if (entry.title.startsWith("开始")) durationLabel = "暂停时长";
                 else durationLabel = entry.title.includes("专注") ? "专注时长" : "休息时长";
               }
+              const isPauseDuration = durationLabel === "暂停时长" || durationLabel === "暂停了";
+              const showDuration = entry.durationSeconds != null
+                && (!isPauseDuration || entry.durationSeconds >= pauseThresholdMinutes * 60);
               return (
                 <li key={entry.id} className={`pomodoro-timeline-event ${entry.kind} ${phaseEvent?.className ?? ""}`}>
                   <div className="pomodoro-timeline-event-heading">
@@ -140,7 +153,7 @@ export function PomodoroTimeline({ timerId }: { timerId?: string }) {
                       hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
                     })}</time>
                   </div>
-                  {entry.durationSeconds != null && <small>{durationLabel} {elapsedLabel(entry.durationSeconds)}</small>}
+                  {showDuration && <small>{durationLabel} {elapsedLabel(entry.durationSeconds!)}</small>}
                   {mode === "detailed" && entry.detail && <p>{entry.detail}</p>}
                   {mode === "detailed" && entry.taskTitle && <p className="pomodoro-timeline-task">{taskTitle(entry.taskTitle)}</p>}
                   {mode === "detailed" && entry.durationSeconds == null && !isPhaseEvent && elapsed !== null && <small>距上一事件 {elapsedLabel(elapsed)}</small>}

@@ -188,6 +188,7 @@ export interface SettingsDto {
   autoStartEnabled: boolean;
   workMinutes: number;
   restMinutes: number;
+  timelinePauseThresholdMinutes: number;
   appearanceMode: "dark" | "light";
   themePrimaryColor: string;
   themeSecondaryColor: string;

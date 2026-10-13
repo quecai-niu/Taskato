@@ -204,6 +204,7 @@ const settings: SettingsDto = {
   autoStartEnabled: false,
   workMinutes: 25,
   restMinutes: 5,
+  timelinePauseThresholdMinutes: 1,
   appearanceMode: "dark",
   themePrimaryColor: "#7775F5",
   themeSecondaryColor: "#A855F7",

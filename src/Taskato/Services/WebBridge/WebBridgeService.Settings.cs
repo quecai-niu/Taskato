@@ -15,6 +15,7 @@ namespace Taskato.Services.WebBridge
             return new
             {
                 c.WorkMinutes, c.RestMinutes, c.AppearanceMode,
+                c.TimelinePauseThresholdMinutes,
                 c.ThemePrimaryColor, c.ThemeSecondaryColor, c.SelectedColorIndex,
                 c.AutoStartNextPomodoro, c.EnableToastTimer, c.ToastActionDelaySeconds,
                 c.ShowMainWindowOnTimerNotification,
@@ -32,6 +33,8 @@ namespace Taskato.Services.WebBridge
             var c = _settings.Config;
             c.WorkMinutes = ClampedOptionalInt(parameters, "workMinutes", c.WorkMinutes, 1, 240);
             c.RestMinutes = ClampedOptionalInt(parameters, "restMinutes", c.RestMinutes, 1, 30);
+            c.TimelinePauseThresholdMinutes = ClampedOptionalInt(
+                parameters, "timelinePauseThresholdMinutes", c.TimelinePauseThresholdMinutes, 0, 60);
             if (OptionalString(parameters, "appearanceMode") is { } appearanceMode)
             {
                 c.AppearanceMode = appearanceMode is "dark" or "light"
