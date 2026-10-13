@@ -204,7 +204,7 @@ export function filterTasksWithAncestors(
 }
 
 const TREE_PANE_DEFAULT = 300;
-const TREE_PANE_COLLAPSED_WIDTH = 52;
+const TREE_PANE_COLLAPSED_WIDTH = 76;
 const TREE_PANE_MIN = 220;
 const TREE_PANE_MAX = 560;
 const INSPECTOR_PANE_DEFAULT = 310;
@@ -402,6 +402,7 @@ function PriorityContextMenu({
 
 function TaskTreeRow({
   task,
+  compact,
   selectedId,
   expanded,
   onToggle,
@@ -418,6 +419,7 @@ function TaskTreeRow({
   onReorderKeyDown,
 }: {
   task: TaskNode;
+  compact: boolean;
   selectedId: number | null;
   expanded: Set<number>;
   onToggle(id: number): void;
@@ -532,11 +534,12 @@ function TaskTreeRow({
         )}
         <button
           className="tree-title"
-          title={task.parentId == null ? undefined : "双击编辑任务内容"}
+          aria-label={taskTitle(task.title)}
+          title={task.parentId == null ? taskTitle(task.title) : `${taskTitle(task.title)}（双击编辑任务内容）`}
           onClick={() => onSelect(task.id)}
           onDoubleClick={() => task.parentId != null && onEditContent(task.id)}
         >
-          {taskTitle(task.title)}
+          {compact ? Array.from(taskTitle(task.title))[0] : taskTitle(task.title)}
         </button>
         {task.priority > 0 && (
           <span className={`priority-badge priority-${task.priority}`}>
@@ -564,6 +567,7 @@ function TaskTreeRow({
             <TaskTreeRow
               key={child.id}
               task={child}
+              compact={compact}
               selectedId={selectedId}
               expanded={expanded}
               onToggle={onToggle}
@@ -1050,6 +1054,7 @@ export function TaskPage({
     useState(false);
   const [parentCandidates, setParentCandidates] = useState<TaskDto[]>([]);
   const workspaceRef = useRef<HTMLDivElement>(null);
+  const paneSearchRef = useRef<HTMLInputElement>(null);
   const paneDrag = useRef<{
     side: "tree" | "inspector";
     pointerId: number;
@@ -2184,14 +2189,31 @@ export function TaskPage({
         <button
           type="button"
           className={`open-task-create ${taskViewMode === "create" ? "active" : ""}`}
+          aria-label="新增任务"
+          title="新增任务"
           onClick={() => setTaskViewMode("create")}
         >
-          <Plus size={17} weight="bold" />
-          新增任务
+          {!treePaneCollapsed && <Plus size={17} weight="bold" />}
+          {treePaneCollapsed ? "新" : "新增任务"}
         </button>
+        {treePaneCollapsed && (
+          <button
+            type="button"
+            className="pane-search compact-task-search"
+            aria-label="筛选任务"
+            title="筛选任务"
+            onClick={() => {
+              setTreePaneCollapsed(false);
+              window.requestAnimationFrame(() => paneSearchRef.current?.focus());
+            }}
+          >
+            搜
+          </button>
+        )}
         <label className="pane-search">
           <MagnifyingGlass size={16} />
           <input
+            ref={paneSearchRef}
             type="search"
             aria-label="筛选任务"
             placeholder="筛选任务"
@@ -2222,6 +2244,7 @@ export function TaskPage({
             <TaskTreeRow
               key={task.id}
               task={task}
+              compact={treePaneCollapsed}
               selectedId={taskViewMode === "detail" ? selectedId : null}
               expanded={expanded}
               onToggle={toggleExpanded}
@@ -2251,6 +2274,7 @@ export function TaskPage({
             <TaskTreeRow
               key={task.id}
               task={task}
+              compact={treePaneCollapsed}
               selectedId={taskViewMode === "detail" ? selectedId : null}
               expanded={expanded}
               onToggle={toggleExpanded}
