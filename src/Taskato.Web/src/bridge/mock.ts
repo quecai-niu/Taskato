@@ -711,7 +711,10 @@ export class MockBridge implements BridgeApi {
         result = { opened: true };
         break;
       case "pomodoro.timeline":
-        result = this.timerTimeline.filter((entry) => entry.timerId === params.timerId).slice(-100).reverse();
+        result = {
+          entries: this.timerTimeline.filter((entry) => entry.timerId === params.timerId).slice(-100).reverse(),
+          previousWorkSeconds: 0,
+        };
         break;
       case "pomodoro.list":
         result = {

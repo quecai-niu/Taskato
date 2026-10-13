@@ -14,17 +14,22 @@ namespace Taskato.Services.WebBridge
             var slotId = _taskWorkspace.GetFocusTimerSlotId(timer);
             await _taskWorkspace.FlushFocusTrackingAsync();
             var entries = await _database.GetPomodoroTimelineAsync(slotId);
-            return entries.Select(entry => new
+            var previousWorkSeconds = await _database.GetPreviousContinuousWorkSecondsAsync(slotId);
+            return new
             {
-                entry.Id,
-                occurredAt = DateTime.SpecifyKind(entry.OccurredAtUtc, DateTimeKind.Utc).ToString("O"),
-                entry.Kind,
-                entry.Title,
-                entry.Detail,
-                entry.DurationSeconds,
-                entry.DurationLabel,
-                taskTitle = entry.TaskTitleSnapshot
-            }).ToList();
+                previousWorkSeconds,
+                entries = entries.Select(entry => new
+                {
+                    entry.Id,
+                    occurredAt = DateTime.SpecifyKind(entry.OccurredAtUtc, DateTimeKind.Utc).ToString("O"),
+                    entry.Kind,
+                    entry.Title,
+                    entry.Detail,
+                    entry.DurationSeconds,
+                    entry.DurationLabel,
+                    taskTitle = entry.TaskTitleSnapshot
+                }).ToList()
+            };
         }
     }
 }

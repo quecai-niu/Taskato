@@ -4,6 +4,33 @@ namespace Taskato.Services
 {
     public partial class DatabaseService
     {
+        public async Task<double> GetPreviousContinuousWorkSecondsAsync(string timerSlotId)
+        {
+            var current = await _db.Table<PomodoroFocusSessionRecord>()
+                .Where(session => session.TimerSlotId == timerSlotId)
+                .OrderByDescending(session => session.Id).FirstOrDefaultAsync();
+            if (current is null || current.Phase != PomodoroFocusPhase.Work || current.EndedAtUtc != null)
+                return 0;
+
+            var boundary = await _db.Table<PomodoroFocusSessionRecord>()
+                .Where(session => session.TimerSlotId == timerSlotId && session.Id < current.Id &&
+                    (session.Phase == PomodoroFocusPhase.Rest ||
+                     (session.EndReason != "completed" && session.EndReason != "completed_early")))
+                .OrderByDescending(session => session.Id).FirstOrDefaultAsync();
+            var lastStop = await _db.Table<PomodoroTimelineRecord>()
+                .Where(entry => entry.TimerSlotId == timerSlotId && entry.Title == "停止计时" &&
+                    entry.OccurredAtUtc <= current.StartedAtUtc)
+                .OrderByDescending(entry => entry.Id).FirstOrDefaultAsync();
+            // 使用完整会话而非最近 100 条时间链；只累计已结束轮次的有效区间。
+            var segments = await _db.QueryAsync<PomodoroFocusSegmentRecord>(
+                "SELECT segment.* FROM PomodoroFocusSegments AS segment " +
+                "INNER JOIN PomodoroFocusSessions AS session ON session.Id = segment.SessionId " +
+                "WHERE session.TimerSlotId = ? AND session.Id > ? AND session.Id < ? " +
+                "AND session.StartedAtUtc > ? AND segment.EndedAtUtc IS NOT NULL",
+                timerSlotId, boundary?.Id ?? 0, current.Id, lastStop?.OccurredAtUtc ?? DateTime.MinValue);
+            return segments.Sum(segment => (segment.EndedAtUtc!.Value - segment.StartedAtUtc).TotalSeconds);
+        }
+
         public Task AppendPomodoroTimelineAsync(
             string timerSlotId, string taskTitle, PomodoroTimelineEntry entry) =>
             _db.InsertAsync(new PomodoroTimelineRecord

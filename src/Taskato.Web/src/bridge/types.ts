@@ -114,6 +114,11 @@ export interface PomodoroTimelineDto {
   durationLabel?: string;
 }
 
+export interface PomodoroTimelineResult {
+  entries: PomodoroTimelineDto[];
+  previousWorkSeconds: number;
+}
+
 export interface FocusStartDto {
   time: string;
   timerName: string;

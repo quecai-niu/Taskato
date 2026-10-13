@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CaretRight, ClockCounterClockwise } from "@phosphor-icons/react";
-import { bridge, type PomodoroTimelineDto, type SettingsDto, type TimerDto } from "../bridge";
+import { bridge, type PomodoroTimelineDto, type PomodoroTimelineResult, type SettingsDto, type TimerDto } from "../bridge";
 import { taskTitle } from "../taskText";
 import { useBridgeRefresh } from "../ui";
 
@@ -84,6 +84,7 @@ export function PomodoroTimeline({ timerId, timer }: { timerId?: string; timer?:
   const [expanded, setExpanded] = useState(true);
   const [mode, setMode] = useState<"simple" | "detailed">("simple");
   const [entries, setEntries] = useState<PomodoroTimelineDto[]>([]);
+  const [previousWorkSeconds, setPreviousWorkSeconds] = useState(0);
   const [pauseThresholdMinutes, setPauseThresholdMinutes] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -96,11 +97,12 @@ export function PomodoroTimeline({ timerId, timer }: { timerId?: string; timer?:
     setError("");
     try {
       const [result, settings] = await Promise.all([
-        bridge.request<PomodoroTimelineDto[]>("pomodoro.timeline", { timerId }),
+        bridge.request<PomodoroTimelineResult>("pomodoro.timeline", { timerId }),
         bridge.request<SettingsDto>("settings.get"),
       ]);
       if (version === requestVersion.current) {
-        setEntries(result);
+        setEntries(result.entries);
+        setPreviousWorkSeconds(result.previousWorkSeconds);
         setPauseThresholdMinutes(settings.timelinePauseThresholdMinutes);
       }
     } catch (failure) {
@@ -114,6 +116,7 @@ export function PomodoroTimeline({ timerId, timer }: { timerId?: string; timer?:
 
   useEffect(() => {
     setEntries([]);
+    setPreviousWorkSeconds(0);
     void load();
     return () => { requestVersion.current++; };
   }, [load]);
@@ -147,7 +150,7 @@ export function PomodoroTimeline({ timerId, timer }: { timerId?: string; timer?:
           <p className="pomodoro-timeline-caption">当前计时器 · 最近 100 条 · 从本功能启用后记录</p>
           {timer?.currentPhaseElapsedSeconds != null && (
             <p className="pomodoro-timeline-caption">
-              <strong>当前{timer.phase === "work" ? "专注" : "休息"}已进行 {elapsedLabel(timer.currentPhaseElapsedSeconds)}</strong>
+              <strong>当前{timer.phase === "work" ? "连续专注" : "休息"}已进行 {elapsedLabel(timer.currentPhaseElapsedSeconds + (timer.phase === "work" ? previousWorkSeconds : 0))}</strong>
               {timer.status === "已暂停" && " · 已暂停"}
             </p>
           )}
