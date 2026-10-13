@@ -1272,7 +1272,7 @@ export function TaskPage({
   });
   useBridgeRefresh("pomodoro.changed", () => void loadTimers());
   useEffect(() => {
-    // 选中项只提升到应用会话，不写入本地存储；关闭应用后仍按原规则选择默认任务。
+    // 选中项交由应用保存；存在专注目标时，重启会恢复其所属任务。
     onSelectedTaskIdChange?.(selectedId);
   }, [onSelectedTaskIdChange, selectedId]);
   useEffect(() => {

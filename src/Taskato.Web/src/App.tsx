@@ -23,6 +23,24 @@ import {
 
 /// 只负责应用级导航和错误边界；各业务页面与桌面框架分别位于独立模块。
 export function App() {
+  const [storedFocusTargets] = useState(() => {
+    const rawValue = window.localStorage.getItem("taskato.focusTargets");
+    if (rawValue === null) return null;
+    try {
+      const value = JSON.parse(rawValue);
+      if (
+        !Number.isInteger(value?.selectedTaskId) || value.selectedTaskId <= 0 ||
+        !Array.isArray(value.taskIds) ||
+        !value.taskIds.every((id: unknown) => typeof id === "number" && Number.isInteger(id) && id > 0)
+      ) {
+        throw new Error("专注目标存储格式无效");
+      }
+      return value as { selectedTaskId: number; taskIds: number[] };
+    } catch (error) {
+      console.error("无法恢复专注目标", error);
+      return null;
+    }
+  });
   const [activePage, setActivePage] = useState<PageId>("tasks");
   const [error, setError] = useState<string | null>(null);
   const [pageRefreshVersion, setPageRefreshVersion] = useState(0);
@@ -31,8 +49,8 @@ export function App() {
   const [requestedTaskId, setRequestedTaskId] = useState<number | null>(null);
   const [sessionSelectedTaskId, setSessionSelectedTaskId] = useState<
     number | null
-  >(null);
-  const [sessionProgressTargetTaskIds, setSessionProgressTargetTaskIds] = useState<number[]>([]);
+  >(storedFocusTargets?.selectedTaskId ?? null);
+  const [sessionProgressTargetTaskIds, setSessionProgressTargetTaskIds] = useState<number[]>(storedFocusTargets?.taskIds ?? []);
   const [sessionTaskViewMode, setSessionTaskViewMode] = useState<
     "detail" | "create"
   >("detail");
@@ -42,6 +60,21 @@ export function App() {
   const reportError = useCallback((value: unknown) => {
     setError(value instanceof Error ? value.message : String(value));
   }, []);
+  useEffect(() => {
+    try {
+      // 所属任务必须随标记一起恢复，否则默认选中其他任务会清空标记。
+      if (sessionSelectedTaskId === null || sessionProgressTargetTaskIds.length === 0) {
+        window.localStorage.removeItem("taskato.focusTargets");
+      } else {
+        window.localStorage.setItem("taskato.focusTargets", JSON.stringify({
+          selectedTaskId: sessionSelectedTaskId,
+          taskIds: sessionProgressTargetTaskIds,
+        }));
+      }
+    } catch (error) {
+      reportError(error);
+    }
+  }, [reportError, sessionSelectedTaskId, sessionProgressTargetTaskIds]);
   const openTask = useCallback((taskId: number) => {
     setActivePage("tasks");
     setSessionTaskViewMode("detail");
