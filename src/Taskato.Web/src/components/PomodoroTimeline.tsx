@@ -14,6 +14,7 @@ function elapsedLabel(seconds: number): string {
 
 export function PomodoroTimeline({ timerId }: { timerId?: string }) {
   const [expanded, setExpanded] = useState(false);
+  const [mode, setMode] = useState<"simple" | "detailed">("simple");
   const [entries, setEntries] = useState<PomodoroTimelineDto[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -43,6 +44,9 @@ export function PomodoroTimeline({ timerId }: { timerId?: string }) {
   }, [load]);
   useBridgeRefresh("focus.changed", () => void load());
 
+  const visibleEntries = mode === "detailed" ? entries : entries.filter((entry) =>
+    ["开始专注", "开始休息", "停止专注", "停止休息", "提前完成专注", "专注时间到", "休息时间到"].includes(entry.title));
+
   return (
     <section className="pomodoro-timeline" aria-label="番茄钟时间链">
       <button
@@ -59,13 +63,17 @@ export function PomodoroTimeline({ timerId }: { timerId?: string }) {
       </button>
       {expanded && (
         <div id="pomodoro-timeline-content" className="pomodoro-timeline-content">
+          <div className="segmented pomodoro-timeline-mode" role="group" aria-label="时间链显示模式">
+            <button type="button" className={mode === "simple" ? "active" : ""} aria-pressed={mode === "simple"} onClick={() => setMode("simple")}>简略</button>
+            <button type="button" className={mode === "detailed" ? "active" : ""} aria-pressed={mode === "detailed"} onClick={() => setMode("detailed")}>详细</button>
+          </div>
           <p className="pomodoro-timeline-caption">当前计时器 · 最近 100 条 · 从本功能启用后记录</p>
           {loading && entries.length === 0 && <p role="status">正在加载记录…</p>}
           {error && <div role="alert"><p>{error}</p><button type="button" onClick={() => void load()}>重试</button></div>}
-          {!loading && !error && entries.length === 0 && <p>暂无记录。开始专注后，阶段变化、提醒和你的选择会保存在这里。</p>}
+          {!loading && !error && visibleEntries.length === 0 && <p>{mode === "simple" ? "暂无专注或休息的开始、结束记录。" : "暂无记录。开始专注后，阶段变化、提醒和你的选择会保存在这里。"}</p>}
           <ol className="pomodoro-timeline-events">
-            {entries.map((entry, index) => {
-              const previous = entries[index + 1];
+            {visibleEntries.map((entry, index) => {
+              const previous = visibleEntries[index + 1];
               const elapsed = previous
                 ? (new Date(entry.occurredAt).getTime() - new Date(previous.occurredAt).getTime()) / 1000
                 : null;
@@ -78,11 +86,11 @@ export function PomodoroTimeline({ timerId }: { timerId?: string }) {
                     hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
                   })}</time>
                   <strong>{entry.title}</strong>
-                  {entry.detail && <p>{entry.detail}</p>}
-                  {entry.taskTitle && <p className="pomodoro-timeline-task">{taskTitle(entry.taskTitle)}</p>}
-                  {entry.durationSeconds != null
+                  {mode === "detailed" && entry.detail && <p>{entry.detail}</p>}
+                  {mode === "detailed" && entry.taskTitle && <p className="pomodoro-timeline-task">{taskTitle(entry.taskTitle)}</p>}
+                  {mode === "detailed" && (entry.durationSeconds != null
                     ? <small>{entry.durationLabel} {elapsedLabel(entry.durationSeconds)}</small>
-                    : !isPhaseEvent && elapsed !== null && <small>距上一事件 {elapsedLabel(elapsed)}</small>}
+                    : !isPhaseEvent && elapsed !== null && <small>距上一事件 {elapsedLabel(elapsed)}</small>)}
                 </li>
               );
             })}

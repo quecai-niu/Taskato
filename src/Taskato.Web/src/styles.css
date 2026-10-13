@@ -284,6 +284,8 @@ body{font-size:var(--font-control)}
 .pomodoro-timeline-toggle:focus-visible{outline:2px solid var(--primary);outline-offset:-3px}
 .pomodoro-timeline-content{max-height:420px;overflow-y:auto;padding:0 14px 14px;overflow-wrap:anywhere;color:var(--text-2);font-size:var(--font-caption);line-height:1.6}
 .pomodoro-timeline-caption{margin:0 0 16px;color:var(--text-3)}
+.pomodoro-timeline-mode{display:flex;margin-bottom:12px}
+.pomodoro-timeline-content .pomodoro-timeline-mode button:not(.active){background:transparent;color:var(--text-3)}
 .pomodoro-timeline-content button{padding:5px 10px;background:var(--primary-soft);color:var(--primary);border-radius:6px;cursor:pointer}
 .pomodoro-timeline-events{list-style:none;margin:0 0 0 4px;padding:0}
 .pomodoro-timeline-event{position:relative;margin:0;padding:0 0 22px 18px;border-left:1px solid var(--border)}
