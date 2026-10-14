@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState, type ReactNode, type ClipboardEvent } from "react";
+import { ImageSquare } from "@phosphor-icons/react";
 import { bridge, type TaskImageDto } from "../bridge";
 
 const IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/bmp", "image/webp"]);
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
-async function prepareImage(file: File) {
+export async function prepareImage(file: File) {
   if (!IMAGE_TYPES.has(file.type))
     throw new Error("支持 PNG、JPEG、GIF、BMP 和 WebP 图片。");
   if (file.size === 0 || file.size > MAX_IMAGE_BYTES)
@@ -41,9 +42,8 @@ export function TaskImages({ taskId, children }: { taskId: number; children: Rea
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [preview, setPreview] = useState<{ url: string; name: string } | null>(null);
+  const [previewId, setPreviewId] = useState<number | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
-  const dialog = useRef<HTMLDialogElement>(null);
   const busyRef = useRef(false);
   const mounted = useRef(false);
   const loadRevision = useRef(0);
@@ -69,11 +69,6 @@ export function TaskImages({ taskId, children }: { taskId: number; children: Rea
     return () => { mounted.current = false; unsubscribe(); };
   }, [taskId]);
 
-  useEffect(() => {
-    if (preview) dialog.current!.showModal();
-    else dialog.current!.close();
-  }, [preview]);
-
   async function addImages(files: File[]) {
     if (busyRef.current) {
       setError("正在处理图片，请完成后再添加。");
@@ -97,34 +92,10 @@ export function TaskImages({ taskId, children }: { taskId: number; children: Rea
   }
 
   function pasteImages(event: ClipboardEvent<HTMLDivElement>) {
-    const files: File[] = [];
-    for (const item of Array.from(event.clipboardData.items)) {
-      if (item.kind === "file" && item.type.startsWith("image/")) {
-        const file = item.getAsFile();
-        if (file) {
-          const extension = file.type.split("/")[1].replace("jpeg", "jpg");
-          files.push(new File([file], `截图-${Date.now()}.${extension}`, { type: file.type }));
-        }
-      }
-    }
+    const files = clipboardImages(event);
     if (files.length === 0) return;
     event.preventDefault();
     void addImages(files);
-  }
-
-  async function openImage(image: TaskImageDto) {
-    busyRef.current = true;
-    setBusy(true);
-    setError("");
-    try {
-      const result = await bridge.request<{ url: string }>("tasks.images.get", { taskId, imageId: image.id });
-      if (mounted.current) setPreview({ url: result.url, name: image.fileName });
-    } catch (reason) {
-      if (mounted.current) setError((reason as Error).message);
-    } finally {
-      busyRef.current = false;
-      if (mounted.current) setBusy(false);
-    }
   }
 
   async function deleteImage(image: TaskImageDto) {
@@ -165,7 +136,7 @@ export function TaskImages({ taskId, children }: { taskId: number; children: Rea
         <div className="task-images-grid">
           {images.map((image) => (
             <article className="task-image-card" key={image.id}>
-              <button type="button" className="task-image-thumbnail" disabled={busy} aria-label={`查看大图：${image.fileName}`} onClick={() => void openImage(image)}>
+              <button type="button" className="task-image-thumbnail" disabled={busy} aria-label={`查看大图：${image.fileName}`} onClick={() => setPreviewId(image.id)}>
                 <img src={image.thumbnailUrl} alt={image.fileName} />
               </button>
               <span title={image.fileName}>{image.fileName}</span>
@@ -174,10 +145,108 @@ export function TaskImages({ taskId, children }: { taskId: number; children: Rea
           ))}
         </div>
       </section>
-      <dialog ref={dialog} className="task-image-dialog" aria-label="图片预览" onClose={() => setPreview(null)}
-        onClick={(event) => { if (event.target === event.currentTarget) setPreview(null); }}>
-        {preview && <><div className="section-title-row"><span>{preview.name}</span><button type="button" className="secondary-button" autoFocus onClick={() => setPreview(null)}>关闭</button></div><img src={preview.url} alt={preview.name} /></>}
-      </dialog>
+      {previewId !== null && <TaskImageViewer taskId={taskId} initialImageId={previewId} onClose={() => setPreviewId(null)} />}
+
     </div>
   );
+}
+
+export type PreparedTaskImage = Awaited<ReturnType<typeof prepareImage>>;
+
+export function clipboardImages(event: ClipboardEvent): File[] {
+  const files: File[] = [];
+  for (const item of Array.from(event.clipboardData.items)) {
+    if (item.kind === "file" && item.type.startsWith("image/")) {
+      const file = item.getAsFile();
+      if (file) {
+        const extension = file.type.split("/")[1].replace("jpeg", "jpg");
+        files.push(new File([file], `截图-${Date.now()}.${extension}`, { type: file.type }));
+      }
+    }
+  }
+  return files;
+}
+
+export function DraftImages({ images, disabled, onRemove }: {
+  images: PreparedTaskImage[]; disabled: boolean; onRemove(index: number): void;
+}) {
+  return <div className="task-images-grid">
+    {images.map((image, index) => <article className="task-image-card" key={index}>
+      <img className="task-draft-thumbnail" src={`data:image/png;base64,${image.thumbnail}`} alt={image.fileName} />
+      <button type="button" className="secondary-button" disabled={disabled} onClick={() => onRemove(index)} aria-label={`移除待保存图片：${image.fileName}`}>移除</button>
+    </article>)}
+  </div>;
+}
+
+export function TaskImageButton({ taskId }: { taskId: number }) {
+  const [open, setOpen] = useState(false);
+  return <>
+    <button type="button" className="task-image-indicator" data-task-reorder-ignore
+      title="查看任务附图" aria-label="查看任务附图" onClick={(event) => { event.stopPropagation(); setOpen(true); }}>
+      <ImageSquare size={17} />
+    </button>
+    {open && <TaskImageViewer taskId={taskId} onClose={() => setOpen(false)} />}
+  </>;
+}
+
+function TaskImageViewer({ taskId, initialImageId, onClose }: {
+  taskId: number; initialImageId?: number; onClose(): void;
+}) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  const [images, setImages] = useState<TaskImageDto[]>([]);
+  const [index, setIndex] = useState(0);
+  const [url, setUrl] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    dialog.current!.showModal();
+    let active = true;
+    bridge.request<TaskImageDto[]>("tasks.images.list", { taskId }).then((result) => {
+      if (!active) return;
+      setImages(result);
+      setIndex(Math.max(0, result.findIndex((image) => image.id === initialImageId)));
+      setLoading(false);
+    }).catch((reason: Error) => {
+      if (active) {
+        setError(reason.message);
+        setLoading(false);
+      }
+    });
+    return () => { active = false; };
+  }, [taskId, initialImageId]);
+  useEffect(() => {
+    if (!images.length) return;
+    let active = true;
+    setUrl("");
+    setError("");
+    bridge.request<{ url: string }>("tasks.images.get", { taskId, imageId: images[index].id })
+      .then((result) => { if (active) setUrl(result.url); })
+      .catch((reason: Error) => { if (active) setError(reason.message); });
+    return () => { active = false; };
+  }, [taskId, images, index]);
+  const image = images[index];
+  return <dialog ref={dialog} className="task-image-dialog" aria-label="任务图片预览"
+    onPointerDown={(event) => event.stopPropagation()}
+    onContextMenu={(event) => event.stopPropagation()}
+    onClose={onClose} onClick={(event) => { event.stopPropagation(); if (event.target === event.currentTarget) onClose(); }}
+    onKeyDown={(event) => {
+      event.stopPropagation();
+      if (event.key === "ArrowLeft" && index > 0) { event.preventDefault(); setIndex(index - 1); }
+      if (event.key === "ArrowRight" && index < images.length - 1) { event.preventDefault(); setIndex(index + 1); }
+    }}>
+    <div className="section-title-row"><span>{image?.fileName ?? "任务附图"}</span>
+      <button type="button" className="secondary-button" autoFocus onClick={onClose}>关闭</button></div>
+    {error && <p role="alert" className="task-images-error">{error}</p>}
+    {loading && <p role="status">正在加载图片…</p>}
+    {!loading && !error && images.length === 0 && <p>暂无图片附件</p>}
+    {image && <>
+      <div className="task-image-navigation">
+        <button type="button" className="secondary-button" disabled={index === 0} onClick={() => setIndex(index - 1)} aria-label="上一张图片">← 上一张</button>
+        <span aria-live="polite">{index + 1} / {images.length}</span>
+        <button type="button" className="secondary-button" disabled={index === images.length - 1} onClick={() => setIndex(index + 1)} aria-label="下一张图片">下一张 →</button>
+      </div>
+      {!url && !error && <p role="status">正在加载原图…</p>}
+      {url && <img src={url} alt={image.fileName} />}
+    </>}
+  </dialog>;
 }

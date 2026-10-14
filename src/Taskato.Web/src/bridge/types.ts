@@ -8,6 +8,7 @@ export interface TaskDto {
   priority: number;
   orderIndex: number;
   hasChildren: boolean;
+  hasImages?: boolean;
   canAddChild: boolean;
   completedLeafCount: number;
   totalLeafCount: number;

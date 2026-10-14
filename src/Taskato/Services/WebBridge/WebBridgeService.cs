@@ -163,6 +163,7 @@ namespace Taskato.Services.WebBridge
         private async Task<object> GetTasksAsync()
         {
             var tasks = PrepareTaskTree(await _database.GetTaskTreeItemsAsync());
+            var imageTaskIds = await _database.GetTaskIdsWithImagesAsync();
             var visibleTaskIds = CurrentTaskVisibility.GetVisibleTaskIds(tasks, DateTime.Today);
             var visibleTasks = tasks.Where(task => visibleTaskIds.Contains(task.Id)).ToList();
             var selectedTaskId = _taskWorkspace.SelectedTask?.Id;
@@ -171,9 +172,9 @@ namespace Taskato.Services.WebBridge
 
             return new
             {
-                tasks = visibleTasks.Select(ToTaskDto).ToList(),
+                tasks = visibleTasks.Select(task => ToTaskDto(task) with { HasImages = imageTaskIds.Contains(task.Id) }).ToList(),
                 // 左侧树只展示当前任务；详情区仍需完整直属子任务，二者不能共用过滤后的集合。
-                detailTasks = tasks.Select(ToTaskDto).ToList(),
+                detailTasks = tasks.Select(task => ToTaskDto(task) with { HasImages = imageTaskIds.Contains(task.Id) }).ToList(),
                 selectedTaskId,
                 maximumDepth = DatabaseService.MaximumTaskDepth
             };

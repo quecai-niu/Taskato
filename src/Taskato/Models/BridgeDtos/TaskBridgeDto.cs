@@ -16,7 +16,10 @@ namespace Taskato.Models.BridgeDtos
         int TotalLeafCount,
         DateTime CreatedAt,
         DateTime? CompletedAt,
-        int? CompletionDurationMinutes);
+        int? CompletionDurationMinutes)
+    {
+        public bool HasImages { get; init; }
+    }
 
     public sealed record TaskProgressBridgeDto(
         int Id,

@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type ClipboardEvent,
   type FormEvent,
   type KeyboardEvent,
   type MouseEvent,
@@ -54,7 +55,14 @@ import {
   useBridgeRefresh,
 } from "../ui";
 import { TaskPicker } from "../components/TaskPicker";
-import { TaskImages } from "../components/TaskImages";
+import {
+  TaskImages,
+  TaskImageButton,
+  DraftImages,
+  clipboardImages,
+  prepareImage,
+  type PreparedTaskImage,
+} from "../components/TaskImages";
 import { PomodoroTimeline } from "../components/PomodoroTimeline";
 
 type TaskNode = TaskDto & { children: TaskNode[] };
@@ -577,8 +585,11 @@ function TaskTreeRow({
         >
           {taskTitle(task.title)}
         </button>
-        <span className={`priority-badge priority-${task.priority}`}>
-          {priorityLabels[task.priority]}
+        <span className="tree-task-badges">
+          {task.hasImages && <TaskImageButton taskId={task.id} />}
+          <span className={`priority-badge priority-${task.priority}`}>
+            {priorityLabels[task.priority]}
+          </span>
         </span>
         {isParent && (
           <span className="tree-parent-progress">
@@ -1052,6 +1063,12 @@ export function TaskPage({
   const [newTaskParentId, setNewTaskParentId] = useState<number | null>(null);
   const [childTitle, setChildTitle] = useState("");
   const [childPriority, setChildPriority] = useState(0);
+  const [rootImages, setRootImages] = useState<PreparedTaskImage[]>([]);
+  const [childImages, setChildImages] = useState<PreparedTaskImage[]>([]);
+  const [draftBusy, setDraftBusy] = useState(false);
+  const draftBusyRef = useRef(false);
+  // 保存附件失败后重试同一个已创建任务，避免重复新增任务。
+  const draftTaskIds = useRef<{ root: number | null; child: number | null }>({ root: null, child: null });
   const [contentDraft, setContentDraft] = useState("");
   const [contentStatus, setContentStatus] =
     useState<TaskContentSaveStatus>("saved");
@@ -1270,6 +1287,7 @@ export function TaskPage({
     void load();
     void loadProgress();
   });
+  useBridgeRefresh("tasks.images.changed", () => void load());
   useBridgeRefresh("pomodoro.changed", () => void loadTimers());
   useEffect(() => {
     // 选中项交由应用保存；存在专注目标时，重启会恢复其所属任务。
@@ -1586,6 +1604,27 @@ export function TaskPage({
     setTimerAdjustmentDraft(null);
   }, [activeTimer?.canAdjustRemaining, activeTimer?.id]);
 
+  const pasteDraftImages = async (event: ClipboardEvent<HTMLTextAreaElement>, source: "root" | "child") => {
+    const files = clipboardImages(event);
+    if (!files.length) return;
+    event.preventDefault();
+    if (draftBusyRef.current) return;
+    draftBusyRef.current = true;
+    setDraftBusy(true);
+    try {
+      for (const file of files) {
+        const image = await prepareImage(file);
+        if (source === "root") setRootImages((current) => [...current, image]);
+        else setChildImages((current) => [...current, image]);
+      }
+    } catch (error) {
+      reportError(error);
+    } finally {
+      draftBusyRef.current = false;
+      setDraftBusy(false);
+    }
+  };
+
   const add = async (
     event: FormEvent,
     parentId: number | null,
@@ -1594,18 +1633,28 @@ export function TaskPage({
     event.preventDefault();
     const title = source === "root" ? rootTitle.trim() : childTitle.trim();
     const priority = source === "root" ? rootPriority : childPriority;
-    if (!title) return;
+    if (!title || draftBusyRef.current) return;
+    draftBusyRef.current = true;
+    setDraftBusy(true);
     try {
-      const created = await bridge.request<TaskDto>("tasks.add", {
-        title,
-        parentId,
-        priority,
-      });
+      let taskId = draftTaskIds.current[source];
+      if (taskId === null) {
+        const created = await bridge.request<TaskDto>("tasks.add", { title, parentId, priority });
+        taskId = created.id;
+        draftTaskIds.current[source] = taskId;
+      }
+      const images = source === "root" ? rootImages : childImages;
+      for (const image of images) {
+        await bridge.request("tasks.images.add", { taskId, ...image });
+        if (source === "root") setRootImages((current) => current.slice(1));
+        else setChildImages((current) => current.slice(1));
+      }
+      draftTaskIds.current[source] = null;
       if (source === "root") {
         setRootTitle("");
         setRootPriority(0);
         setNewTaskParentId(null);
-        setSelectedId(created.id);
+        setSelectedId(taskId);
         setTaskViewMode("detail");
       } else {
         setChildTitle("");
@@ -1614,6 +1663,9 @@ export function TaskPage({
       await load();
     } catch (error) {
       reportError(error);
+    } finally {
+      draftBusyRef.current = false;
+      setDraftBusy(false);
     }
   };
   const offerUndo = (message: string, run: () => Promise<void>) => {
@@ -2304,6 +2356,7 @@ export function TaskPage({
           {details && <p className="subtask-details">{details}</p>}
         </div>
         <span className="subtask-row-badges">
+          {item.hasImages && <TaskImageButton taskId={item.id} />}
           {item.priority > 0 && (
             <span
               className={`priority-badge subtask-priority-badge priority-${item.priority}`}
@@ -2668,11 +2721,16 @@ export function TaskPage({
                   maxLength={5000}
                   aria-label="新任务内容"
                   placeholder="写下任务内容；可以使用多行文字。"
+                  readOnly={draftBusy || draftTaskIds.current.root !== null}
+                  onPaste={(event) => void pasteDraftImages(event, "root")}
                   value={rootTitle}
                   onChange={(event) => setRootTitle(event.target.value)}
                 />
                 <small>{rootTitle.length} / 5000</small>
               </label>
+              <small className="task-images-help">Ctrl+V 粘贴图片，创建任务时保存附图。</small>
+              <DraftImages images={rootImages} disabled={draftBusy} onRemove={(index) => setRootImages((current) => current.filter((_, i) => i !== index))} />
+              {!draftBusy && draftTaskIds.current.root !== null && <p role="alert">任务已创建，部分图片未保存。再次点击创建任务可重试剩余图片。</p>}
               <div className="task-create-options">
                 <PrioritySelector
                   label="新任务优先级"
@@ -2701,7 +2759,7 @@ export function TaskPage({
                 <button
                   type="submit"
                   className="primary-button"
-                  disabled={!rootTitle.trim()}
+                  disabled={!rootTitle.trim() || draftBusy}
                 >
                   <Plus size={17} />
                   创建任务
@@ -2850,6 +2908,8 @@ export function TaskPage({
                             aria-describedby="subtask-input-hint"
                             rows={2}
                             maxLength={5000}
+                            readOnly={draftBusy || draftTaskIds.current.child !== null}
+                            onPaste={(event) => void pasteDraftImages(event, "child")}
                             value={childTitle}
                             onChange={(event) => setChildTitle(event.target.value)}
                             onKeyDown={(event) => {
@@ -2867,15 +2927,17 @@ export function TaskPage({
                           <button
                             type="submit"
                             aria-label="添加子任务"
-                            disabled={!childTitle.trim()}
+                            disabled={!childTitle.trim() || draftBusy}
                           >
                             <Plus size={15} />
                             <span>添加</span>
                           </button>
                         </div>
                         <small id="subtask-input-hint" className="subtask-input-hint">
-                          Enter 保存 · Shift+Enter 换行
+                          Enter 保存 · Shift+Enter 换行 · Ctrl+V 粘贴图片
                         </small>
+                        <DraftImages images={childImages} disabled={draftBusy} onRemove={(index) => setChildImages((current) => current.filter((_, i) => i !== index))} />
+                        {!draftBusy && draftTaskIds.current.child !== null && <p role="alert">子任务已创建，部分图片未保存。再次点击添加可重试剩余图片。</p>}
                         <PrioritySelector
                           className="subtask-create-priority"
                           label="新子任务优先级"

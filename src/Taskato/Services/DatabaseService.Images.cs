@@ -4,6 +4,12 @@ namespace Taskato.Services
 {
     public partial class DatabaseService
     {
+        public async Task<HashSet<int>> GetTaskIdsWithImagesAsync()
+        {
+            var images = await _db.QueryAsync<TaskImage>("SELECT DISTINCT TaskId FROM TaskImages");
+            return images.Select(image => image.TaskId).ToHashSet();
+        }
+
         // 列表只读取缩略图，避免切换任务时加载全部原图。
         public Task<List<TaskImage>> GetTaskImagesAsync(int taskId) =>
             _db.QueryAsync<TaskImage>(

@@ -316,8 +316,8 @@ export class MockBridge implements BridgeApi {
         break;
       case "tasks.list":
         result = {
-          tasks,
-          detailTasks: tasks,
+          tasks: tasks.map((task) => ({ ...task, hasImages: this.images.some((image) => image.taskId === task.id) })),
+          detailTasks: tasks.map((task) => ({ ...task, hasImages: this.images.some((image) => image.taskId === task.id) })),
           selectedTaskId: tasks[0]?.id ?? null,
           maximumDepth: 5,
         } satisfies TaskListResult;
