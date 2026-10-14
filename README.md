@@ -1,57 +1,90 @@
-# Taskato
-
 <p align="center">
-  <img src="src/Taskato/Assets/icon.png" alt="Taskato" width="96" />
+  <img src="docs/assets/readme/taskato-banner.png" alt="Taskato — 把任务理清，把时间用好。层级任务、番茄专注、本地记录。" width="100%" />
 </p>
 
-<h3 align="center">把层级任务、番茄专注、时间统计和每日复盘放进一个安静的 Windows 工作台</h3>
-
 <p align="center">
-  <a href="#下载安装">下载安装</a>
-  ·
-  <a href="#功能亮点">功能亮点</a>
-  ·
-  <a href="#界面预览">界面预览</a>
-  ·
+  <a href="#开始使用">下载安装</a> ·
+  <a href="#功能亮点">功能亮点</a> ·
+  <a href="#使用指南">使用指南</a> ·
   <a href="#源码运行">源码运行</a>
-  ·
-  <a href="#许可证">许可证</a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/quecai-niu/Taskato/releases/latest"><img src="https://img.shields.io/github/v/release/quecai-niu/Taskato?logo=github&label=release" alt="Latest release" /></a>
-  <a href="https://github.com/quecai-niu/Taskato/commits/master"><img src="https://img.shields.io/github/last-commit/quecai-niu/Taskato?logo=github&label=last%20commit" alt="Last commit" /></a>
-  <a href="https://github.com/quecai-niu/Taskato/stargazers"><img src="https://img.shields.io/github/stars/quecai-niu/Taskato?logo=github&label=stars" alt="GitHub stars" /></a>
-  <a href="https://github.com/quecai-niu/Taskato/issues"><img src="https://img.shields.io/github/issues/quecai-niu/Taskato?logo=github&label=issues" alt="GitHub issues" /></a>
+  <a href="https://github.com/quecai-niu/Taskato/releases/latest"><img src="https://img.shields.io/github/v/release/quecai-niu/Taskato?style=flat&label=版本&color=ff656f" alt="最新发布版本" /></a>
+  <img src="https://img.shields.io/badge/平台-Windows_x64-0078D4?style=flat&logo=windows" alt="Windows x64" />
+  <img src="https://img.shields.io/badge/.NET-8-512BD4?style=flat&logo=dotnet" alt=".NET 8" />
+  <a href="#许可证"><img src="https://img.shields.io/badge/许可-非商业用途-596170?style=flat" alt="非商业许可" /></a>
 </p>
 
----
-
-## 这是什么
-
-Taskato 是一个基于 **.NET 8 + WPF + WebView2 + React** 的 Windows 本地任务与番茄钟应用。
-
-- React 提供任务、专注统计、每日总结、历史记录和设置五个完整业务页面。
-- C# 负责 SQLite 数据、任务规则、番茄钟、托盘、通知、备份恢复和系统生命周期。
-- WPF 只保留 WebView2 桌面宿主、完成确认、提醒弹窗和必要的原生文件对话框，不再维护旧版 WPF 工作区。
-
-主界面是可最大化、可缩放分栏的整窗工作台。日间模式采用低刺激米黄色，夜间模式采用高对比深色主题；左侧导航固定收起为图标栏，分栏宽度和最大化状态会在下次启动时恢复；窗口按钮按当前状态显示最大化或还原图标。
-
-## 界面预览
+<p align="center">一个安静的 Windows 本地工作台，把任务拆分、番茄专注和每日复盘连在一起。</p>
 
 <p align="center">
-  <img src="docs/audits/review_TaskatoUiOption1_20260729_1336/implementation-light.png" alt="Taskato React 整窗工作区日间模式" width="900" />
+  <img src="docs/assets/readme/taskato-workspace.png" alt="Taskato 日间界面：左侧项目清单、中间子任务与图片附件标记、专注计时器、右侧番茄钟时间链。" width="100%" />
 </p>
 
-<p align="center"><sub>React 整窗工作区：层级任务树、任务详情与多组番茄钟</sub></p>
+<p align="center"><sub>日间工作区 · 项目与任务内容已替换为展示用示例</sub></p>
 
-更多设计与验证资料：
+## 开始使用
 
-- [React 整窗工作区设计基准](docs/previews/preview_TaskatoWorkspace_20260728_1421/index.html)
-- [日间与夜间主题实现对比](docs/audits/review_TaskatoUiOption1_20260729_1336/comparison.png)
-- [专注统计与旧版界面清理记录](docs/20260807_2144_plan_FocusAnalytics_专注统计与旧版界面清理.md)
+下载 Taskato，开始有节奏地推进每一天。
+
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <h3><a href="https://github.com/quecai-niu/Taskato/releases/download/v2.75/Taskato-2.75.0-win-x64-setup.exe">下载 Windows 安装包</a></h3>
+      <p>安装后使用，支持开始菜单与桌面快捷方式。</p>
+    </td>
+    <td align="center" width="50%">
+      <h3><a href="https://github.com/quecai-niu/Taskato/releases/download/v2.75/Taskato-2.75.0-win-x64-portable.zip">下载便携版 ZIP</a></h3>
+      <p>解压到可写目录，运行 Taskato.exe。</p>
+    </td>
+  </tr>
+</table>
+
+<p align="center"><sub>Windows 10 / 11 · .NET 8 自包含 · 无需单独安装 .NET Desktop Runtime</sub></p>
+
+安装包会在缺少 WebView2 Evergreen Runtime 时从微软官方入口下载；便携版需要电脑已安装该运行时。发布包不含个人任务、数据库或设置；覆盖升级前，建议在“设置 → 数据与维护”创建备份。
 
 ## 功能亮点
+
+<table>
+  <tr>
+    <td width="33%" valign="top">
+      <h3>拆分任务</h3>
+      <p>最多五层任务，把大目标拆成可执行步骤；支持优先级、拖拽排序和图片附件。</p>
+    </td>
+    <td width="33%" valign="top">
+      <h3>进入专注</h3>
+      <p>番茄计时与任务相连，支持暂停、休息和剩余时长调整；重启后恢复计时状态。</p>
+    </td>
+    <td width="33%" valign="top">
+      <h3>回看进展</h3>
+      <p>通过时间链、专注统计与每日总结回顾投入，也可以手动记录每一次推进。</p>
+    </td>
+  </tr>
+</table>
+
+## 最新发布
+
+**[v2.75 · 2026-10-14](https://github.com/quecai-niu/Taskato/releases/tag/v2.75)**
+
+- 新任务和直属子任务输入框支持粘贴图片，显示待保存缩略图，可移除或重试未保存的附件。
+- 任务树与子任务列表显示附图小图标，点击即可查看该任务的图片。
+- 图片预览支持“上一张 / 下一张”和键盘左右方向键。
+- 此版本也包含任务排序、任务栏折叠、时间链与连续专注累计、专注目标恢复等主线更新。
+
+本次发布已通过前端构建、.NET Release 自包含发布和安装包编译；未执行额外测试或人工界面验收。完整变更与发布清单见 [GitHub Release](https://github.com/quecai-niu/Taskato/releases/tag/v2.75)。
+
+## 使用指南
+
+1. **理清任务**：点击左侧“新”，输入任务内容；在详情中继续添加直属子任务。
+2. **补充资料**：在输入框按 `Ctrl+V` 粘贴截图，创建任务时保存附图；通过任务行的图片图标查看附件。
+3. **开始专注**：选中任务并启动番茄钟，需要时暂停、休息或调整剩余时间。
+4. **记录推进**：在任务详情点击“记录推进”，写下成果并填写实际投入时长。
+5. **回看一天**：在“专注统计”“每日总结”和“历史记录”中回顾时间与进展。
+
+<details>
+<summary><strong>展开完整功能说明</strong></summary>
 
 | 模块 | 能力 |
 | --- | --- |
@@ -71,19 +104,10 @@ Taskato 是一个基于 **.NET 8 + WPF + WebView2 + React** 的 Windows 本地�
 | 数据安全 | 本地 SQLite、设置与运行状态备份，恢复前完整性校验、恢复回滚副本和本地诊断日志 |
 | 系统集成 | 托盘常驻、休眠恢复、最小化后台运行、开机自启、单例运行及窗口状态持久化 |
 
-## 下载安装
+</details>
 
-最新稳定版是 **v2.75**：
-
-- [下载 Windows 安装包](https://github.com/quecai-niu/Taskato/releases/download/v2.75/Taskato-2.75.0-win-x64-setup.exe)
-- [下载便携版 ZIP](https://github.com/quecai-niu/Taskato/releases/download/v2.75/Taskato-2.75.0-win-x64-portable.zip)
-- [查看 v2.75 Release 与发布清单](https://github.com/quecai-niu/Taskato/releases/tag/v2.75)
-
-安装包是 `.NET 8 win-x64` 自包含版本，目标电脑不需要预装 .NET Desktop Runtime；若系统缺少 WebView2 Evergreen Runtime，安装器会从微软官方入口下载。
-
-发布包不包含任何个人任务、数据库或设置。程序首次运行后才会创建自己的 `Data` 目录；覆盖升级同一安装目录时不会覆盖已有数据，但升级前仍建议在“设置 → 数据与维护”中创建备份。
-
-## 使用方式
+<details>
+<summary><strong>展开任务、图片与番茄钟操作细节</strong></summary>
 
 任务详情支持多张图片附件：在任务内容下方点击“添加图片”可多选文件，也可在任务内容输入框或图片附件区域按 Ctrl+V 粘贴截图。支持 PNG、JPEG、GIF、BMP、WebP，每张最多 10 MB、4000 万像素。新任务和直属子任务的输入框也支持 Ctrl+V 粘贴图片，输入框下方会显示待保存缩略图，可移除；创建任务时一起保存附图。任务树和子任务列表中，有附图的任务会显示图片图标；点击图标或附件缩略图查看原图，通过“上一张 / 下一张”或键盘左右箭头切换该任务的图片，按 Esc 或点击“关闭”退出；图片可单独删除。图片保存到任务数据库，随数据备份和恢复；删除任务时同步清理附件，保留的子任务附件不受影响。
 
@@ -98,7 +122,12 @@ Taskato 是一个基于 **.NET 8 + WPF + WebView2 + React** 的 Windows 本地�
 9. 在“每日总结”回看成果与推进，并可修正推进所属和时长；在“历史记录”查询完整活动时间线。
 10. 如需远程提醒，在设置中配置飞书 Webhook 和四类通知次数。
 
+</details>
+
 ## 源码运行
+
+<details>
+<summary><strong>环境要求、构建运行与发布命令</strong></summary>
 
 ### 环境要求
 
@@ -134,7 +163,7 @@ dotnet run --project src/TestProject/TestProject.csproj -c Release
 
 ### 生成发布包
 
-生成经过前端测试、C# 回归和真实 WebView2 烟测的便携包：
+完整发布脚本会执行前端测试、C# 回归与真实 WebView2 烟测，再生成便携包：
 
 ```powershell
 .\scripts\build-release.ps1 -Version 2.75.0
@@ -148,19 +177,10 @@ dotnet run --project src/TestProject/TestProject.csproj -c Release
 
 完整运行时、升级、签名和回滚策略见 [发布与恢复说明](docs/release_Taskato_20260729.md)。
 
-## 许可证
+</details>
 
-Taskato 采用 [PolyForm Noncommercial License 1.0.0](LICENSE)，以源码可用方式发布，不属于 OSI 定义的开源软件。
-
-- 允许将本软件用于个人学习、研究、实验、测试、业余项目及许可证列明的其他非商业用途。
-- 允许在非商业用途范围内修改和分发本软件；分发时必须同时提供许可证条款及规定的通知。
-- 不允许将本软件用于商业目的。商业使用或商业授权请事先联系著作权人并取得书面许可。
-
-除文件另有说明外，本许可证适用于本仓库中著作权由许可方拥有的全部 Taskato 源代码，包括历史版本与历史提交；不适用于第三方依赖、第三方资源或许可方无权许可的内容。
-
-本节仅作通俗说明，不替代 `LICENSE` 中的完整条款；两者不一致时，以 `LICENSE` 为准。
-
-## 技术栈
+<details>
+<summary><strong>技术栈、项目结构与本地数据</strong></summary>
 
 | 层级 | 技术 |
 | --- | --- |
@@ -201,12 +221,20 @@ Taskato/
 
 WebView2 浏览器缓存默认放在 `%LOCALAPPDATA%/Taskato/WebView2`，不会进入程序目录、备份文件或发布包。Taskato 不需要云端账号，除非你主动配置飞书 Webhook，否则业务数据不会发送到外部服务。
 
-## 当前版本
+</details>
 
-`v2.28`
+## 许可证
 
-- 天、周、月专注统计分别展示专注、休息与暂停时长，暂停计入有效总时长，完成等待仍排除。
-- 任务树支持最多五层、手动确认父级成果、当前任务筛选、折叠状态和会话选中项保持。
-- 番茄钟支持运行中拖动调整专注/休息剩余时间、跨进程恢复、超时提醒、多组计时和四类可配置飞书通知次数。
-- WebView2 成为唯一工作区 UI，旧版 WPF 业务页面和回退入口已经移除。
-- 提供经过前端、C# 和真实 WebView2 烟测的安装包、便携包、SHA-256 与发布清单。
+Taskato 采用 [PolyForm Noncommercial License 1.0.0](LICENSE)，以源码可用方式发布，不属于 OSI 定义的开源软件。
+
+- 允许将本软件用于个人学习、研究、实验、测试、业余项目及许可证列明的其他非商业用途。
+- 允许在非商业用途范围内修改和分发本软件；分发时必须同时提供许可证条款及规定的通知。
+- 不允许将本软件用于商业目的。商业使用或商业授权请事先联系著作权人并取得书面许可。
+
+除文件另有说明外，本许可证适用于本仓库中著作权由许可方拥有的全部 Taskato 源代码，包括历史版本与历史提交；不适用于第三方依赖、第三方资源或许可方无权许可的内容。
+
+本节仅作通俗说明，不替代 `LICENSE` 中的完整条款；两者不一致时，以 `LICENSE` 为准。
+
+---
+
+<p align="center">专注，让生活更从容。<br /><a href="https://github.com/quecai-niu/Taskato/issues">反馈问题</a> · <a href="https://github.com/quecai-niu/Taskato/releases/latest">查看最新发布</a></p>
