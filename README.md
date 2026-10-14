@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/quecai-niu/Taskato/releases/latest"><img src="https://img.shields.io/github/v/release/quecai-niu/Taskato?style=flat&label=版本&color=ff656f" alt="最新发布版本" /></a>
+  <a href="https://github.com/quecai-niu/Taskato/releases/latest"><strong>最新发布 v2.75</strong></a> ·
   <img src="https://img.shields.io/badge/平台-Windows_x64-0078D4?style=flat&logo=windows" alt="Windows x64" />
   <img src="https://img.shields.io/badge/.NET-8-512BD4?style=flat&logo=dotnet" alt=".NET 8" />
   <a href="#许可证"><img src="https://img.shields.io/badge/许可-非商业用途-596170?style=flat" alt="非商业许可" /></a>
@@ -28,18 +28,13 @@
 
 下载 Taskato，开始有节奏地推进每一天。
 
-<table>
-  <tr>
-    <td align="center" width="50%">
-      <h3><a href="https://github.com/quecai-niu/Taskato/releases/download/v2.75/Taskato-2.75.0-win-x64-setup.exe">下载 Windows 安装包</a></h3>
-      <p>安装后使用，支持开始菜单与桌面快捷方式。</p>
-    </td>
-    <td align="center" width="50%">
-      <h3><a href="https://github.com/quecai-niu/Taskato/releases/download/v2.75/Taskato-2.75.0-win-x64-portable.zip">下载便携版 ZIP</a></h3>
-      <p>解压到可写目录，运行 Taskato.exe。</p>
-    </td>
-  </tr>
-</table>
+<h3 align="center">
+  <a href="https://github.com/quecai-niu/Taskato/releases/download/v2.75/Taskato-2.75.0-win-x64-setup.exe">下载 Windows 安装包</a>
+  &nbsp; · &nbsp;
+  <a href="https://github.com/quecai-niu/Taskato/releases/download/v2.75/Taskato-2.75.0-win-x64-portable.zip">下载便携版 ZIP</a>
+</h3>
+
+<p align="center">安装版支持开始菜单与桌面快捷方式；便携版解压后运行 Taskato.exe。</p>
 
 <p align="center"><sub>Windows 10 / 11 · .NET 8 自包含 · 无需单独安装 .NET Desktop Runtime</sub></p>
 
